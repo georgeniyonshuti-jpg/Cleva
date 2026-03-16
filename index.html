@@ -199,18 +199,19 @@ const normEmail=s=>(s||'').trim().toLowerCase();
 const randPwd=()=>Math.random().toString(36).slice(2,6)+Math.random().toString(36).slice(2,6);
 
 // ── CONTRACT STATE MACHINE ────────────────────────────────────
-const ST={DRAFT:'draft',PENDING_APPROVAL:'pending_approval',UNDER_REVIEW:'under_review',OFFER_SELECTION:'offer_selection',APPROVED:'approved',LOCK_PENDING:'lock_pending',AWAITING_PAYMENT:'awaiting_payment',ACTIVE:'active',COMPLETED:'completed',ARCHIVED:'archived'};
+const ST={DRAFT:'draft',PENDING_APPROVAL:'pending_approval',UNDER_REVIEW:'under_review',OFFER_SELECTION:'offer_selection',APPROVED:'approved',LOCK_PENDING:'lock_pending',AWAITING_PAYMENT:'awaiting_payment',ACTIVE:'active',COMPLETED:'completed',ARCHIVED:'archived',ESCALATED:'escalated'};
 const SM={
-  draft:{label:'Draft',c:'info'},pending_approval:{label:'Pending approval',c:'warn'},under_review:{label:'Under review',c:'info'},
+  draft:{label:'Draft',c:'info'},pending_approval:{label:'Pending approval',c:'warn'},under_review:{label:'Changes requested',c:'warn'},
   offer_selection:{label:'Offer selection',c:'info'},approved:{label:'Approved',c:'ok'},lock_pending:{label:'Lock pending',c:'warn'},
-  awaiting_payment:{label:'Awaiting payment',c:'warn'},active:{label:'Active',c:'ok'},completed:{label:'Completed',c:'ok'},archived:{label:'Archived',c:'info'}
+  awaiting_payment:{label:'Awaiting payment',c:'warn'},active:{label:'Active',c:'ok'},completed:{label:'Completed',c:'ok'},archived:{label:'Archived',c:'info'},
+  escalated:{label:'Escalated',c:'pur'}
 };
 const CC={warn:{bg:'var(--warnBg)',fg:'var(--warn)',bd:'var(--warnBorder)'},info:{bg:'var(--infoBg)',fg:'var(--info)',bd:'var(--infoBorder)'},ok:{bg:'var(--okBg)',fg:'var(--ok)',bd:'var(--okBorder)'},err:{bg:'var(--errBg)',fg:'var(--err)',bd:'var(--errBorder)'},pur:{bg:'var(--purBg)',fg:'var(--pur)',bd:'var(--purBorder)'}};
 
 // Role-based transitions: who can move to what. Sales rep cannot set ACTIVE.
 const ALLOWED_TRANSITIONS={
-  rep:{[ST.DRAFT]:[ST.PENDING_APPROVAL],[ST.UNDER_REVIEW]:[]},
-  mbo:{[ST.PENDING_APPROVAL]:[ST.UNDER_REVIEW],[ST.UNDER_REVIEW]:[ST.UNDER_REVIEW,ST.OFFER_SELECTION],[ST.OFFER_SELECTION]:[]},
+  rep:{[ST.DRAFT]:[ST.PENDING_APPROVAL],[ST.UNDER_REVIEW]:[ST.PENDING_APPROVAL]},
+  mbo:{[ST.PENDING_APPROVAL]:[ST.APPROVED,ST.UNDER_REVIEW,ST.ARCHIVED,ST.ESCALATED],[ST.UNDER_REVIEW]:[ST.APPROVED,ST.ARCHIVED,ST.ESCALATED]},
   support:{},ops_superuser:Object.values(ST),
 };
 const canTransition=(fromSt,toSt,role,isSuperuser)=>{
@@ -574,7 +575,8 @@ const PriceList=({devices,onStartApp})=>{
 // ── EDIT & RESUBMIT (after changes requested) ───────────────────
 const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
   const {user}=useContext(Ctx);
-  const requested=app.requestedChangeFields||[];
+  const pendingReqs=(app.application?.fieldCorrectionRequests||[]).filter(r=>!r.resolvedAt);
+  const requested=pendingReqs.map(r=>r.fieldName);
   const highlight=(key)=>requested.includes(key)?{borderLeft:'3px solid var(--warn)',background:'var(--warnBg)',padding:'8px 10px',margin:'0 -10px 8px -10px',borderRadius:'var(--r2)'}:{};
   const [f,setF]=useState({name:app.c.name,idType:app.c.idType||'nid',nid:app.c.nid,phone:app.c.phone,addr:app.c.addr,occ:app.c.occ,income:String(app.c.income||''),kn:app.c.kin.name,kp:app.c.kin.phone,kr:app.c.kin.rel,did:app.dev.id});
   const [e,setE]=useState({});
@@ -605,7 +607,7 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
         <Card sx={{padding:14,marginBottom:18,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}>
           <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:6}}>Underwriter note</div>
           <div style={{fontSize:13,color:'var(--text)'}}>{app.notes}</div>
-          {requested.length>0&&<div style={{fontSize:11,color:'var(--textMid)',marginTop:8}}>Fields to review: <strong>{requested.join(', ')}</strong></div>}
+          {pendingReqs.length>0&&<ul style={{margin:'8px 0 0 16px',padding:0}}>{pendingReqs.map((r,i)=><li key={i} style={{fontSize:11,color:'var(--textMid)'}}><strong>{r.fieldName}</strong>{r.reason&&r.reason!==app.notes?` — ${r.reason}`:''}</li>)}</ul>}
         </Card>
       )}
       <Card sx={{padding:22}}>
@@ -1123,7 +1125,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
   const {user}=useContext(Ctx);
   const [imei,setImei]=useState(app.imei||'');
   // phases: entry | checking | valid | mismatch | notfound | verified
-  const [phase,setPhase]=useState(app.status===ST.IMEI_VERIFIED||app.status===ST.ACTIVE?'verified':'entry');
+  const [phase,setPhase]=useState(app.status===ST.LOCK_PENDING||app.status===ST.ACTIVE?'verified':app.imei&&app.status===ST.APPROVED?'checking':'entry');
   const [ld,setLd]=useState(null);
   const [copied,setCopied]=useState(false);
   const [mismatchNote,setMismatchNote]=useState('');
@@ -1143,7 +1145,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
   const confirmValid=async()=>{
     setLd('pt');await sleep(1400);
     const ptId='PT-2026-'+Math.floor(10000+Math.random()*90000);
-    onUpdate(app.id,{imei,ptId,status:ST.IMEI_VERIFIED,tlEntry:{by:user.name,txt:`IMEI ${imei} — Carlcare warranty confirmed, device specs match. Registered in PayTrigger (${ptId})`}});
+    onUpdate(app.id,{imei,ptId,status:ST.LOCK_PENDING,tlEntry:{by:user.name,txt:`IMEI ${imei} — Carlcare warranty confirmed, device specs match. Registered in PayTrigger (${ptId})`}});
     addToast('ok','IMEI verified','Carlcare: warranty valid & specs match · Registered in PayTrigger');
     setPhase('verified');setLd(null);
   };
@@ -1156,13 +1158,13 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
   const handleNotFound=()=>setPhase('notfound');
 
   const sendBackFromImei=(reason)=>{
-    onUpdate(app.id,{status:ST.UNDER_REVIEW,notes:reason,imei,tlEntry:{by:user.name,txt:`IMEI check failed — sent back for review: ${reason}`}});
-    addToast('warn','Sent back for review','Underwriter will be notified');
+    onUpdate(app.id,{status:ST.PENDING_APPROVAL,notes:reason,imei,tlEntry:{by:user.name,txt:`IMEI check issue — returned to underwriter queue: ${reason}`}});
+    addToast('warn','Returned to underwriter','Underwriter will be notified');
     onBack();
   };
 
   const escalateFromImei=(reason)=>{
-    onUpdate(app.id,{status:ST.ARCHIVED,notes:reason,imei,tlEntry:{by:user.name,txt:`IMEI check issue escalated to ops: ${reason}`}});
+    onUpdate(app.id,{status:ST.ESCALATED,notes:reason,imei,tlEntry:{by:user.name,txt:`IMEI check issue escalated to ops: ${reason}`}});
     addToast('info','Escalated to ops','Issue logged for ops review');
     onBack();
   };
@@ -1338,6 +1340,11 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const [showRej,setShowRej]=useState(false);
   const [rejReason,setRejReason]=useState('');
   const [requestedFields,setRequestedFields]=useState(()=>app.requestedChangeFields||[]);
+  const [showImei,setShowImei]=useState(false);
+  const [opsNote,setOpsNote]=useState('');
+  const [showOpsRej,setShowOpsRej]=useState(false);
+  const [opsRejReason,setOpsRejReason]=useState('');
+  const [opsLd,setOpsLd]=useState(null);
   const toggleRequest=(key)=>{setRequestedFields(p=>p.includes(key)?p.filter(x=>x!==key):[...p,key]);};
   const isSuperuser=!!user.superuser;
   const [showEditCustomer,setShowEditCustomer]=useState(false);
@@ -1351,30 +1358,49 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
 
   const approve=async()=>{
     setLd('ap');await sleep(1200);
-    onUpdate(app.id,{status:ST.OFFER_SELECTION,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:'Approved — customer to select deal'}});
-    addToast('ok','Application approved','Customer can select deal');setLd(null);onBack();
+    onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:'Approved — sales rep to enter IMEI and verify device'}});
+    addToast('ok','Application approved','Sales rep notified to proceed with IMEI verification');setLd(null);onBack();
   };
   const reject=async()=>{
     if(!rejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}
     setLd('rej');await sleep(700);
-    onUpdate(app.id,{mboDecision:'REJECTED',mboRejectionReason:rejReason,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});
-    addToast('info','Application rejected','Rep notified');setLd(null);onBack();
+    onUpdate(app.id,{status:ST.ARCHIVED,mboDecision:'REJECTED',mboRejectionReason:rejReason,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});
+    addToast('info','Application rejected','Application is now closed');setLd(null);onBack();
   };
   const requestChanges=async()=>{
-    if(!note.trim()){addToast('err','Note required','Explain what changes you need before sending back.');return;}
+    if(requestedFields.length===0){addToast('err','Select fields','Select at least one field that needs to be changed');return;}
+    if(!note.trim()){addToast('err','Note required','Explain what the rep needs to fix');return;}
     setLd('ch');await sleep(700);
     const ap=app.application||{};
     const reqs=ap.fieldCorrectionRequests||[];
     const added=requestedFields.filter(f=>!reqs.some(r=>r.fieldName===f&&!r.resolvedAt));
     const newReqs=[...reqs,...added.map(fieldName=>({fieldName,reason:note,resolvedAt:null}))];
-    onUpdate(app.id,{notes:note,application:{...ap,fieldCorrectionRequests:newReqs},tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});
-    addToast('warn','Changes requested','Application returned to rep');setLd(null);onBack();
+    onUpdate(app.id,{status:ST.UNDER_REVIEW,notes:note,application:{...ap,fieldCorrectionRequests:newReqs},tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});
+    addToast('warn','Changes requested','Application returned to rep for correction');setLd(null);onBack();
   };
   const escalate=async()=>{
     if(!note.trim()){addToast('err','Note required','Explain why you are escalating.');return;}
     setLd('esc');await sleep(700);
-    onUpdate(app.id,{status:ST.ARCHIVED,notes:note,reviewer:user.name,tlEntry:{by:user.name,txt:'Archived — '+note}});
-    addToast('info','Archived','');setLd(null);onBack();
+    onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,tlEntry:{by:user.name,txt:`Escalated to ops: ${note}`}});
+    addToast('warn','Escalated to ops','Awaiting action from operations team');setLd(null);onBack();
+  };
+
+  const opsApprove=async()=>{
+    setOpsLd('ap');await sleep(900);
+    onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:opsNote||app.notes,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:`Escalation resolved — Approved by ops (${user.name})`}});
+    addToast('ok','Approved','Sales rep can now proceed with IMEI verification');setOpsLd(null);onBack();
+  };
+  const opsReturn=async()=>{
+    if(!opsNote.trim()){addToast('err','Note required','Explain what the underwriter should do');return;}
+    setOpsLd('ret');await sleep(700);
+    onUpdate(app.id,{status:ST.PENDING_APPROVAL,notes:opsNote,tlEntry:{by:user.name,txt:`Returned to underwriter queue by ops: ${opsNote}`}});
+    addToast('info','Returned to queue','Underwriter will review again');setOpsLd(null);onBack();
+  };
+  const opsReject=async()=>{
+    if(!opsRejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}
+    setOpsLd('rej');await sleep(700);
+    onUpdate(app.id,{status:ST.ARCHIVED,mboDecision:'REJECTED',mboRejectionReason:opsRejReason,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:`Rejected by ops: ${opsRejReason}`}});
+    addToast('info','Rejected','Application is now closed');setOpsLd(null);onBack();
   };
 
   const c=app.c,d=app.dev,tot=d.totalCost||(d.dep+(d.weekly||0)*(d.wks||12));
@@ -1382,8 +1408,14 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const ratio=c.income>0?(d.weekly/c.income*100):0;
   const affordOk=c.income>0&&ratio<30;
   const isUnderwriter=user.role==='underwriter';
+  const isRep=user.role==='rep';
   const reviewable=[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(app.status);
+  const pendingCorrections=(app.application?.fieldCorrectionRequests||[]).filter(r=>!r.resolvedAt);
   const statusOptions=Object.entries(ST).map(([k,v])=>[v,SM[v]?.label||v]);
+
+  if(showImei){
+    return <IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setShowImei(false)}/>;
+  }
   return(
     <div className="fadeUp" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,padding:'28px 32px'}}>
       <div className="detail-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22,flexWrap:'wrap',gap:12,flexShrink:0}}>
@@ -1469,20 +1501,28 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
       </div>
       {isUnderwriter&&reviewable&&(
         <Card sx={{padding:18,marginBottom:14,border:'2px solid var(--brandPale2)'}}>
-          <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Credit decision</div>
-          <div style={{fontSize:11,color:'var(--textMid)',marginBottom:10}}>Use <strong>Request change</strong> on specific fields above to mark what the rep should fix. Then add a note and click Request changes. Note is required for Request changes, Escalate, and Reject.</div>
-          <FF label="Underwriter notes (required for Request changes, Escalate, Reject)"><textarea value={note} onChange={ev=>setNote(ev.target.value)} placeholder="Explain your decision or what changes you need..." rows={3}/></FF>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Credit decision</div>
+          <div style={{fontSize:11,color:'var(--textMid)',marginBottom:14}}>
+            <strong>Approve</strong> to move to IMEI verification. <strong>Request changes</strong> sends it back to the sales rep — select the fields to fix using the toggle buttons on each field above, then add a note below. <strong>Escalate</strong> sends to ops for review. <strong>Reject</strong> permanently closes the application.
+          </div>
+          {requestedFields.length>0&&(
+            <div style={{marginBottom:12,padding:'8px 12px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11}}>
+              <span style={{fontWeight:600,color:'var(--warn)'}}>Fields flagged for correction: </span>
+              <span style={{color:'var(--warn)'}}>{requestedFields.join(', ')}</span>
+            </div>
+          )}
+          <FF label="Note (required for Request changes, Escalate, and Reject)"><textarea value={note} onChange={ev=>setNote(ev.target.value)} placeholder="Explain your decision or what the rep needs to fix..." rows={3}/></FF>
           <div style={{display:'flex',gap:8,marginTop:13,flexWrap:'wrap'}}>
             <Btn onClick={approve} v="ok" loading={ld==='ap'} icon="✓">Approve</Btn>
-            {requestedFields.length>0&&<Btn onClick={requestChanges} v="warn" loading={ld==='ch'} icon="↩" disabled={!note.trim()}>Request changes</Btn>}
-            <Btn onClick={escalate} v="pur" loading={ld==='esc'} icon="↑" disabled={!note.trim()}>Escalate</Btn>
+            <Btn onClick={requestChanges} v="warn" loading={ld==='ch'} icon="↩">Request changes</Btn>
+            <Btn onClick={escalate} v="pur" loading={ld==='esc'} icon="↑" disabled={!note.trim()}>Escalate to ops</Btn>
             <Btn onClick={()=>setShowRej(p=>!p)} v="err" icon="✕">Reject</Btn>
           </div>
           {showRej&&(
             <div style={{marginTop:13,padding:'13px 15px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)'}}>
-              <div style={{fontSize:11,fontWeight:600,color:'var(--err)',marginBottom:7}}>Rejection reason (required)</div>
+              <div style={{fontSize:11,fontWeight:600,color:'var(--err)',marginBottom:7}}>Rejection reason (required) — this action is permanent</div>
               <textarea value={rejReason} onChange={ev=>setRejReason(ev.target.value)} placeholder="Explain why the application is being rejected..." rows={2} style={{borderColor:'var(--errBorder)'}}/>
-              <div style={{marginTop:9}}><Btn onClick={reject} v="err" loading={ld==='rej'} disabled={!rejReason.trim()}>Confirm rejection</Btn></div>
+              <div style={{marginTop:9,display:'flex',gap:8}}><Btn onClick={reject} v="err" loading={ld==='rej'} disabled={!rejReason.trim()}>Confirm rejection</Btn><Btn onClick={()=>setShowRej(false)} v="ghost" sz="sm">Cancel</Btn></div>
             </div>
           )}
         </Card>
@@ -1499,8 +1539,65 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
           </div>
         </Card>
       )}
-      {app.notes&&!isUnderwriter&&!isSuperuser&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Underwriter notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
-      {app.notes&&isSuperuser&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
+      {/* Rejection notice for rep */}
+      {isRep&&app.mboDecision==='REJECTED'&&(
+        <Card sx={{padding:'14px 16px',marginBottom:14,background:'var(--errBg)',border:'2px solid var(--errBorder)'}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--err)',marginBottom:5}}>✕ Application rejected</div>
+          <div style={{fontSize:12,color:'var(--err)',marginBottom:4}}>This application was rejected and cannot be resubmitted.</div>
+          {app.mboRejectionReason&&<div style={{fontSize:12,color:'var(--err)',fontStyle:'italic'}}>Reason: {app.mboRejectionReason}</div>}
+        </Card>
+      )}
+      {/* Changes requested — banner for rep */}
+      {isRep&&app.status===ST.UNDER_REVIEW&&pendingCorrections.length>0&&(
+        <Card sx={{padding:'14px 16px',marginBottom:14,background:'var(--warnBg)',border:'2px solid var(--warnBorder)'}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:5}}>↩ Changes requested by underwriter</div>
+          {app.notes&&<div style={{fontSize:12,color:'var(--warn)',marginBottom:10,fontStyle:'italic'}}>"{app.notes}"</div>}
+          <div style={{fontSize:11,fontWeight:600,color:'var(--warn)',marginBottom:6}}>Fields to correct:</div>
+          <ul style={{margin:0,paddingLeft:18}}>
+            {pendingCorrections.map((r,i)=><li key={i} style={{fontSize:12,color:'var(--warn)',marginBottom:3}}><strong>{r.fieldName}</strong>{r.reason&&r.reason!==app.notes?` — ${r.reason}`:''}</li>)}
+          </ul>
+          <div style={{marginTop:12,fontSize:11,color:'var(--textMid)'}}>Use <strong>Edit &amp; resubmit</strong> from your application list to make corrections and send back for review.</div>
+        </Card>
+      )}
+      {/* Approved — IMEI entry action for rep */}
+      {isRep&&app.status===ST.APPROVED&&!app.imei&&(
+        <Card sx={{padding:'18px',marginBottom:14,background:'var(--okBg)',border:'2px solid var(--okBorder)'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--ok)',marginBottom:6}}>✓ Application approved — action required</div>
+          <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>The underwriter has approved this application. Enter the device IMEI and verify it on Carlcare to proceed to contract activation.</div>
+          <Btn onClick={()=>setShowImei(true)} v="ok" icon="→">Enter IMEI &amp; verify device</Btn>
+        </Card>
+      )}
+      {/* Lock pending — reminder */}
+      {isRep&&app.status===ST.LOCK_PENDING&&(
+        <Card sx={{padding:'14px 16px',marginBottom:14,background:'var(--warnBg)',border:'2px solid var(--warnBorder)'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--warn)',marginBottom:6}}>⏳ Lock phone in PayTrigger</div>
+          <div style={{fontSize:12,color:'var(--textMid)',marginBottom:10}}>IMEI verified. Lock the phone in PayTrigger to activate the contract.</div>
+          <Btn onClick={()=>setShowImei(true)} v="warn" icon="→">Continue IMEI / lock flow</Btn>
+        </Card>
+      )}
+      {/* Escalated — ops action panel */}
+      {isSuperuser&&app.status===ST.ESCALATED&&(
+        <Card sx={{padding:18,marginBottom:14,border:'2px solid var(--purBorder)',background:'var(--purBg)'}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:4,color:'var(--pur)'}}>↑ Escalated — ops action required</div>
+          <div style={{fontSize:11,color:'var(--textMid)',marginBottom:10}}>This application was escalated by the underwriter. Review the details and take action below.</div>
+          {app.notes&&<div style={{fontSize:12,color:'var(--pur)',marginBottom:14,padding:'8px 12px',background:'var(--purBg2,rgba(124,58,237,0.07))',borderRadius:'var(--r2)',fontStyle:'italic'}}>Underwriter note: "{app.notes}"</div>}
+          <FF label="Ops note (required for Return to queue or Reject)"><textarea value={opsNote} onChange={ev=>setOpsNote(ev.target.value)} placeholder="Add your note or decision..." rows={2}/></FF>
+          <div style={{display:'flex',gap:8,marginTop:11,flexWrap:'wrap'}}>
+            <Btn onClick={opsApprove} v="ok" loading={opsLd==='ap'} icon="✓">Approve</Btn>
+            <Btn onClick={opsReturn} v="warn" loading={opsLd==='ret'} icon="↩" disabled={!opsNote.trim()}>Return to underwriter</Btn>
+            <Btn onClick={()=>setShowOpsRej(p=>!p)} v="err" icon="✕">Reject</Btn>
+          </div>
+          {showOpsRej&&(
+            <div style={{marginTop:12,padding:'13px 15px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)'}}>
+              <div style={{fontSize:11,fontWeight:600,color:'var(--err)',marginBottom:7}}>Rejection reason (required) — this is permanent</div>
+              <textarea value={opsRejReason} onChange={ev=>setOpsRejReason(ev.target.value)} placeholder="Explain why..." rows={2} style={{borderColor:'var(--errBorder)'}}/>
+              <div style={{marginTop:9,display:'flex',gap:8}}><Btn onClick={opsReject} v="err" loading={opsLd==='rej'} disabled={!opsRejReason.trim()}>Confirm rejection</Btn><Btn onClick={()=>setShowOpsRej(false)} v="ghost" sz="sm">Cancel</Btn></div>
+            </div>
+          )}
+        </Card>
+      )}
+      {app.notes&&!isRep&&!isUnderwriter&&!isSuperuser&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Underwriter notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
+      {app.notes&&isSuperuser&&app.status!==ST.ESCALATED&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
       <Card sx={{padding:'16px 18px'}}>
         <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Activity timeline</div>
         {(app.tl||[]).map((t,i)=>(
@@ -1528,14 +1625,20 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const cfg=pricingConfig||defaultPricingConfig;
   const devicesWithPricing=React.useMemo(()=>(devices||[]).map(d=>{const deal=calcDealFromDevice(d,cfg);return{...d,...deal,dep:deal.upfrontPayment,weekly:deal.recurrentPayment,wks:deal.termOption,retail:deal.cogs};}),[devices,cfg]);
   const mine=apps.filter(a=>a.repId===user.id&&(!user.merchantCode||a.merchantCode===user.merchantCode));
-  const grps={action:mine.filter(a=>a.status===ST.OFFER_SELECTION),review:mine.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)),active:mine.filter(a=>a.status===ST.ACTIVE),other:mine.filter(a=>a.mboDecision==='REJECTED'||(a.status===ST.UNDER_REVIEW&&(a.requestedChangeFields||[]).length>0))};
+  const grps={
+    imei:mine.filter(a=>a.status===ST.APPROVED||(a.status===ST.LOCK_PENDING)),
+    changes:mine.filter(a=>a.status===ST.UNDER_REVIEW&&(a.application?.fieldCorrectionRequests||[]).some(r=>!r.resolvedAt)),
+    review:mine.filter(a=>a.status===ST.PENDING_APPROVAL),
+    active:mine.filter(a=>a.status===ST.ACTIVE),
+    closed:mine.filter(a=>a.mboDecision==='REJECTED'||a.status===ST.ARCHIVED),
+  };
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
   const goHome=()=>{setPg('dash');setSel(null);};
   const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:'6px 12px',fontSize:12,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}}>Home</button>;
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app&&app.status===ST.UNDER_REVIEW&&(app.requestedChangeFields||[]).length>0&&app.repId===user.id)
+    if(app&&app.status===ST.UNDER_REVIEW&&(app.application?.fieldCorrectionRequests||[]).some(r=>!r.resolvedAt)&&app.repId===user.id)
       return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title="Edit & resubmit"/><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><EditAndResubmit app={app} devices={devicesWithPricing} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
     if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={APP_NAME}/><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)} devices={devices}/></div></div></div>;
   }
@@ -1548,40 +1651,65 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Welcome, {user.name.split(' ')[0]}</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
+            {grps.imei.length>0&&(
+              <div style={{marginBottom:18,padding:'14px 18px',background:'var(--okBg)',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
+                <div style={{fontWeight:700,fontSize:14,color:'var(--ok)',marginBottom:3}}>✓ {grps.imei.length} application{grps.imei.length!==1?'s':''} approved — IMEI verification needed</div>
+                <div style={{fontSize:12,color:'var(--textMid)'}}>Tap to enter IMEI and verify device on Carlcare</div>
+              </div>
+            )}
+            {grps.changes.length>0&&(
+              <div style={{marginBottom:18,padding:'14px 18px',background:'var(--warnBg)',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
+                <div style={{fontWeight:700,fontSize:14,color:'var(--warn)',marginBottom:3}}>↩ {grps.changes.length} application{grps.changes.length!==1?'s':''} returned — changes requested</div>
+                <div style={{fontSize:12,color:'var(--textMid)'}}>Tap to view corrections needed and resubmit</div>
+              </div>
+            )}
             <div className="home-actions">
               <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>setPg('new')}>➕ Start new application</button>
-              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('active')}>📋 Active applications {(grps.action.length+grps.review.length+grps.active.length)>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.action.length+grps.review.length+grps.active.length}</span>}</button>
-              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('completed')}>✓ Completed applications {grps.other.length>0&&<span style={{background:'var(--bg)',color:'var(--textMid)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.other.length}</span>}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('active')}>📋 Applications {(grps.imei.length+grps.changes.length+grps.review.length+grps.active.length)>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.imei.length+grps.changes.length+grps.review.length+grps.active.length}</span>}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('completed')}>✓ Closed applications {grps.closed.length>0&&<span style={{background:'var(--bg)',color:'var(--textMid)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.closed.length}</span>}</button>
             </div>
             <div style={{marginTop:20,textAlign:'center'}}><button type="button" className="home-action-btn" style={{background:'transparent',color:'var(--textMid)',borderColor:'var(--border)',maxWidth:280,margin:'0 auto'}} onClick={()=>setPg('prices')}>📄 Price list</button></div>
           </div>
         )}
         {pg==='active'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>Active applications</h1></div>
-            {grps.action.length>0&&(
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>Applications</h1></div>
+            {grps.imei.length>0&&(
               <div style={{marginBottom:22}}>
-                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Offer selection <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.action.length}</span></div>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--ok)',marginBottom:10}}>✓ Approved — IMEI verification needed <span style={{background:'var(--okBg)',color:'var(--ok)',padding:'1px 7px',borderRadius:99}}>{grps.imei.length}</span></div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                  {grps.action.map(a=>(
-                    <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <div><div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · Approved — customer to select deal</div></div>
-                      <Btn v="warn" sz="sm">View →</Btn>
+                  {grps.imei.map(a=>(
+                    <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div><div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · {a.status===ST.LOCK_PENDING?'IMEI verified — lock phone':'Approved — enter IMEI'}</div></div>
+                      <Btn v="ok" sz="sm">{a.status===ST.LOCK_PENDING?'Lock phone →':'Enter IMEI →'}</Btn>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-            {grps.review.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Under review</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.review.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.changes.length>0&&(
+              <div style={{marginBottom:22}}>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--warn)',marginBottom:10}}>↩ Changes requested <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.changes.length}</span></div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {grps.changes.map(a=>(
+                    <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div><div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div><div style={{fontSize:11,color:'var(--warn)',marginTop:2}}>{(a.application?.fieldCorrectionRequests||[]).filter(r=>!r.resolvedAt).map(r=>r.fieldName).join(', ')}</div></div>
+                      <Btn v="warn" sz="sm">Fix &amp; resubmit →</Btn>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {grps.review.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Pending review <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.review.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.review.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
             {grps.active.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Active contracts</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.active.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
-            {grps.action.length===0&&grps.review.length===0&&grps.active.length===0&&<Empty ico="📋" title="No active applications" sub="Start a new application from Home"/>}
+            {grps.imei.length===0&&grps.changes.length===0&&grps.review.length===0&&grps.active.length===0&&<Empty ico="📋" title="No active applications" sub="Start a new application from Home"/>}
           </div>
         )}
         {pg==='completed'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>Completed applications</h1></div>
-            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:16}}>Rejected or changes requested. Tap to view or edit and resubmit.</p>
-            {grps.other.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.other.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title="No completed applications" sub="Applications you've closed or that need changes"/>}
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>Closed applications</h1></div>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:16}}>Rejected or archived applications.</p>
+            {grps.closed.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.closed.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title="No closed applications" sub="All your applications are active"/>}
           </div>
         )}
         {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devicesWithPricing} preSelDevId={preselDev?.id||null} preSelTerm={preselDev?.term||12} onBack={()=>{setPg('dash');setPreselDev(null);}} onSubmit={(f,dev)=>{
@@ -1616,9 +1744,10 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
 
   const merchantCodes=(user&&user.merchantCodes)||[];
   const queue=apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)&&(!merchantCodes.length||merchantCodes.includes(a.merchantCode)));
-  const archived=apps.filter(a=>a.status===ST.ARCHIVED);
+  const escalated=apps.filter(a=>a.status===ST.ESCALATED&&(!merchantCodes.length||merchantCodes.includes(a.merchantCode)));
+  const archived=apps.filter(a=>a.status===ST.ARCHIVED&&(!merchantCodes.length||merchantCodes.includes(a.merchantCode)));
   const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return (a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s);});
-  const pendingCount=queue.length+archived.length;
+  const pendingCount=queue.length+escalated.length;
 
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
@@ -1636,21 +1765,23 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
         )}
         {pg==='queue'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{queue.length+archived.length} application{(queue.length+archived.length)!==1?'s':''} awaiting attention</p></div></div>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{pendingCount} application{pendingCount!==1?'s':''} awaiting attention</p></div></div>
             {queue.length>0&&(
               <div style={{marginBottom:24}}>
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Pending decision <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{queue.length}</span></div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
                   {queue.map(a=>{
                     const tot=a.dev?(a.dev.totalCost||(a.dev.dep||0)+(a.dev.weekly||0)*12):0;
-                    const repFirst=(a.rep||'').split(' ')[0];
+                    const repFirst=(a.repName||a.rep||'').split(' ')[0];
+                    const hasPendingChanges=a.status===ST.UNDER_REVIEW&&(a.application?.fieldCorrectionRequests||[]).some(r=>!r.resolvedAt);
                     return (
-                    <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'1.5px solid var(--border)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',transition:'all .13s'}}
+                    <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:`1.5px solid ${hasPendingChanges?'var(--warnBorder)':'var(--border)'}`,borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',transition:'all .13s'}}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--brand2)';e.currentTarget.style.boxShadow='0 2px 10px rgba(11,61,46,0.1)'}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.boxShadow='none'}}>
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=hasPendingChanges?'var(--warnBorder)':'var(--border)';e.currentTarget.style.boxShadow='none'}}>
                       <div>
                         <div style={{fontWeight:600,fontSize:14}}>{a.c?a.c.name:''}</div>
                         <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev?a.dev.brand:''} {a.dev?a.dev.model:''} · {a.dev?fmtRWF(tot):'—'} total · {fmtD(a.createdAt)} · {repFirst}</div>
+                        {hasPendingChanges&&<div style={{fontSize:10,color:'var(--warn)',marginTop:3,fontWeight:600}}>↩ Changes sent — awaiting rep resubmission</div>}
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:10}}><Badge st={a.status}/><span style={{color:'var(--textLight)',fontSize:18}}>›</span></div>
                     </div>
@@ -1658,13 +1789,18 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
                 </div>
               </div>
             )}
-            {archived.length>0&&(
-              <div>
-                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Archived <span style={{background:'var(--purBg)',color:'var(--pur)',padding:'1px 7px',borderRadius:99}}>{archived.length}</span></div>
-                <div style={{display:'flex',flexDirection:'column',gap:8}}>{archived.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
+            {escalated.length>0&&(
+              <div style={{marginBottom:24}}>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--pur)',marginBottom:10}}>↑ Escalated to ops <span style={{background:'var(--purBg)',color:'var(--pur)',padding:'1px 7px',borderRadius:99}}>{escalated.length}</span></div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>{escalated.map(a=>(
+                  <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'var(--purBg)',border:'1.5px solid var(--purBorder)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div><div style={{fontWeight:600,fontSize:14}}>{a.c?a.c.name:''}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev?a.dev.brand:''} {a.dev?a.dev.model:''} · awaiting ops decision</div></div>
+                    <div style={{display:'flex',alignItems:'center',gap:10}}><Badge st={a.status}/><span style={{color:'var(--textLight)',fontSize:18}}>›</span></div>
+                  </div>
+                ))}</div>
               </div>
             )}
-            {queue.length===0&&archived.length===0&&<Empty ico="✅" title="Queue is clear" sub="All applications have been reviewed"/>}
+            {queue.length===0&&escalated.length===0&&<Empty ico="✅" title="Queue is clear" sub="All applications have been reviewed"/>}
           </div>
         )}
         {pg==='all'&&(
@@ -2169,14 +2305,14 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Operations overview</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{APP_NAME} Rwanda · Live pipeline</p></div>
             <div className="stats-grid-3" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
-              {[['Total applications',apps.length,'var(--brand)'],['Active contracts',apps.filter(a=>a.status===ST.ACTIVE).length,'var(--ok)'],['Pending review',apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)).length,'var(--warn)'],['Approved (awaiting activation)',apps.filter(a=>a.status===ST.APPROVED).length,'var(--info)'],['Archived',apps.filter(a=>a.status===ST.ARCHIVED).length,'var(--pur)'],['Rejected',apps.filter(a=>a.mboDecision==='REJECTED').length,'var(--err)']].map(([l,v,c])=>(
+              {[['Total applications',apps.length,'var(--brand)'],['Active contracts',apps.filter(a=>a.status===ST.ACTIVE).length,'var(--ok)'],['Pending review',apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)).length,'var(--warn)'],['Approved — IMEI pending',apps.filter(a=>a.status===ST.APPROVED).length,'var(--info)'],['Escalated',apps.filter(a=>a.status===ST.ESCALATED).length,'var(--pur)'],['Rejected',apps.filter(a=>a.mboDecision==='REJECTED').length,'var(--err)']].map(([l,v,c])=>(
                 <Card key={l} sx={{padding:'14px 16px'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:5}}>{l}</div><div style={{fontSize:26,fontWeight:800,color:c}}>{v}</div></Card>
               ))}
             </div>
             <Card sx={{padding:'16px 18px',marginBottom:22}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Pipeline status</div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                {[[ST.PENDING_APPROVAL,'Pending approval','var(--warn)'],[ST.UNDER_REVIEW,'Under review','var(--info)'],[ST.OFFER_SELECTION,'Offer selection','var(--info)'],[ST.APPROVED,'Approved','var(--ok)'],[ST.LOCK_PENDING,'Lock pending','var(--warn)'],[ST.AWAITING_PAYMENT,'Awaiting payment','var(--warn)'],[ST.ACTIVE,'Active','var(--ok)'],[ST.COMPLETED,'Completed','var(--ok)'],[ST.ARCHIVED,'Archived','var(--pur)']].map(([st,l,c])=>{
+                {[[ST.PENDING_APPROVAL,'Pending approval','var(--warn)'],[ST.UNDER_REVIEW,'Changes requested','var(--warn)'],[ST.APPROVED,'Approved — IMEI pending','var(--ok)'],[ST.LOCK_PENDING,'Lock pending','var(--warn)'],[ST.ESCALATED,'Escalated','var(--pur)'],[ST.ACTIVE,'Active','var(--ok)'],[ST.COMPLETED,'Completed','var(--ok)'],[ST.ARCHIVED,'Archived/Rejected','var(--pur)']].map(([st,l,c])=>{
                   const n=apps.filter(a=>a.status===st).length;
                   return <div key={st} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 12px',background:'var(--bg)',borderRadius:'var(--r2)',border:'1px solid var(--border)'}}><div style={{width:8,height:8,borderRadius:4,background:c}}/><span style={{fontSize:12,color:'var(--textMid)'}}>{l}</span><span style={{fontSize:12,fontWeight:700}}>{n}</span></div>;
                 })}
