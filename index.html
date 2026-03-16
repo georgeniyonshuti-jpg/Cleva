@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SellWise</title>
+<title>ClevaFin</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -45,32 +45,59 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const {useState,useCallback,useContext,createContext}=React;
+const {useState,useCallback,useContext,createContext,useEffect}=React;
+
+// ── APP CONFIG ────────────────────────────────────────────────
+const APP_NAME='ClevaFin';
+const EMAIL_DOMAIN='leout.rw';
+const LS={USERS:'clevafin_users_v1',DEVICES:'clevafin_devices_v1',APPS:'clevafin_apps_v1',CFG:'clevafin_cfg_v1'};
+const readLS=(k,fallback)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):fallback;}catch{return fallback;}};
+const writeLS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+const normEmail=s=>(s||'').trim().toLowerCase();
+const randPwd=()=>Math.random().toString(36).slice(2,6)+Math.random().toString(36).slice(2,6);
+
+// Global pricing configuration
+const CFG_DEFAULT={
+  interestRate:0.27,       // 27% over cash price
+  tenureMonths:12,         // 12-month contracts
+  depositPct:0.2,          // 20% of total price
+  promo3mPct:0.3,          // 30% discount window (first 3 months)
+  promo6mPct:0.2,          // 20% discount window (first 6 months)
+};
+
+const computePricing=(cash,cfg)=>{
+  const total=Math.round(cash*(1+cfg.interestRate));
+  const deposit=Math.round(total*cfg.depositPct);
+  const financed=total-deposit;
+  const monthly=Math.round(financed/cfg.tenureMonths);
+  return {total,deposit,monthly,tenureMonths:cfg.tenureMonths};
+};
 
 // ── USERS ─────────────────────────────────────────────────────
 // In production, replace with real auth API. Passwords shown for demo purposes.
-const USERS=[
-  {id:'SR01',name:'Alice Ndayisaba',email:'alice@fieldfin.rw',password:'alice123',role:'rep',roleLabel:'Sales Representative'},
-  {id:'SR02',name:'Bob Nzeyimana',email:'bob@fieldfin.rw',password:'bob123',role:'rep',roleLabel:'Sales Representative'},
-  {id:'UW01',name:'Jane Murekatete',email:'jane@fieldfin.rw',password:'jane123',role:'underwriter',roleLabel:'Underwriter'},
-  {id:'UW02',name:'Eric Bizimana',email:'eric@fieldfin.rw',password:'eric123',role:'underwriter',roleLabel:'Underwriter'},
-  {id:'OP01',name:'Ops Support',email:'ops@fieldfin.rw',password:'ops123',role:'ops',roleLabel:'Ops & Support'},
+const USERS_SEED=[
+  {id:'SR01',name:'Alice Ndayisaba',email:`alice@${EMAIL_DOMAIN}`,password:'alice123',role:'rep',roleLabel:'Sales Representative',superuser:false,mustChangePassword:false},
+  {id:'SR02',name:'Bob Nzeyimana',email:`bob@${EMAIL_DOMAIN}`,password:'bob123',role:'rep',roleLabel:'Sales Representative',superuser:false,mustChangePassword:false},
+  {id:'UW01',name:'Jane Murekatete',email:`jane@${EMAIL_DOMAIN}`,password:'jane123',role:'underwriter',roleLabel:'Underwriter',superuser:false,mustChangePassword:false},
+  {id:'UW02',name:'Eric Bizimana',email:`eric@${EMAIL_DOMAIN}`,password:'eric123',role:'underwriter',roleLabel:'Underwriter',superuser:false,mustChangePassword:false},
+  {id:'OP01',name:'Ops Superuser',email:`ops@${EMAIL_DOMAIN}`,password:'ops123',role:'ops',roleLabel:'Ops & Support',superuser:true,mustChangePassword:false},
+  {id:'OP02',name:'Ops Support',email:`ops2@${EMAIL_DOMAIN}`,password:'ops123',role:'ops',roleLabel:'Ops & Support',superuser:false,mustChangePassword:false},
 ];
 
 // ── DEVICES ───────────────────────────────────────────────────
-const DEVICES=[
-  {id:'D01',brand:'Tecno',model:'Spark 40 Pro+',sku:'T-SP40PP',specs:'6.7″ AMOLED · 5000mAh · 4+128GB · A14',retail:179000,dep:35800,weekly:5550,wks:26},
-  {id:'D02',brand:'Tecno',model:'Spark Slim',sku:'T-SLIM',specs:'6.67″ AMOLED · 5000mAh · 4+128GB · A14',retail:155000,dep:31000,weekly:4800,wks:26},
-  {id:'D03',brand:'Infinix',model:'Hot 60 Pro+',sku:'I-H60PP',specs:'6.78″ AMOLED · 5000mAh · 4+128GB · A14',retail:168000,dep:33600,weekly:5200,wks:26},
-  {id:'D04',brand:'Itel',model:'S25 Ultra',sku:'IT-S25U',specs:'6.6″ HD+ · 5000mAh · 3+64GB · A13',retail:128000,dep:25600,weekly:3950,wks:26},
-  {id:'D05',brand:'Samsung',model:'Galaxy A06',sku:'S-A06',specs:'6.7″ HD+ · 5000mAh · 3+64GB · A14',retail:142000,dep:28400,weekly:4400,wks:26},
-  {id:'D06',brand:'Tecno',model:'Pop 9',sku:'T-POP9',specs:'6.6″ HD+ · 5000mAh · 2+64GB · A13',retail:92000,dep:18400,weekly:2850,wks:26},
-  {id:'D07',brand:'Infinix',model:'Smart 9 Plus',sku:'I-S9P',specs:'6.6″ HD+ · 5000mAh · 3+64GB · A13',retail:108000,dep:21600,weekly:3350,wks:26},
-  {id:'D08',brand:'Tecno',model:'Spark 40 Pro',sku:'T-SP40P',specs:'6.7″ HD+ · 5000mAh · 4+128GB · A14',retail:152000,dep:30400,weekly:4700,wks:26},
+const DEVICES_SEED=[
+  {id:'D01',brand:'Tecno',model:'Spark 40 Pro+',sku:'T-SP40PP',specs:'6.7″ AMOLED · 5000mAh · 4+128GB · A14',cash:179000},
+  {id:'D02',brand:'Tecno',model:'Spark Slim',sku:'T-SLIM',specs:'6.67″ AMOLED · 5000mAh · 4+128GB · A14',cash:155000},
+  {id:'D03',brand:'Infinix',model:'Hot 60 Pro+',sku:'I-H60PP',specs:'6.78″ AMOLED · 5000mAh · 4+128GB · A14',cash:168000},
+  {id:'D04',brand:'Itel',model:'S25 Ultra',sku:'IT-S25U',specs:'6.6″ HD+ · 5000mAh · 3+64GB · A13',cash:128000},
+  {id:'D05',brand:'Samsung',model:'Galaxy A06',sku:'S-A06',specs:'6.7″ HD+ · 5000mAh · 3+64GB · A14',cash:142000},
+  {id:'D06',brand:'Tecno',model:'Pop 9',sku:'T-POP9',specs:'6.6″ HD+ · 5000mAh · 2+64GB · A13',cash:92000},
+  {id:'D07',brand:'Infinix',model:'Smart 9 Plus',sku:'I-S9P',specs:'6.6″ HD+ · 5000mAh · 3+64GB · A13',cash:108000},
+  {id:'D08',brand:'Tecno',model:'Spark 40 Pro',sku:'T-SP40P',specs:'6.7″ HD+ · 5000mAh · 4+128GB · A14',cash:152000},
 ];
 
 // ── STATUS ────────────────────────────────────────────────────
-const ST={SUBMITTED:'submitted',IN_REVIEW:'in_review',CHANGES:'changes_requested',REJECTED:'rejected',ESCALATED:'escalated',IMEI_PENDING:'imei_pending',IMEI_VERIFIED:'imei_verified',ACTIVE:'active'};
+const ST={SUBMITTED:'submitted',IN_REVIEW:'in_review',CHANGES:'changes_requested',REJECTED:'rejected',ESCALATED:'escalated',IMEI_PENDING:'imei_pending',IMEI_VERIFIED:'imei_verified',LOCK_PENDING:'lock_pending',AWAITING_PAYMENT:'awaiting_payment',ACTIVE:'active'};
 const SM={
   submitted:{label:'Pending review',c:'warn'},
   in_review:{label:'Under review',c:'info'},
@@ -79,6 +106,8 @@ const SM={
   escalated:{label:'Escalated',c:'pur'},
   imei_pending:{label:'IMEI needed',c:'warn'},
   imei_verified:{label:'IMEI verified',c:'info'},
+  lock_pending:{label:'Waiting for lock',c:'info'},
+  awaiting_payment:{label:'Awaiting payment',c:'warn'},
   active:{label:'Active',c:'ok'},
 };
 const CC={warn:{bg:'var(--warnBg)',fg:'var(--warn)',bd:'var(--warnBorder)'},info:{bg:'var(--infoBg)',fg:'var(--info)',bd:'var(--infoBorder)'},ok:{bg:'var(--okBg)',fg:'var(--ok)',bd:'var(--okBorder)'},err:{bg:'var(--errBg)',fg:'var(--err)',bd:'var(--errBorder)'},pur:{bg:'var(--purBg)',fg:'var(--pur)',bd:'var(--purBorder)'}};
@@ -93,7 +122,7 @@ const OCCS=['Trader / Business owner','Teacher','Civil servant','Driver / Transp
 const RELS=['Spouse','Parent','Sibling','Child','Colleague','Friend','Other'];
 
 // ── SEED DATA ─────────────────────────────────────────────────
-const SEED=[
+const SEED_APPS=[
   {id:'FF-0001',status:ST.SUBMITTED,createdAt:new Date(Date.now()-10800000).toISOString(),updatedAt:new Date(Date.now()-10800000).toISOString(),
    rep:'Alice Ndayisaba',repId:'SR01',
    c:{name:'Jean Baptiste Habimana',nid:'1199880123456001',phone:'0781234567',addr:'Kimironko, Gasabo',occ:'Trader / Business owner',income:150000,kin:{name:'Marie Habimana',phone:'0789876543',rel:'Spouse'}},
@@ -169,7 +198,7 @@ const Sidebar=({page,setPage,apps})=>{
   return(
     <div style={{width:210,flexShrink:0,background:'var(--brand)',minHeight:'100vh',display:'flex',flexDirection:'column'}}>
       <div style={{padding:'22px 18px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-        <div style={{fontSize:20,fontWeight:800,color:'white',letterSpacing:'-0.5px'}}>SellWise</div>
+        <div style={{fontSize:20,fontWeight:800,color:'white',letterSpacing:'-0.5px'}}>{APP_NAME}</div>
         <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:2,textTransform:'uppercase',letterSpacing:'1.5px'}}>PAYGO Underwriting</div>
       </div>
       <div style={{padding:'13px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',gap:10}}>
@@ -210,7 +239,8 @@ const Login=({onLogin})=>{
     if(!email.trim()||!pass.trim()){setErr('Enter your email and password');return;}
     setLoading(true);
     await sleep(600);
-    const user=USERS.find(u=>u.email.toLowerCase()===email.toLowerCase().trim()&&u.password===pass);
+    const stored=readLS(LS.USERS,USERS_SEED);
+    const user=stored.find(u=>u.email.toLowerCase()===email.toLowerCase().trim()&&u.password===pass);
     if(!user){setErr('Incorrect email or password');setLoading(false);return;}
     onLogin(user);
   };
@@ -221,7 +251,7 @@ const Login=({onLogin})=>{
       <div style={{position:'absolute',bottom:-100,left:-100,width:400,height:400,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.04)'}}/>
       <div style={{width:'100%',maxWidth:380,position:'relative'}}>
         <div style={{textAlign:'center',marginBottom:40}}>
-          <div style={{fontSize:42,fontWeight:900,color:'white',letterSpacing:'-1.5px',marginBottom:6}}>SellWise</div>
+          <div style={{fontSize:42,fontWeight:900,color:'white',letterSpacing:'-1.5px',marginBottom:6}}>{APP_NAME}</div>
           <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'3px'}}>PAYGO Underwriting Platform</div>
         </div>
         <div style={{background:'rgba(255,255,255,0.06)',backdropFilter:'blur(12px)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'var(--r)',padding:'28px 26px'}}>
@@ -229,7 +259,7 @@ const Login=({onLogin})=>{
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div>
               <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.55)',display:'block',marginBottom:5}}>Email address</label>
-              <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="you@fieldfin.rw" style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.15)',color:'white',borderRadius:'var(--r2)'}} className={err?'err':''}/>
+              <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder={`you@${EMAIL_DOMAIN}`} style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.15)',color:'white',borderRadius:'var(--r2)'}} className={err?'err':''}/>
             </div>
             <div>
               <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.55)',display:'block',marginBottom:5}}>Password</label>
@@ -245,7 +275,7 @@ const Login=({onLogin})=>{
           </div>
           <div style={{marginTop:20,padding:'12px 14px',background:'rgba(255,255,255,0.06)',borderRadius:'var(--r2)',border:'1px solid rgba(255,255,255,0.08)'}}>
             <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'rgba(255,255,255,0.35)',marginBottom:8}}>Demo accounts</div>
-            {[['alice@fieldfin.rw','alice123','Sales Rep'],['jane@fieldfin.rw','jane123','Underwriter'],['ops@fieldfin.rw','ops123','Ops']].map(([e,p,r])=>(
+            {[[`alice@${EMAIL_DOMAIN}`,'alice123','Sales Rep'],[`jane@${EMAIL_DOMAIN}`,'jane123','Underwriter'],[`ops@${EMAIL_DOMAIN}`,'ops123','Ops Superuser']].map(([e,p,r])=>(
               <div key={e} onClick={()=>{setEmail(e);setPass(p);setErr('');}} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
                 <span style={{fontSize:11,color:'rgba(255,255,255,0.5)',fontFamily:'DM Mono,monospace'}}>{e}</span>
                 <span style={{fontSize:9,background:'rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.4)',padding:'2px 7px',borderRadius:99}}>{r}</span>
@@ -259,22 +289,84 @@ const Login=({onLogin})=>{
   );
 };
 
+// ── CHANGE PASSWORD ────────────────────────────────────────────
+const ChangePassword=({user,onChanged})=>{
+  const [cur,setCur]=useState('');
+  const [n1,setN1]=useState('');
+  const [n2,setN2]=useState('');
+  const [err,setErr]=useState('');
+  const [ok,setOk]=useState('');
+  const [loading,setLoading]=useState(false);
+
+  const submit=()=>{
+    setErr('');setOk('');
+    if(!cur.trim()||!n1.trim()||!n2.trim()){setErr('Fill in all fields');return;}
+    if(cur!==user.password){setErr('Current password is incorrect');return;}
+    if(n1.length<6){setErr('New password must be at least 6 characters');return;}
+    if(n1!==n2){setErr('New passwords do not match');return;}
+    setLoading(true);
+    setTimeout(()=>{
+      onChanged(n1);
+      setOk('Password updated. Loading your workspace…');
+      setLoading(false);
+    },600);
+  };
+
+  return(
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(145deg,var(--brand) 0%,#1D6B4C 60%,#155239 100%)',padding:24}}>
+      <div style={{width:'100%',maxWidth:420}}>
+        <div style={{textAlign:'center',marginBottom:32}}>
+          <div style={{fontSize:34,fontWeight:900,color:'white',letterSpacing:'-1px',marginBottom:4}}>{APP_NAME}</div>
+          <div style={{fontSize:11,color:'rgba(255,255,255,0.6)',textTransform:'uppercase',letterSpacing:'2px'}}>Security check · First login</div>
+        </div>
+        <div style={{background:'rgba(255,255,255,0.06)',backdropFilter:'blur(12px)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'var(--r)',padding:'26px 24px'}}>
+          <div style={{fontSize:15,fontWeight:600,color:'white',marginBottom:10}}>Change your temporary password</div>
+          <p style={{fontSize:12,color:'rgba(255,255,255,0.7)',marginBottom:18,lineHeight:1.6}}>
+            Hi {user.name.split(' ')[0]}, for security reasons you must set a new password before using ClevaFin.
+          </p>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.7)',display:'block',marginBottom:5}}>Current (temporary) password</label>
+              <input type="password" value={cur} onChange={e=>setCur(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.18)',color:'white',borderRadius:'var(--r2)',padding:'9px 12px'}}/>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.7)',display:'block',marginBottom:5}}>New password</label>
+                <input type="password" value={n1} onChange={e=>setN1(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.18)',color:'white',borderRadius:'var(--r2)',padding:'9px 12px'}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.7)',display:'block',marginBottom:5}}>Confirm new password</label>
+                <input type="password" value={n2} onChange={e=>setN2(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.18)',color:'white',borderRadius:'var(--r2)',padding:'9px 12px'}}/>
+              </div>
+            </div>
+            {err&&<div style={{padding:'9px 12px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',fontWeight:500}}>{err}</div>}
+            {ok&&<div style={{padding:'9px 12px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--ok)',fontWeight:500}}>{ok}</div>}
+            <button onClick={submit} disabled={loading} style={{padding:'11px 0',background:loading?'rgba(255,255,255,0.15)':'white',border:'none',borderRadius:'var(--r2)',color:loading?'rgba(255,255,255,0.5)':'var(--brand)',fontWeight:700,fontSize:14,cursor:loading?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,transition:'all .15s',marginTop:4}}>
+              {loading?<><Spin size={14}/> Saving…</>:'Save new password'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── PRICE LIST ────────────────────────────────────────────────
-const PriceList=()=>(
+const PriceList=({devices,cfg})=>(
   <div className="fadeUp" style={{padding:'28px 32px'}}>
     <div style={{marginBottom:22}}>
       <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Device price list</h1>
-      <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>26-week PAYGO contracts · All amounts in RWF · March 2026</p>
+      <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>12-month PAYGO contracts · All amounts in RWF · Pricing auto-calculated from cash price</p>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(230px,1fr))',gap:12}}>
-      {DEVICES.map(d=>{const tot=d.dep+d.weekly*d.wks;const rate=(((tot-d.retail)/d.retail)*100).toFixed(1);return(
+      {devices.map(d=>{const pr=computePricing(d.cash,cfg);const rate=(((pr.total-d.cash)/d.cash)*100).toFixed(1);return(
         <Card key={d.id} sx={{overflow:'hidden'}}>
           <div style={{height:3,background:'linear-gradient(90deg,var(--brand),var(--brand3))'}}/>
           <div style={{padding:'15px 16px'}}>
             <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
             <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{d.model}</div>
             <div style={{fontSize:10,color:'var(--textLight)',marginBottom:13,lineHeight:1.6}}>{d.specs}</div>
-            {[['Cash price',fmtRWF(d.retail)],['Deposit',fmtRWF(d.dep)],['Weekly × 26',fmtRWF(d.weekly)],['Total payable',fmtRWF(tot)]].map(([k,v])=>(
+            {[['Cash price',fmtRWF(d.cash)],['Deposit',fmtRWF(pr.deposit)],['Monthly × 12',fmtRWF(pr.monthly)],['Total payable',fmtRWF(pr.total)]].map(([k,v])=>(
               <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:5}}>
                 <span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span>
               </div>
@@ -290,7 +382,7 @@ const PriceList=()=>(
 );
 
 // ── NEW APPLICATION ───────────────────────────────────────────
-const NewApp=({onSubmit,onBack})=>{
+const NewApp=({onSubmit,onBack,devices,cfg})=>{
   const {user}=useContext(Ctx);
   const [step,setStep]=useState(1);
   const [f,setF]=useState({name:'',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:''});
@@ -299,7 +391,7 @@ const NewApp=({onSubmit,onBack})=>{
   const v1=()=>{const er={};if(!f.name.trim())er.name='Required';if(f.nid.replace(/\D/g,'').length<16)er.nid='Must be 16 digits';if(!f.phone.trim())er.phone='Required';if(!f.addr.trim())er.addr='Required';if(!f.occ)er.occ='Required';if(!f.income||isNaN(f.income)||+f.income<1)er.income='Enter a valid amount';if(!f.kn.trim())er.kn='Required';if(!f.kp.trim())er.kp='Required';if(!f.kr)er.kr='Required';setE(er);return!Object.keys(er).length;};
   const v2=()=>{const er={};if(!f.did)er.did='Please select a device';setE(er);return!Object.keys(er).length;};
   const next=()=>{if(step===1&&v1())setStep(2);else if(step===2&&v2())setStep(3);};
-  const dev=DEVICES.find(d=>d.id===f.did);
+  const dev=devices.find(d=>d.id===f.did);
   const STEPS=['Customer details','Select device','Review & submit'];
   return(
     <div className="fadeUp" style={{padding:'28px 32px',maxWidth:820}}>
@@ -331,7 +423,7 @@ const NewApp=({onSubmit,onBack})=>{
               <FF label="Occupation" req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">Select...</option>{OCCS.map(o=><option key={o}>{o}</option>)}</select></FF>
             </div>
             <FF label="Address / location" req err={e.addr}><input value={f.addr} onChange={ev=>s('addr',ev.target.value)} placeholder="Sector, district — e.g. Kimironko, Gasabo" className={e.addr?'err':''}/></FF>
-            <FF label="Monthly income (RWF)" req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder="e.g. 150000" className={e.income?'err':''}/></FF>
+              <FF label="Monthly income (RWF)" req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder="e.g. 150000" className={e.income?'err':''}/></FF>
             <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Next of kin</div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 160px',gap:12}}>
@@ -347,13 +439,13 @@ const NewApp=({onSubmit,onBack})=>{
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Choose device</div>
             {e.did&&<div style={{padding:'9px 13px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',marginBottom:12}}>{e.did}</div>}
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
-              {DEVICES.map(d=>{const sel=f.did===d.id;const tot=d.dep+d.weekly*d.wks;return(
+            {devices.map(d=>{const sel=f.did===d.id;const pr=computePricing(d.cash,cfg);return(
                 <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative'}}>
                   {sel&&<div style={{position:'absolute',top:9,right:9,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
                   <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
                   <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>{d.model}</div>
                   <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs}</div>
-                  {[['Deposit',fmtRWF(d.dep)],['Weekly',fmtRWF(d.weekly)],['Total',fmtRWF(tot)]].map(([k,v])=>(
+                  {[['Deposit',fmtRWF(pr.deposit)],['Monthly',fmtRWF(pr.monthly)],['Total',fmtRWF(pr.total)]].map(([k,v])=>(
                     <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:4}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
                   ))}
                 </div>
@@ -371,7 +463,7 @@ const NewApp=({onSubmit,onBack})=>{
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Selected device</div>
               <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{dev.brand} {dev.model}</div>
               <div style={{fontSize:11,color:'var(--textLight)',marginBottom:14}}>{dev.specs}</div>
-              {[['SKU',dev.sku],['Deposit',fmtRWF(dev.dep)],['Weekly × 26',fmtRWF(dev.weekly)],['Total contract',fmtRWF(dev.dep+dev.weekly*dev.wks)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+              {(()=>{const pr=computePricing(dev.cash,cfg);return[['SKU',dev.sku],['Deposit',fmtRWF(pr.deposit)],['Monthly × 12',fmtRWF(pr.monthly)],['Total contract',fmtRWF(pr.total)]].map(([k,v])=><Fld key={k} label={k} val={v}/>);})()}
               <div style={{marginTop:12,padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6}}>Confirm all details are correct. The application enters the review queue immediately on submission.</div>
             </div>
           </div>
@@ -389,7 +481,7 @@ const NewApp=({onSubmit,onBack})=>{
 const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
   const {user}=useContext(Ctx);
   const [imei,setImei]=useState(app.imei||'');
-  const [phase,setPhase]=useState(app.status===ST.IMEI_VERIFIED?'verified':'entry');
+  const [phase,setPhase]=useState(app.status===ST.IMEI_VERIFIED||app.status===ST.LOCK_PENDING||app.status===ST.AWAITING_PAYMENT||app.status===ST.ACTIVE?'verified':'entry');
   const [ld,setLd]=useState(null);
 
   const verify=async()=>{
@@ -397,16 +489,23 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
     setLd('carlcare');await sleep(2400);
     setLd('pt');await sleep(1700);
     const ptId='PT-2026-'+Math.floor(10000+Math.random()*90000);
-    onUpdate(app.id,{imei,ptId,status:ST.IMEI_VERIFIED,tlEntry:{by:user.name,txt:`IMEI ${imei} verified via Carlcare`}});
+    onUpdate(app.id,{imei,ptId,status:ST.LOCK_PENDING,tlEntry:{by:user.name,txt:`IMEI ${imei} verified via Carlcare`}});
     onUpdate(app.id,{tlEntry:{by:'System',txt:`Registered in PayTrigger (${ptId})`}});
     addToast('ok','IMEI verified','Carlcare confirmed · Registered in PayTrigger');
     setPhase('verified');setLd(null);
   };
 
-  const confirmLocked=async()=>{
-    setLd('lock');await sleep(2000);
-    onUpdate(app.id,{status:ST.ACTIVE,lockedAt:new Date().toISOString(),tlEntry:{by:user.name,txt:'Phone locked — contract activated, payments enabled'}});
-    addToast('ok','Contract activated!','Device added to UPYA inventory. Customer can now make payments.');
+  const confirmLockedSystem=async()=>{
+    setLd('lock');await sleep(1500);
+    onUpdate(app.id,{status:ST.AWAITING_PAYMENT,lockedAt:new Date().toISOString(),tlEntry:{by:'System',txt:'Device lock confirmed from PayGo' }});
+    addToast('info','Device locked','Waiting for first customer payment');
+    setLd(null);
+  };
+
+  const confirmPaidSystem=async()=>{
+    setLd('pay');await sleep(1500);
+    onUpdate(app.id,{status:ST.ACTIVE,tlEntry:{by:'System',txt:'First payment received — contract activated'}});
+    addToast('ok','Contract activated','PayGo reported a successful payment');
     setLd(null);onBack();
   };
 
@@ -417,7 +516,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>IMEI & activation</h1><p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>{app.id} · {app.c.name} · {app.dev.brand} {app.dev.model}</p></div>
       </div>
       <div style={{display:'flex',alignItems:'center',marginBottom:24}}>
-        {[{l:'Enter & verify IMEI',done:phase==='verified'||app.status===ST.ACTIVE},{l:'Lock phone & activate',done:app.status===ST.ACTIVE}].map((s,i)=>(
+        {[{l:'Enter & verify IMEI',done:phase==='verified'||app.status!==ST.IMEI_PENDING},{l:'Lock phone',done:app.status===ST.LOCK_PENDING||app.status===ST.AWAITING_PAYMENT||app.status===ST.ACTIVE},{l:'Customer payment & activate',done:app.status===ST.ACTIVE}].map((s,i)=>(
           <React.Fragment key={i}>
             <div style={{display:'flex',alignItems:'center',gap:7}}>
               <div style={{width:26,height:26,borderRadius:13,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,background:s.done?'var(--ok)':'var(--brand)',color:'white'}}>{s.done?'✓':i+1}</div>
@@ -451,11 +550,15 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
               <div style={{fontWeight:600,fontSize:13,color:'var(--ok)',marginBottom:3}}>✓ IMEI verified & registered in PayTrigger</div>
               <div style={{fontSize:11,color:'var(--ok)',opacity:.85}}>IMEI: <span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{app.imei||imei}</span>{app.ptId&&<span> · PayTrigger: <span style={{fontFamily:'DM Mono,monospace'}}>{app.ptId}</span></span>}</div>
             </div>
-            <div style={{fontWeight:600,fontSize:14,marginBottom:6}}>Now lock the phone manually</div>
-            <p style={{fontSize:12,color:'var(--textMid)',lineHeight:1.7,marginBottom:14}}>Open PayTrigger and lock the device. Once the customer's phone shows the lock screen, confirm below to activate the contract and enable payments.</p>
-            <div style={{padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6,marginBottom:18}}><strong>Do not confirm</strong> until the lock screen is visible on the customer's phone.</div>
-            <a href="https://paytrigger.shalltry.com/pay-trigger/" target="_blank" style={{display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',color:'var(--info)',fontSize:12,fontWeight:500,textDecoration:'none',marginBottom:16}}>↗ Open PayTrigger portal</a>
-            <Btn onClick={confirmLocked} v="ok" sz="lg" full loading={ld==='lock'} icon="🔒">{ld==='lock'?'Activating contract…':'Confirm phone is locked — activate contract'}</Btn>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:6}}>Waiting for PayGo locking signal</div>
+            <p style={{fontSize:12,color:'var(--textMid)',lineHeight:1.7,marginBottom:14}}>The phone is locked from the external PayGo management system. This app only moves forward when that system sends a lock confirmation.</p>
+            <div style={{padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6,marginBottom:18}}>Normal users <strong>cannot move this application forward</strong>. Only system signals or an ops superuser override can change the status.</div>
+            {user.role==='ops'&&user.superuser&&(
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                <Btn onClick={confirmLockedSystem} v="info" sz="lg" full loading={ld==='lock'} icon="🔒">Simulate PayGo lock signal → move to Awaiting payment</Btn>
+                <Btn onClick={confirmPaidSystem} v="ok" sz="lg" full loading={ld==='pay'} icon="✓">Simulate first payment signal → activate contract</Btn>
+              </div>
+            )}
           </div>
         )}
       </Card>
@@ -494,8 +597,10 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
     addToast('info','Escalated','Sent to credit committee');setLd(null);onBack();
   };
 
-  const c=app.c,d=app.dev,tot=d.dep+d.weekly*d.wks;
-  const ratio=c.income>0?(d.weekly/c.income*100):0;
+  const c=app.c,d=app.dev;
+  const cfg=app.cfg||CFG_DEFAULT;
+  const pr=computePricing(d.cash,cfg);
+  const ratio=c.income>0?(pr.monthly/c.income*100):0;
   const affordOk=c.income>0&&ratio<30;
   const isUnderwriter=user.role==='underwriter';
   const reviewable=[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(app.status);
@@ -529,7 +634,7 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
             <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
             <div style={{fontWeight:700,fontSize:15,marginBottom:1}}>{d.brand} {d.model}</div>
             <div style={{fontSize:11,color:'var(--textLight)',marginBottom:13}}>{d.specs}</div>
-            {[['SKU',d.sku],['Deposit',fmtRWF(d.dep)],['Weekly × 26',fmtRWF(d.weekly)],['Total contract',fmtRWF(tot)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+            {[['SKU',d.sku],['Deposit',fmtRWF(pr.deposit)],['Monthly × 12',fmtRWF(pr.monthly)],['Total contract',fmtRWF(pr.total)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
             {app.imei&&<Fld label="IMEI" val={app.imei} mono/>}
             {app.ptId&&<Fld label="PayTrigger ID" val={app.ptId} mono/>}
           </Card>
@@ -583,7 +688,7 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
 };
 
 // ── SALES REP VIEW ────────────────────────────────────────────
-const SalesRepView=({apps,onUpdate,addToast})=>{
+const SalesRepView=({apps,onUpdate,addToast,devices,cfg})=>{
   const {user}=useContext(Ctx);
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
@@ -592,7 +697,7 @@ const SalesRepView=({apps,onUpdate,addToast})=>{
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app&&[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(app.status))
+    if(app&&[ST.IMEI_PENDING,ST.IMEI_VERIFIED,ST.LOCK_PENDING,ST.AWAITING_PAYMENT].includes(app.status))
       return <div style={{display:'flex',flex:1}}><Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/><div style={{flex:1,overflow:'auto'}}><IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div>;
     if(app) return <div style={{display:'flex',flex:1}}><Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/><div style={{flex:1,overflow:'auto'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div>;
   }
@@ -628,11 +733,11 @@ const SalesRepView=({apps,onUpdate,addToast})=>{
             {mine.length===0&&<Empty ico="📋" title="No applications yet" sub="Tap 'New Application' to get started"/>}
           </div>
         )}
-        {pg==='new'&&<NewApp onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
-          const na={id:gid(),status:ST.SUBMITTED,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),rep:user.name,repId:user.id,c:{name:f.name,nid:f.nid,phone:f.phone,addr:f.addr,occ:f.occ,income:+f.income,kin:{name:f.kn,phone:f.kp,rel:f.kr}},dev,notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for review'}]};
+        {pg==='new'&&<NewApp onBack={()=>setPg('dash')} devices={devices} cfg={cfg} onSubmit={(f,dev)=>{
+          const na={id:gid(),status:ST.SUBMITTED,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),rep:user.name,repId:user.id,c:{name:f.name,nid:f.nid,phone:f.phone,addr:f.addr,occ:f.occ,income:+f.income,kin:{name:f.kn,phone:f.kp,rel:f.kr}},dev:{...dev},cfg,notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for review'}]};
           onUpdate(null,null,na);addToast('ok','Application submitted','Sent to the review queue');setPg('dash');
         }}/>}
-        {pg==='prices'&&<PriceList/>}
+        {pg==='prices'&&<PriceList devices={devices} cfg={cfg}/>}
       </div>
     </div>
   );
@@ -670,7 +775,7 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
                       onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.boxShadow='none'}}>
                       <div>
                         <div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div>
-                        <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · {fmtRWF(a.dev.dep+a.dev.weekly*a.dev.wks)} total · {fmtD(a.createdAt)} · {a.rep.split(' ')[0]}</div>
+                        <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model}</div>
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:10}}><Badge st={a.status}/><span style={{color:'var(--textLight)',fontSize:18}}>›</span></div>
                     </div>
@@ -702,11 +807,12 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
 };
 
 // ── OPS VIEW ──────────────────────────────────────────────────
-const OpsView=({apps,onUpdate,addToast})=>{
+const OpsView=({apps,onUpdate,addToast,devices,cfg,onUpdateCfg,onUpdateDevices,users,onUpdateUsers})=>{
   const [pg,setPg]=useState('overview');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [fst,setFst]=useState('');
+  const {user}=useContext(Ctx);
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
@@ -721,7 +827,7 @@ const OpsView=({apps,onUpdate,addToast})=>{
       <div style={{flex:1,overflow:'auto'}}>
         {pg==='overview'&&(
           <div className="fadeUp" style={{padding:'28px 32px'}}>
-            <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Operations overview</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>SellWise Rwanda · Live pipeline</p></div>
+            <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Operations overview</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{APP_NAME} Rwanda · Live pipeline</p></div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
               {[['Total applications',apps.length,'var(--brand)'],['Active contracts',apps.filter(a=>a.status===ST.ACTIVE).length,'var(--ok)'],['Pending review',apps.filter(a=>a.status===ST.SUBMITTED).length,'var(--warn)'],['IMEI needed',apps.filter(a=>a.status===ST.IMEI_PENDING).length,'var(--warn)'],['Escalated',apps.filter(a=>a.status===ST.ESCALATED).length,'var(--pur)'],['Rejected',apps.filter(a=>a.status===ST.REJECTED).length,'var(--err)']].map(([l,v,c])=>(
                 <Card key={l} sx={{padding:'14px 16px'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:5}}>{l}</div><div style={{fontSize:26,fontWeight:800,color:c}}>{v}</div></Card>
@@ -752,6 +858,164 @@ const OpsView=({apps,onUpdate,addToast})=>{
             {filtered.length===0&&<Empty ico="🔍" title="No results found"/>}
           </div>
         )}
+        {pg==='pricing'&&user.superuser&&(
+          <div className="fadeUp" style={{padding:'28px 32px',maxWidth:960}}>
+            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:10}}>Pricing configuration</h1>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:20}}>Adjust global interest rate and deposit percentage. All device prices update automatically from cash price.</p>
+            <Card sx={{padding:'16px 18px',marginBottom:22}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+                <FF label="Interest rate over cash (%)" req>
+                  <input type="number" value={Math.round(cfg.interestRate*1000)/10} onChange={e=>{
+                    const v=parseFloat(e.target.value||'0')/100;
+                    onUpdateCfg({...cfg,interestRate:isNaN(v)?cfg.interestRate:v});
+                    addToast('info','Interest rate updated','All device prices recalculated');
+                  }} />
+                </FF>
+                <FF label="Deposit (% of total price)" req>
+                  <input type="number" value={Math.round(cfg.depositPct*100)} onChange={e=>{
+                    const v=parseFloat(e.target.value||'0')/100;
+                    onUpdateCfg({...cfg,depositPct:isNaN(v)?cfg.depositPct:v});
+                    addToast('info','Deposit percentage updated','Monthly payments adjusted; total price unchanged');
+                  }} />
+                </FF>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginTop:14}}>
+                <FF label="Early payment discount (first 3 months, % of total)" req>
+                  <input type="number" value={Math.round(cfg.promo3mPct*100)} onChange={e=>{
+                    const v=parseFloat(e.target.value||'0')/100;
+                    onUpdateCfg({...cfg,promo3mPct:isNaN(v)?cfg.promo3mPct:v});
+                  }}/>
+                </FF>
+                <FF label="Early payment discount (first 6 months, % of total)" req>
+                  <input type="number" value={Math.round(cfg.promo6mPct*100)} onChange={e=>{
+                    const v=parseFloat(e.target.value||'0')/100;
+                    onUpdateCfg({...cfg,promo6mPct:isNaN(v)?cfg.promo6mPct:v});
+                  }}/>
+                </FF>
+              </div>
+              <div style={{fontSize:11,color:'var(--textLight)',marginTop:10,lineHeight:1.6}}>
+                Contracts are {cfg.tenureMonths}-month deals. Customers who clear within the first <strong>3 months</strong> can receive up to <strong>{Math.round(cfg.promo3mPct*100)}%</strong> discount on the total price;
+                those who clear within <strong>6 months</strong> can receive up to <strong>{Math.round(cfg.promo6mPct*100)}%</strong>.
+              </div>
+            </Card>
+            <h2 style={{fontSize:16,fontWeight:700,marginBottom:10}}>Devices & prices</h2>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:12}}>
+              {devices.map(d=>{const pr=computePricing(d.cash,cfg);return(
+                <Card key={d.id} sx={{padding:'14px 15px'}}>
+                  <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:2}}>{d.brand}</div>
+                  <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{d.model}</div>
+                  <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs}</div>
+                  <FF label="Cash price (RWF)" req>
+                    <input type="number" value={d.cash} onChange={e=>{
+                      const cash=parseInt(e.target.value||'0',10);
+                      const nd=devices.map(x=>x.id===d.id?{...x,cash:isNaN(cash)?x.cash:cash}:x);
+                      onUpdateDevices(nd);
+                      addToast('ok','Cash price updated','All pricing for this device refreshed');
+                    }}/>
+                  </FF>
+                  {[['Deposit',fmtRWF(pr.deposit)],['Monthly × 12',fmtRWF(pr.monthly)],['Total payable',fmtRWF(pr.total)]].map(([k,v])=>(
+                    <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:4}}>
+                      <span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span>
+                    </div>
+                  ))}
+                </Card>
+              );})}
+            </div>
+          </div>
+        )}
+        {pg==='users'&&user.superuser&&(
+          <div className="fadeUp" style={{padding:'28px 32px',maxWidth:960}}>
+            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:10}}>User management</h1>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:20}}>Add, remove or reset users. Changes are saved for all sessions.</p>
+            <Card sx={{padding:'16px 18px',marginBottom:22}}>
+              <UserAdmin users={users} onUpdateUsers={onUpdateUsers} addToast={addToast}/>
+            </Card>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── USER ADMIN (OPS SUPERUSER) ──────────────────────────────────
+const UserAdmin=({users,onUpdateUsers,addToast})=>{
+  const [form,setForm]=useState({name:'',email:'',role:'rep',superuser:false});
+
+  const addUser=()=>{
+    const email=normEmail(form.email);
+    if(!form.name.trim()||!email){addToast('err','Name and email required');return;}
+    if(!email.endsWith(`@${EMAIL_DOMAIN}`)){addToast('err','Invalid email domain',`Use @${EMAIL_DOMAIN}`);return;}
+    if(users.some(u=>normEmail(u.email)===email)){addToast('err','User already exists');return;}
+    const id='U'+(users.length+1).toString().padStart(3,'0');
+    const pwd=randPwd();
+    const nu={id,name:form.name.trim(),email,password:pwd,role:form.role,roleLabel:form.role==='rep'?'Sales Representative':form.role==='underwriter'?'Underwriter':'Ops & Support',superuser:!!form.superuser,mustChangePassword:true};
+    onUpdateUsers([...users,nu]);
+    addToast('ok','User added',`Temporary password emailed to ${nu.email}`);
+    console.log('New user temporary password',nu.email,pwd);
+    setForm({name:'',email:'',role:'rep',superuser:false});
+  };
+
+  const removeUser=id=>{
+    onUpdateUsers(users.filter(u=>u.id!==id));
+    addToast('warn','User removed');
+  };
+
+  const resetPwd=u=>{
+    const pwd=randPwd();
+    onUpdateUsers(users.map(x=>x.id===u.id?{...x,password:pwd,mustChangePassword:true}:x));
+    addToast('info','Password reset',`Temporary password emailed to ${u.email}`);
+    console.log('Reset password',u.email,pwd);
+  };
+
+  return(
+    <div>
+      <div style={{display:'grid',gridTemplateColumns:'1.2fr 1fr',gap:20,marginBottom:24}}>
+        <div>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Add new user</div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            <FF label="Full name" req><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></FF>
+            <FF label="Email" req><input value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder={`you@${EMAIL_DOMAIN}`}/></FF>
+            <div style={{display:'flex',gap:10}}>
+              <FF label="Role" req>
+                <select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}>
+                  <option value="rep">Sales Rep</option>
+                  <option value="underwriter">Underwriter</option>
+                  <option value="ops">Ops</option>
+                </select>
+              </FF>
+              <FF label="Superuser">
+                <label style={{fontSize:12,color:'var(--textMid)'}}>
+                  <input type="checkbox" checked={form.superuser} onChange={e=>setForm({...form,superuser:e.target.checked})} style={{marginRight:6}}/>
+                  Can override workflows & manage users
+                </label>
+              </FF>
+            </div>
+            <Btn v="primary" icon="＋" onClick={addUser}>Add user & send temp password</Btn>
+          </div>
+        </div>
+        <div>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Password policy</div>
+          <div style={{fontSize:12,color:'var(--textMid)',lineHeight:1.6}}>
+            New and reset users receive a <strong>temporary password</strong> and are <strong>forced to change it on first login</strong>.
+            Ops superusers can always reset a password if a user is locked out.
+          </div>
+        </div>
+      </div>
+      <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Existing users</div>
+      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+        {users.map(u=>(
+          <div key={u.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 10px',borderRadius:'var(--r2)',border:'1px solid var(--border)',background:'var(--bg)'}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:500}}>{u.name} {u.superuser&&<span style={{fontSize:10,background:'var(--purBg)',color:'var(--pur)',padding:'1px 6px',borderRadius:99,marginLeft:4}}>SUPERUSER</span>}</div>
+              <div style={{fontSize:11,color:'var(--textMid)',fontFamily:'DM Mono,monospace'}}>{u.email}</div>
+              <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{u.roleLabel}{u.mustChangePassword&&' · Must change password on next login'}</div>
+            </div>
+            <div style={{display:'flex',gap:6}}>
+              <Btn v="info" sz="sm" onClick={()=>resetPwd(u)}>Reset password</Btn>
+              <Btn v="err" sz="sm" onClick={()=>removeUser(u.id)}>Remove</Btn>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -760,7 +1024,13 @@ const OpsView=({apps,onUpdate,addToast})=>{
 // ── ROOT ──────────────────────────────────────────────────────
 const App=()=>{
   const [user,setUser]=useState(null);
-  const [apps,setApps]=useState(SEED);
+  const [users,setUsers]=useState(()=>readLS(LS.USERS,USERS_SEED));
+  const [devices,setDevices]=useState(()=>readLS(LS.DEVICES,DEVICES_SEED));
+  const [cfg,setCfg]=useState(()=>readLS(LS.CFG,CFG_DEFAULT));
+  const [apps,setApps]=useState(()=>readLS(LS.APPS,SEED_APPS.map(a=>{
+    const dev=DEVICES_SEED.find(d=>d.id===a.dev.id)||a.dev;
+    return {...a,dev:{...dev}};
+  })));
   const [toasts,setToasts]=useState([]);
 
   const addToast=useCallback((c,title,msg='')=>{
@@ -770,31 +1040,57 @@ const App=()=>{
   },[]);
 
   const updateApp=useCallback((id,upd,newApp)=>{
-    if(newApp){setApps(p=>[...p,newApp]);return;}
-    setApps(p=>p.map(a=>{
+    if(newApp){setApps(p=>{const na=[...p,newApp];writeLS(LS.APPS,na);return na;});return;}
+    setApps(p=>{const na=p.map(a=>{
       if(a.id!==id)return a;
       const entry=upd.tlEntry;
       const tl=entry?[...(a.tl||[]),{at:new Date().toISOString(),by:entry.by,txt:entry.txt}]:a.tl;
       const {tlEntry,...rest}=upd;
       return{...a,...rest,tl,updatedAt:new Date().toISOString()};
-    }));
+    });writeLS(LS.APPS,na);return na;});
   },[]);
 
   const ctx={user,logout:()=>setUser(null)};
 
+  const updateCfg=nc=>{setCfg(nc);writeLS(LS.CFG,nc);};
+  const updateDevices=nd=>{setDevices(nd);writeLS(LS.DEVICES,nd);};
+  const updateUsers=nu=>{setUsers(nu);writeLS(LS.USERS,nu);};
+
+  const handlePasswordChanged=newPwd=>{
+    setUsers(prev=>{
+      const nu=prev.map(u=>u.id===user.id?{...u,password:newPwd,mustChangePassword:false}:u);
+      writeLS(LS.USERS,nu);
+      return nu;
+    });
+    setUser(prev=>prev?{...prev,password:newPwd,mustChangePassword:false}:prev);
+    addToast('ok','Password updated','Welcome to ClevaFin');
+  };
+
   if(!user) return(
     <Ctx.Provider value={ctx}>
-      <Login onLogin={setUser}/>
+      <Login onLogin={u=>{
+        const full=users.find(x=>normEmail(x.email)===normEmail(u.email))||u;
+        setUser(full);
+      }}/>
       <Toast toasts={toasts}/>
     </Ctx.Provider>
   );
 
+  if(user.mustChangePassword){
+    return(
+      <Ctx.Provider value={ctx}>
+        <ChangePassword user={user} onChanged={handlePasswordChanged}/>
+        <Toast toasts={toasts}/>
+      </Ctx.Provider>
+    );
+  }
+
   return(
     <Ctx.Provider value={ctx}>
       <div style={{display:'flex',minHeight:'100vh'}}>
-        {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
+        {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} cfg={cfg}/>}
         {user.role==='underwriter'&&<UnderwriterView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
-        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
+        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} cfg={cfg} onUpdateCfg={updateCfg} onUpdateDevices={updateDevices} users={users} onUpdateUsers={updateUsers}/>}
       </div>
       <Toast toasts={toasts}/>
     </Ctx.Provider>
