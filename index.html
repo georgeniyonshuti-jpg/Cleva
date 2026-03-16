@@ -180,101 +180,114 @@ const {useState,useCallback,useContext,createContext,useEffect}=React;
 // ── APP CONFIG ────────────────────────────────────────────────
 const APP_NAME='Cleva';
 const EMAIL_DOMAIN='leout.rw';
-const LS={USERS:'clevafin_users_v1',DEVICES:'clevafin_devices_v1',APPS:'clevafin_apps_v1',CFG:'clevafin_cfg_v1'};
+const LS={MERCHANTS:'cleva_merchants_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1'};
 const readLS=(k,fallback)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):fallback;}catch{return fallback;}};
 const writeLS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 const normEmail=s=>(s||'').trim().toLowerCase();
 const randPwd=()=>Math.random().toString(36).slice(2,6)+Math.random().toString(36).slice(2,6);
 
-// ── USERS ─────────────────────────────────────────────────────
-// In production, replace with real auth API. Passwords shown for demo purposes.
-const USERS_SEED=[
-  {id:'SR01',name:'Alice Ndayisaba',email:`alice@${EMAIL_DOMAIN}`,password:'alice123',role:'rep',roleLabel:'Sales Representative',superuser:false,mustChangePassword:false},
-  {id:'SR02',name:'Bob Nzeyimana',email:`bob@${EMAIL_DOMAIN}`,password:'bob123',role:'rep',roleLabel:'Sales Representative',superuser:false,mustChangePassword:false},
-  {id:'UW01',name:'Jane Murekatete',email:`jane@${EMAIL_DOMAIN}`,password:'jane123',role:'underwriter',roleLabel:'Underwriter',superuser:false,mustChangePassword:false},
-  {id:'UW02',name:'Eric Bizimana',email:`eric@${EMAIL_DOMAIN}`,password:'eric123',role:'underwriter',roleLabel:'Underwriter',superuser:false,mustChangePassword:false},
-  {id:'OP01',name:'Ops Superuser',email:`ops@${EMAIL_DOMAIN}`,password:'ops123',role:'ops',roleLabel:'Ops & Support',superuser:true,mustChangePassword:false},
-  {id:'OP02',name:'Ops Support',email:`ops2@${EMAIL_DOMAIN}`,password:'ops123',role:'ops',roleLabel:'Ops & Support',superuser:false,mustChangePassword:false},
-];
-
-// ── DEVICES & PRICING MODEL ───────────────────────────────────
-// Seed devices only store cash price; financing terms are derived from config.
-const DEVICES_SEED=[
-  {id:'D01',brand:'Tecno',model:'Spark 40 Pro+',sku:'T-SP40PP',specs:'6.7″ AMOLED · 5000mAh · 4+128GB · A14',cash:179000},
-  {id:'D02',brand:'Tecno',model:'Spark Slim',sku:'T-SLIM',specs:'6.67″ AMOLED · 5000mAh · 4+128GB · A14',cash:155000},
-  {id:'D03',brand:'Infinix',model:'Hot 60 Pro+',sku:'I-H60PP',specs:'6.78″ AMOLED · 5000mAh · 4+128GB · A14',cash:168000},
-  {id:'D04',brand:'Itel',model:'S25 Ultra',sku:'IT-S25U',specs:'6.6″ HD+ · 5000mAh · 3+64GB · A13',cash:128000},
-  {id:'D05',brand:'Samsung',model:'Galaxy A06',sku:'S-A06',specs:'6.7″ HD+ · 5000mAh · 3+64GB · A14',cash:142000},
-  {id:'D06',brand:'Tecno',model:'Pop 9',sku:'T-POP9',specs:'6.6″ HD+ · 5000mAh · 2+64GB · A13',cash:92000},
-  {id:'D07',brand:'Infinix',model:'Smart 9 Plus',sku:'I-S9P',specs:'6.6″ HD+ · 5000mAh · 3+64GB · A13',cash:108000},
-  {id:'D08',brand:'Tecno',model:'Spark 40 Pro',sku:'T-SP40P',specs:'6.7″ HD+ · 5000mAh · 4+128GB · A14',cash:152000},
-];
-
-// Default devices use the legacy weekly contract structure used across the UI.
-// Superuser edits will persist in localStorage and update existing applications.
-const DEVICES_DEFAULT=DEVICES_SEED.map(d=>({id:d.id,brand:d.brand,model:d.model,sku:d.sku,specs:d.specs,retail:d.cash,dep:Math.round(d.cash*0.2),weekly:Math.round((d.cash*1.27 - d.cash*0.2)/26),wks:26}));
-// interestRate is applied on cash to get total price.
-// depositPct is taken on total price; monthly is over 12 months.
-const defaultCfg={interestRate:0.27,depositPct:0.2};
-const calcDevicePricing=(d,cfg)=>{
-  const rate=cfg.interestRate??defaultCfg.interestRate;
-  const depPct=cfg.depositPct??defaultCfg.depositPct;
-  const total=Math.round(d.cash*(1+rate));
-  const deposit=Math.round(total*depPct);
-  const months=12;
-  const monthly=Math.round((total-deposit)/months);
-  return {...d,total,deposit,monthly,months};
-};
-
-// ── STATUS ────────────────────────────────────────────────────
-const ST={SUBMITTED:'submitted',IN_REVIEW:'in_review',CHANGES:'changes_requested',REJECTED:'rejected',ESCALATED:'escalated',IMEI_PENDING:'imei_pending',IMEI_VERIFIED:'imei_verified',LOCK_PENDING:'lock_pending',AWAITING_PAYMENT:'awaiting_payment',ACTIVE:'active'};
+// ── CONTRACT STATE MACHINE ────────────────────────────────────
+const ST={DRAFT:'draft',PENDING_APPROVAL:'pending_approval',UNDER_REVIEW:'under_review',OFFER_SELECTION:'offer_selection',APPROVED:'approved',LOCK_PENDING:'lock_pending',AWAITING_PAYMENT:'awaiting_payment',ACTIVE:'active',COMPLETED:'completed',ARCHIVED:'archived'};
 const SM={
-  submitted:{label:'Pending review',c:'warn'},
-  in_review:{label:'Under review',c:'info'},
-  changes_requested:{label:'Changes needed',c:'warn'},
-  rejected:{label:'Rejected',c:'err'},
-  escalated:{label:'Escalated',c:'pur'},
-  imei_pending:{label:'IMEI needed',c:'warn'},
-  imei_verified:{label:'IMEI verified',c:'info'},
-  lock_pending:{label:'Waiting for lock',c:'info'},
-  awaiting_payment:{label:'Awaiting payment',c:'warn'},
-  active:{label:'Active',c:'ok'},
+  draft:{label:'Draft',c:'info'},pending_approval:{label:'Pending approval',c:'warn'},under_review:{label:'Under review',c:'info'},
+  offer_selection:{label:'Offer selection',c:'info'},approved:{label:'Approved',c:'ok'},lock_pending:{label:'Lock pending',c:'warn'},
+  awaiting_payment:{label:'Awaiting payment',c:'warn'},active:{label:'Active',c:'ok'},completed:{label:'Completed',c:'ok'},archived:{label:'Archived',c:'info'}
 };
 const CC={warn:{bg:'var(--warnBg)',fg:'var(--warn)',bd:'var(--warnBorder)'},info:{bg:'var(--infoBg)',fg:'var(--info)',bd:'var(--infoBorder)'},ok:{bg:'var(--okBg)',fg:'var(--ok)',bd:'var(--okBorder)'},err:{bg:'var(--errBg)',fg:'var(--err)',bd:'var(--errBorder)'},pur:{bg:'var(--purBg)',fg:'var(--pur)',bd:'var(--purBorder)'}};
+
+// Role-based transitions: who can move to what. Sales rep cannot set ACTIVE.
+const ALLOWED_TRANSITIONS={
+  rep:{[ST.DRAFT]:[ST.PENDING_APPROVAL],[ST.UNDER_REVIEW]:[]},
+  mbo:{[ST.PENDING_APPROVAL]:[ST.UNDER_REVIEW],[ST.UNDER_REVIEW]:[ST.UNDER_REVIEW,ST.OFFER_SELECTION],[ST.OFFER_SELECTION]:[]},
+  support:{},ops_superuser:Object.values(ST),
+};
+const canTransition=(fromSt,toSt,role,isSuperuser)=>{
+  if(isSuperuser&&role==='ops')return true;
+  if(toSt===ST.ACTIVE)return isSuperuser&&role==='ops';
+  const key=isSuperuser&&role==='ops'?'ops_superuser':role==='rep'?'rep':role==='underwriter'?'mbo':role==='support'?'support':'rep';
+  const allowed=ALLOWED_TRANSITIONS[key][fromSt];
+  return Array.isArray(allowed)&&allowed.includes(toSt);
+};
+
+// ── AUDIT LOG ──────────────────────────────────────────────────
+const appendAudit=(auditLog,entry)=>{
+  const e={timestamp:new Date().toISOString(),actorEmail:entry.actorEmail,actorRole:entry.actorRole,action:entry.action,contractId:entry.contractId||null,previousValue:entry.previousValue,newValue:entry.newValue};
+  const next=[...(auditLog||[]),e];
+  writeLS(LS.AUDIT_LOG,next);
+  return next;
+};
+
+// ── PRICING ENGINE ────────────────────────────────────────────
+const RISK_GROUPS=[{id:1,name:'Low risk',rateAdd:0},{id:2,name:'Medium risk',rateAdd:0.05},{id:3,name:'High risk',rateAdd:0.12}];
+const defaultPricingConfig={interestRate:0.27,depositPct:0.2,termOptions:[6,12],promo3mPct:0.05,promo6mPct:0.03};
+const calcDealFromDevice=(device,cfg,riskGroup=1)=>{
+  const rateAdd=(RISK_GROUPS.find(r=>r.id===riskGroup)||RISK_GROUPS[0]).rateAdd;
+  const rate=(cfg.interestRate??0.27)+rateAdd;
+  const cogs=Math.round(device.cogs||device.cash||0);
+  const totalCost=Math.round(cogs*(1+rate));
+  const depositPct=cfg.depositPct??0.2;
+  const upfrontPayment=Math.round(totalCost*depositPct);
+  const termOption=cfg.termOptions?.[0]??12;
+  const recurrentPayment=Math.round((totalCost-upfrontPayment)/termOption);
+  return {deviceModel:device.model,manufacturer:device.brand,RAM:device.ram,ROM:device.rom,dealId:device.id,dealName:device.model,dealType:'PAYG',termOption,upfrontPayment,recurrentPayment,totalCost,cogs,interestRate:rate,depositPct,riskGroup};
+};
+
+// ── IMEI: 15 digits + Luhn check ───────────────────────────────
+const luhnCheck=(digits)=>{
+  let sum=0;const n=digits.length;
+  for(let i=0;i<n;i++){let d=parseInt(digits[i],10);if((n-i)%2===0){d*=2;if(d>9)d-=9;}sum+=d;}
+  return sum%10===0;
+};
+const isValidImei=(imei)=>{
+  const s=String(imei||'').replace(/\D/g,'');
+  return s.length===15&&/^\d+$/.test(s)&&luhnCheck(s);
+};
+
+// ── SEED (only if key missing) ─────────────────────────────────
+const EMAIL_DOMAIN_SEED=EMAIL_DOMAIN;
+const MERCHANTS_SEED=[{merchantCode:'M01',merchantName:'Kigali Central Store',country:'RW'},{merchantCode:'M02',merchantName:'Gasabo Branch',country:'RW'}];
+const USERS_SEED=[
+  {id:'SR01',name:'Alice Ndayisaba',email:`alice@${EMAIL_DOMAIN_SEED}`,password:'alice123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG01',merchantCode:'M01',seniority:2,mustChangePassword:false},
+  {id:'SR02',name:'Bob Nzeyimana',email:`bob@${EMAIL_DOMAIN_SEED}`,password:'bob123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG02',merchantCode:'M01',seniority:1,mustChangePassword:false},
+  {id:'SR03',name:'Claire Uwera',email:`claire@${EMAIL_DOMAIN_SEED}`,password:'claire123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG03',merchantCode:'M02',seniority:1,mustChangePassword:false},
+  {id:'UW01',name:'Jane Murekatete',email:`jane@${EMAIL_DOMAIN_SEED}`,password:'jane123',role:'underwriter',roleLabel:'MBO (Underwriter)',merchantCodes:['M01','M02'],mustChangePassword:false},
+  {id:'SU01',name:'Support User',email:`support@${EMAIL_DOMAIN_SEED}`,password:'support123',role:'support',roleLabel:'Support User',mustChangePassword:false},
+  {id:'OP01',name:'Ops Superuser',email:`ops@${EMAIL_DOMAIN_SEED}`,password:'ops123',role:'ops',roleLabel:'Ops Superuser',superuser:true,mustChangePassword:false},
+];
+const DEVICES_SEED=[
+  {id:'D01',brand:'Tecno',model:'Spark 40 Pro+',sku:'T-SP40PP',ram:'4GB',rom:'128GB',cogs:179000,cash:179000},
+  {id:'D02',brand:'Tecno',model:'Spark Slim',sku:'T-SLIM',ram:'4GB',rom:'128GB',cogs:155000,cash:155000},
+  {id:'D03',brand:'Infinix',model:'Hot 60 Pro+',sku:'I-H60PP',ram:'4GB',rom:'128GB',cogs:168000,cash:168000},
+];
+const PRICING_CONFIG_SEED=defaultPricingConfig;
+function seedIfMissing(){
+  if(!readLS(LS.MERCHANTS))writeLS(LS.MERCHANTS,MERCHANTS_SEED);
+  if(!readLS(LS.USERS))writeLS(LS.USERS,USERS_SEED);
+  if(!readLS(LS.PRICING_CONFIG))writeLS(LS.PRICING_CONFIG,PRICING_CONFIG_SEED);
+  if(!readLS(LS.DEVICES))writeLS(LS.DEVICES,DEVICES_SEED);
+  if(!readLS(LS.AUDIT_LOG))writeLS(LS.AUDIT_LOG,[]);
+  if(!readLS(LS.CONTRACTS)){
+    const cfg=readLS(LS.PRICING_CONFIG,PRICING_CONFIG_SEED);
+    const devs=readLS(LS.DEVICES,DEVICES_SEED);
+    const d0=devs[0];const deal0=calcDealFromDevice(d0,cfg,1);
+    const contracts=[{id:'C-0001',merchantCode:'M01',status:ST.PENDING_APPROVAL,createdAt:new Date(Date.now()-10800000).toISOString(),updatedAt:new Date(Date.now()-10800000).toISOString(),repId:'SR01',repName:'Alice Ndayisaba',application:{fullName:'Jean Baptiste Habimana',dateOfBirth:'1990-05-15',nationalIdNumber:'1199880123456001',phoneNumber:'0781234567',address:'Kimironko, Gasabo',kycStatus:'pending',guarantorName:'Marie Habimana',guarantorPhone:'0789876543',neighbourName:'Pierre Habimana',neighbourPhone:'0781111111',employerName:'Self',employmentType:'self-employed',monthlyIncomeRwf:150000,monthlyExpensesRwf:50000,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],freeCashflowRwf:100000},deal:deal0,dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date(Date.now()-10800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted for approval'}]}];
+    writeLS(LS.CONTRACTS,contracts);
+  }
+}
 
 // ── HELPERS ───────────────────────────────────────────────────
 const fmtRWF=n=>'RWF '+Number(n).toLocaleString();
 const fmtD=d=>new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 const fmtT=d=>new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-let seq=4;const gid=()=>'FF-'+String(++seq).padStart(4,'0');
+let contractSeq=1;const nextContractId=()=>{const id='C-'+String(++contractSeq).padStart(4,'0');contractSeq=Math.max(contractSeq,parseInt(id.slice(2),10));return id;};
 const OCCS=['Trader / Business owner','Teacher','Civil servant','Driver / Transport','Farmer','Healthcare worker','Student','Other'];
+const EMPLOYMENT_TYPES=['formal','informal','self-employed'];
+const KYC_STATUSES=['pending','passed','failed'];
 const RELS=['Spouse','Parent','Sibling','Child','Colleague','Friend','Other'];
 const readFileAsDataURL=(file)=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file);});
-
-// ── SEED DATA ─────────────────────────────────────────────────
-const SEED=[
-  {id:'FF-0001',status:ST.SUBMITTED,createdAt:new Date(Date.now()-10800000).toISOString(),updatedAt:new Date(Date.now()-10800000).toISOString(),
-   rep:'Alice Ndayisaba',repId:'SR01',
-   c:{name:'Jean Baptiste Habimana',nid:'1199880123456001',phone:'0781234567',addr:'Kimironko, Gasabo',occ:'Trader / Business owner',income:150000,kin:{name:'Marie Habimana',phone:'0789876543',rel:'Spouse'}},
-   dev:DEVICES_DEFAULT[0],notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,
-   tl:[{at:new Date(Date.now()-10800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted for review'}]},
-  {id:'FF-0002',status:ST.IMEI_PENDING,createdAt:new Date(Date.now()-172800000).toISOString(),updatedAt:new Date(Date.now()-3600000).toISOString(),
-   rep:'Alice Ndayisaba',repId:'SR01',
-   c:{name:'Claudette Uwase',nid:'1200180123456002',phone:'0782345678',addr:'Nyamirambo, Nyarugenge',occ:'Teacher',income:180000,kin:{name:'Patrick Uwase',phone:'0786543210',rel:'Brother'}},
-   dev:DEVICES_DEFAULT[2],notes:'Income confirmed via employer letter. Stable profile.',reviewer:'Jane Murekatete',upya:'UPYA-RW-2025-0892',imei:null,ptId:null,lockedAt:null,
-   tl:[{at:new Date(Date.now()-172800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted for review'},{at:new Date(Date.now()-86400000).toISOString(),by:'Jane Murekatete',txt:'Placed under review'},{at:new Date(Date.now()-3600000).toISOString(),by:'Jane Murekatete',txt:'Approved — UPYA contract UPYA-RW-2025-0892 created'}]},
-  {id:'FF-0003',status:ST.ACTIVE,createdAt:new Date(Date.now()-604800000).toISOString(),updatedAt:new Date(Date.now()-432000000).toISOString(),
-   rep:'Alice Ndayisaba',repId:'SR01',
-   c:{name:'Emmanuel Nkurunziza',nid:'1198180123456003',phone:'0783456789',addr:'Remera, Gasabo',occ:'Driver / Transport',income:200000,kin:{name:'Grace Nkurunziza',phone:'0785432109',rel:'Spouse'}},
-   dev:DEVICES_DEFAULT[4],notes:'Very stable income. Strong profile.',reviewer:'Jane Murekatete',upya:'UPYA-RW-2025-0887',imei:'353456789012345',ptId:'PT-2025-04892',lockedAt:new Date(Date.now()-432000000).toISOString(),
-   tl:[{at:new Date(Date.now()-604800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted'},{at:new Date(Date.now()-518400000).toISOString(),by:'Jane Murekatete',txt:'Approved — UPYA contract UPYA-RW-2025-0887 created'},{at:new Date(Date.now()-475200000).toISOString(),by:'Alice Ndayisaba',txt:'IMEI 353456789012345 verified via Carlcare'},{at:new Date(Date.now()-475100000).toISOString(),by:'System',txt:'Registered in PayTrigger (PT-2025-04892)'},{at:new Date(Date.now()-432000000).toISOString(),by:'Alice Ndayisaba',txt:'Phone locked — contract activated, payments enabled'}]},
-  {id:'FF-0004',status:ST.ESCALATED,createdAt:new Date(Date.now()-86400000).toISOString(),updatedAt:new Date(Date.now()-1800000).toISOString(),
-   rep:'Bob Nzeyimana',repId:'SR02',
-   c:{name:'Florentine Mukamana',nid:'1200480123456004',phone:'0784567890',addr:'Gisozi, Gasabo',occ:'Trader / Business owner',income:350000,kin:{name:'Théogène Mukama',phone:'0784321098',rel:'Parent'}},
-   dev:DEVICES_DEFAULT[1],notes:'Customer reported existing financing. Escalated to credit committee.',reviewer:'Jane Murekatete',upya:null,imei:null,ptId:null,lockedAt:null,
-   tl:[{at:new Date(Date.now()-86400000).toISOString(),by:'Bob Nzeyimana',txt:'Application submitted'},{at:new Date(Date.now()-1800000).toISOString(),by:'Jane Murekatete',txt:'Escalated to credit committee — prior financing flagged'}]},
-];
+const UNDERWRITING_CHECKS=['identity_kyc','contactability','customer_education','employment_affordability','social_contacts','pledge_video'];
+const elapsedMinutes=(createdAt)=>{const ms=Date.now()-new Date(createdAt).getTime();return Math.floor(ms/60000);};
 
 // ── CONTEXT ───────────────────────────────────────────────────
 const Ctx=createContext(null);
@@ -330,11 +343,11 @@ const Toast=({toasts})=>(
 // ── SIDEBAR ───────────────────────────────────────────────────
 const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
   const {user,logout}=useContext(Ctx);
-  const pending=apps.filter(a=>a.status===ST.SUBMITTED).length;
-  const imeiNeeded=apps.filter(a=>a.status===ST.IMEI_PENDING&&a.repId===user.id).length;
+  const pending=(user.role==='underwriter'?apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)).length:0);
   const navItems={
-    rep:[{k:'dash',l:'Home',badge:imeiNeeded>0?imeiNeeded:0},{k:'prices',l:'Price List'}],
+    rep:[{k:'dash',l:'Home',badge:0},{k:'prices',l:'Price List'}],
     underwriter:[{k:'dash',l:'Home',badge:pending},{k:'queue',l:'Review Queue',badge:pending},{k:'all',l:'All Applications'}],
+    support:[{k:'dash',l:'Home'},{k:'all',l:'All Applications'}],
     ops:[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},...(user.superuser?[{k:'admin',l:'Admin'}]:[])],
   }[user.role]||[];
   const initials=user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
@@ -487,8 +500,10 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
   const submit=()=>{
     if(!validate())return;
     const dev=(devices||[]).find(d=>d.id===f.did);if(!dev){addToast('err','Device required','');return;}
-    const c={name:f.name.trim(),idType:f.idType||'nid',nid:f.nid,phone:f.phone.trim(),addr:f.addr.trim(),occ:f.occ,income:+f.income,kin:{name:f.kn.trim(),phone:f.kp.trim(),rel:f.kr}};
-    onUpdate(app.id,{c,dev,status:ST.SUBMITTED,requestedChangeFields:[],tlEntry:{by:user.name,txt:'Resubmitted after changes — returned to reviewer'}});
+    const ap=app.application||{};
+    const application={...ap,fullName:f.name.trim(),nationalIdNumber:f.nid,phoneNumber:f.phone.trim(),address:f.addr.trim(),employmentType:f.occ,monthlyIncomeRwf:+f.income,guarantorName:f.kn.trim(),guarantorPhone:f.kp.trim(),fieldCorrectionRequests:(ap.fieldCorrectionRequests||[]).map(r=>({...r,resolvedAt:r.resolvedAt||new Date().toISOString()}))};
+    const deal=app.deal?{...app.deal,dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:(dev.dep||0)+(dev.weekly||0)*(dev.wks||12),cogs:dev.retail}:{dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:(dev.dep||0)+(dev.weekly||0)*(dev.wks||12),cogs:dev.retail,riskGroup:app.riskGroup||1};
+    onUpdate(app.id,{application,deal,status:ST.PENDING_APPROVAL,tlEntry:{by:user.name,txt:'Resubmitted after changes — returned to reviewer'}});
     addToast('ok','Application resubmitted','Sent back to the reviewer');onBack();
   };
   return(
@@ -768,36 +783,38 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   useEffect(()=>{setEditNotes(app.notes||'');},[app.id,app.notes]);
 
   const approve=async()=>{
-    setLd('ap');await sleep(2200);
-    const uid='UPYA-RW-2026-'+Math.floor(1000+Math.random()*9000);
-    onUpdate(app.id,{status:ST.IMEI_PENDING,notes:note,reviewer:user.name,upya:uid,tlEntry:{by:user.name,txt:`Approved — UPYA contract ${uid} created`}});
-    addToast('ok','Application approved',`UPYA contract ${uid} created`);setLd(null);onBack();
+    setLd('ap');await sleep(1200);
+    onUpdate(app.id,{status:ST.OFFER_SELECTION,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:'Approved — customer to select deal'}});
+    addToast('ok','Application approved','Customer can select deal');setLd(null);onBack();
   };
   const reject=async()=>{
     if(!rejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}
     setLd('rej');await sleep(700);
-    onUpdate(app.id,{status:ST.REJECTED,notes:rejReason,reviewer:user.name,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});
+    onUpdate(app.id,{mboDecision:'REJECTED',mboRejectionReason:rejReason,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});
     addToast('info','Application rejected','Rep notified');setLd(null);onBack();
   };
   const requestChanges=async()=>{
     if(!note.trim()){addToast('err','Note required','Explain what changes you need before sending back.');return;}
     setLd('ch');await sleep(700);
-    const fieldsTxt=requestedFields.length?` (${requestedFields.join(', ')})`:'';
-    onUpdate(app.id,{status:ST.CHANGES,notes:note,reviewer:user.name,requestedChangeFields:requestedFields,tlEntry:{by:user.name,txt:`Changes requested${fieldsTxt} — returned to sales rep`}});
+    const ap=app.application||{};
+    const reqs=ap.fieldCorrectionRequests||[];
+    const added=requestedFields.filter(f=>!reqs.some(r=>r.fieldName===f&&!r.resolvedAt));
+    const newReqs=[...reqs,...added.map(fieldName=>({fieldName,reason:note,resolvedAt:null}))];
+    onUpdate(app.id,{notes:note,application:{...ap,fieldCorrectionRequests:newReqs},tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});
     addToast('warn','Changes requested','Application returned to rep');setLd(null);onBack();
   };
   const escalate=async()=>{
-    if(!note.trim()){addToast('err','Note required','Explain why you are escalating before sending to credit committee.');return;}
+    if(!note.trim()){addToast('err','Note required','Explain why you are escalating.');return;}
     setLd('esc');await sleep(700);
-    onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,tlEntry:{by:user.name,txt:'Escalated to credit committee'}});
-    addToast('info','Escalated','Sent to credit committee');setLd(null);onBack();
+    onUpdate(app.id,{status:ST.ARCHIVED,notes:note,reviewer:user.name,tlEntry:{by:user.name,txt:'Archived — '+note}});
+    addToast('info','Archived','');setLd(null);onBack();
   };
 
   const c=app.c,d=app.dev,tot=d.dep+d.weekly*d.wks;
   const ratio=c.income>0?(d.weekly/c.income*100):0;
   const affordOk=c.income>0&&ratio<30;
   const isUnderwriter=user.role==='underwriter';
-  const reviewable=[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(app.status);
+  const reviewable=[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(app.status);
   const statusOptions=Object.entries(ST).map(([k,v])=>[v,SM[v]?.label||v]);
   return(
     <div className="fadeUp" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,padding:'28px 32px'}}>
@@ -924,24 +941,24 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
 };
 
 // ── SALES REP VIEW ────────────────────────────────────────────
-const SalesRepView=({apps,onUpdate,addToast,devices})=>{
+const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const {user}=useContext(Ctx);
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
-  const mine=apps.filter(a=>a.repId===user.id);
-  const grps={action:mine.filter(a=>[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(a.status)),review:mine.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(a.status)),active:mine.filter(a=>a.status===ST.ACTIVE),other:mine.filter(a=>[ST.REJECTED,ST.CHANGES].includes(a.status))};
+  const cfg=pricingConfig||defaultPricingConfig;
+  const devicesWithPricing=React.useMemo(()=>(devices||[]).map(d=>{const deal=calcDealFromDevice(d,cfg,1);return{...d,...deal,dep:deal.upfrontPayment,weekly:deal.recurrentPayment,wks:deal.termOption,retail:deal.cogs};}),[devices,cfg]);
+  const mine=apps.filter(a=>a.repId===user.id&&(!user.merchantCode||a.merchantCode===user.merchantCode));
+  const grps={action:mine.filter(a=>a.status===ST.OFFER_SELECTION),review:mine.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)),active:mine.filter(a=>a.status===ST.ACTIVE),other:mine.filter(a=>a.mboDecision==='REJECTED'||(a.status===ST.UNDER_REVIEW&&(a.requestedChangeFields||[]).length>0))};
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
   const goHome=()=>{setPg('dash');setSel(null);};
   const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:'6px 12px',fontSize:12,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}}>Home</button>;
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app&&[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(app.status))
-      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
-    if(app&&app.status===ST.CHANGES&&app.repId===user.id)
-      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>Edit & resubmit</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><EditAndResubmit app={app} devices={devices} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
-    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app&&app.status===ST.UNDER_REVIEW&&(app.requestedChangeFields||[]).length>0&&app.repId===user.id)
+      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>Edit & resubmit</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><EditAndResubmit app={app} devices={devicesWithPricing} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)} devices={devices}/></div></div></div>;
   }
 
   return(
@@ -965,12 +982,12 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
             <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>Active applications</h1></div>
             {grps.action.length>0&&(
               <div style={{marginBottom:22}}>
-                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Action needed — Enter IMEI <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.action.length}</span></div>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Offer selection <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.action.length}</span></div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
                   {grps.action.map(a=>(
                     <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <div><div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · Approved{a.upya&&` · ${a.upya}`}</div></div>
-                      <Btn v="warn" sz="sm">Enter IMEI →</Btn>
+                      <div><div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · Approved — customer to select deal</div></div>
+                      <Btn v="warn" sz="sm">View →</Btn>
                     </div>
                   ))}
                 </div>
@@ -988,9 +1005,11 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
             {grps.other.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.other.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title="No completed applications" sub="Applications you've closed or that need changes"/>}
           </div>
         )}
-        {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devices} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
-          const na={id:gid(),status:ST.SUBMITTED,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),rep:user.name,repId:user.id,c:{name:f.name,idType:f.idType||'nid',nid:f.nid,phone:f.phone,addr:f.addr,occ:f.occ,income:+f.income,kin:{name:f.kn,phone:f.kp,rel:f.kr}},dev,notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,customerPhoto:f.customerPhoto||null,idPhoto:f.idPhoto||null,incomeProof:f.incomeProof||null,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for review'}]};
-          onUpdate(null,null,na);addToast('ok','Application submitted','Sent to the review queue');setPg('dash');
+        {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devicesWithPricing} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
+          const deal=dev.dealId?dev:{dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,RAM:dev.RAM,ROM:dev.ROM,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:(dev.dep||0)+(dev.weekly||0)*(dev.wks||12),cogs:dev.retail||dev.cogs,interestRate:cfg.interestRate,depositPct:cfg.depositPct,riskGroup:1};
+          const freeCashflow=Math.max(0,(+f.income||0)-0);
+          const newContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',status:ST.PENDING_APPROVAL,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:freeCashflow,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof},deal,dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for approval'}]};
+          onUpdate(null,null,newContract);addToast('ok','Application submitted','Sent for approval');setPg('dash');
         }}/></div>}
         {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devices}/></div>}
       </div>
@@ -1013,9 +1032,10 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
     if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
-  const queue=apps.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW].includes(a.status));
-  const esc=apps.filter(a=>a.status===ST.ESCALATED);
-  const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return a.c.name.toLowerCase().includes(s)||a.id.toLowerCase().includes(s);});
+  const merchantCodes=user.merchantCodes||[];
+  const queue=apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)&&(!merchantCodes.length||merchantCodes.includes(a.merchantCode)));
+  const esc=apps.filter(a=>a.status===ST.ARCHIVED);
+  const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return (a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s);});
   const pendingCount=queue.length+esc.length;
 
   return(
@@ -1076,8 +1096,48 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
   );
 };
 
+// ── SUPPORT VIEW ───────────────────────────────────────────────
+const SupportView=({apps,onUpdate,addToast})=>{
+  const [pg,setPg]=useState('dash');
+  const [sel,setSel]=useState(null);
+  const [q,setQ]=useState('');
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
+  const {user}=useContext(Ctx);
+  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
+  if(sel){
+    const app=apps.find(a=>a.id===sel);
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+  }
+  const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return (a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s);});
+  return(
+    <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
+      <Sidebar {...sidebarProps}/>
+      <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':'All applications'}</span></div>
+        {pg==='dash'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:8}}>Support — QC & override</h1>
+            <p style={{fontSize:13,color:'var(--textMid)',marginBottom:24}}>View any application across merchants. Override stuck states when needed.</p>
+            <div style={{display:'flex',flexDirection:'column',gap:12,maxWidth:400}}>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>{setPg('all');}}>📄 All applications ({apps.length})</button>
+            </div>
+          </div>
+        )}
+        {pg==='all'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>All applications</h1></div>
+            <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{maxWidth:320,marginBottom:16,width:'100%'}}/>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>{all.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
+            {all.length===0&&<Empty ico="🔍" title="No results"/>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── OPS VIEW ──────────────────────────────────────────────────
-const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps})=>{
+const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setContracts,pricingConfig})=>{
   const [pg,setPg]=useState('overview');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
@@ -1127,7 +1187,8 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
     });
 
     const patchAppsDevice=(devId,devObj)=>{
-      setApps(p=>(p||[]).map(a=>a?.dev?.id===devId?{...a,dev:devObj,updatedAt:new Date().toISOString()}:a));
+      if(!setContracts)return;
+      setContracts(p=>(p||[]).map(c=>{if(c.deal?.dealId!==devId)return c;const newDeal=calcDealFromDevice(devObj,pricingConfig||defaultPricingConfig,c.riskGroup||1);return{...c,deal:newDeal,updatedAt:new Date().toISOString()};}));
     };
 
     const upDev=(id,patch)=>{
@@ -1371,14 +1432,14 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Operations overview</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{APP_NAME} Rwanda · Live pipeline</p></div>
             <div className="stats-grid-3" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
-              {[['Total applications',apps.length,'var(--brand)'],['Active contracts',apps.filter(a=>a.status===ST.ACTIVE).length,'var(--ok)'],['Pending review',apps.filter(a=>a.status===ST.SUBMITTED).length,'var(--warn)'],['IMEI needed',apps.filter(a=>a.status===ST.IMEI_PENDING).length,'var(--warn)'],['Escalated',apps.filter(a=>a.status===ST.ESCALATED).length,'var(--pur)'],['Rejected',apps.filter(a=>a.status===ST.REJECTED).length,'var(--err)']].map(([l,v,c])=>(
+              {[['Total applications',apps.length,'var(--brand)'],['Active contracts',apps.filter(a=>a.status===ST.ACTIVE).length,'var(--ok)'],['Pending review',apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)).length,'var(--warn)'],['Approved (awaiting activation)',apps.filter(a=>a.status===ST.APPROVED).length,'var(--info)'],['Archived',apps.filter(a=>a.status===ST.ARCHIVED).length,'var(--pur)'],['Rejected',apps.filter(a=>a.mboDecision==='REJECTED').length,'var(--err)']].map(([l,v,c])=>(
                 <Card key={l} sx={{padding:'14px 16px'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:5}}>{l}</div><div style={{fontSize:26,fontWeight:800,color:c}}>{v}</div></Card>
               ))}
             </div>
             <Card sx={{padding:'16px 18px',marginBottom:22}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Pipeline status</div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                {[[ST.SUBMITTED,'Submitted','var(--warn)'],[ST.IN_REVIEW,'In review','var(--info)'],[ST.ESCALATED,'Escalated','var(--pur)'],[ST.IMEI_PENDING,'IMEI pending','var(--warn)'],[ST.ACTIVE,'Active','var(--ok)'],[ST.REJECTED,'Rejected','var(--err)']].map(([st,l,c])=>{
+                {[[ST.PENDING_APPROVAL,'Pending approval','var(--warn)'],[ST.UNDER_REVIEW,'Under review','var(--info)'],[ST.OFFER_SELECTION,'Offer selection','var(--info)'],[ST.APPROVED,'Approved','var(--ok)'],[ST.LOCK_PENDING,'Lock pending','var(--warn)'],[ST.AWAITING_PAYMENT,'Awaiting payment','var(--warn)'],[ST.ACTIVE,'Active','var(--ok)'],[ST.COMPLETED,'Completed','var(--ok)'],[ST.ARCHIVED,'Archived','var(--pur)']].map(([st,l,c])=>{
                   const n=apps.filter(a=>a.status===st).length;
                   return <div key={st} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 12px',background:'var(--bg)',borderRadius:'var(--r2)',border:'1px solid var(--border)'}}><div style={{width:8,height:8,borderRadius:4,background:c}}/><span style={{fontSize:12,color:'var(--textMid)'}}>{l}</span><span style={{fontSize:12,fontWeight:700}}>{n}</span></div>;
                 })}
@@ -1408,14 +1469,32 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
   );
 };
 
+// ── CONTRACT ↔ LEGACY APP ADAPTER ─────────────────────────────
+function contractToLegacyApp(c){
+  const app=c;const ap=c.application||{};const deal=c.deal||{};
+  return {
+    ...app,
+    c:{name:ap.fullName||ap.name||'',nid:ap.nationalIdNumber||'',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kin:{name:ap.guarantorName||'',phone:ap.guarantorPhone||'',rel:'Guarantor'},idType:ap.idType||'nid'},
+    dev:{id:deal.dealId,brand:deal.manufacturer,model:deal.deviceModel,sku:deal.dealId,specs:[deal.RAM,deal.ROM].filter(Boolean).join(' '),dep:deal.upfrontPayment||0,weekly:deal.recurrentPayment||0,wks:deal.termOption||12,retail:deal.cogs},
+    rep:app.repName||'',repId:app.repId,
+    notes:app.mboRejectionReason||app.notes||'',reviewer:app.mboReviewedBy||null,upya:app.upya||null,imei:app.imei,ptId:app.ptId,lockedAt:app.lockedAt,
+    customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto,incomeProof:ap.incomeProof,
+    requestedChangeFields:(ap.fieldCorrectionRequests||[]).filter(r=>!r.resolvedAt).map(r=>r.fieldName),
+  };
+}
+
 // ── ROOT ──────────────────────────────────────────────────────
 const App=()=>{
   const [user,setUser]=useState(null);
   const [toasts,setToasts]=useState([]);
 
+  useEffect(()=>{seedIfMissing();const list=readLS(LS.CONTRACTS,[]);const nums=list.map(c=>parseInt(String(c.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));if(nums.length)contractSeq=Math.max(contractSeq,...nums);},[]);
+
   const [users,setUsers]=useState(()=>readLS(LS.USERS,USERS_SEED));
-  const [devices,setDevices]=useState(()=>readLS(LS.DEVICES,DEVICES_DEFAULT));
-  const [apps,setApps]=useState(()=>readLS(LS.APPS,SEED));
+  const [devices,setDevices]=useState(()=>readLS(LS.DEVICES,DEVICES_SEED));
+  const [contracts,setContracts]=useState(()=>readLS(LS.CONTRACTS,[]));
+  const pricingConfig=readLS(LS.PRICING_CONFIG,defaultPricingConfig);
+  const apps=React.useMemo(()=>(contracts||[]).map(contractToLegacyApp),[contracts]);
 
   const addToast=useCallback((c,title,msg='')=>{
     const id=Date.now()+Math.random();
@@ -1425,17 +1504,18 @@ const App=()=>{
 
   useEffect(()=>writeLS(LS.USERS,users),[users]);
   useEffect(()=>writeLS(LS.DEVICES,devices),[devices]);
-  useEffect(()=>writeLS(LS.APPS,apps),[apps]);
+  useEffect(()=>writeLS(LS.CONTRACTS,contracts),[contracts]);
 
-  const updateApp=useCallback((id,upd,newApp)=>{
-    if(newApp){setApps(p=>[...p,newApp]);return;}
-    setApps(p=>p.map(a=>{
-      if(a.id!==id)return a;
+  const updateApp=useCallback((id,upd,newContract)=>{
+    if(newContract){setContracts(p=>[...p,newContract]);return;}
+    setContracts(p=>p.map(c=>{
+      if(c.id!==id)return c;
       const entry=upd.tlEntry;
-      const tl=entry?[...(a.tl||[]),{at:new Date().toISOString(),by:entry.by,txt:entry.txt}]:a.tl;
+      const tl=entry?[...(c.tl||[]),{at:new Date().toISOString(),by:entry.by,txt:entry.txt}]:c.tl;
       const {tlEntry,...rest}=upd;
       const patch=Object.fromEntries(Object.entries(rest).filter(([,v])=>v!==undefined));
-      return{...a,...patch,tl,updatedAt:new Date().toISOString()};
+      if(patch.application&&c.application)patch.application={...c.application,...patch.application};
+      return{...c,...patch,tl,updatedAt:new Date().toISOString()};
     }));
   },[]);
 
@@ -1451,9 +1531,10 @@ const App=()=>{
   return(
     <Ctx.Provider value={ctx}>
       <div className="app-layout" style={{display:'flex',minHeight:'100vh',height:'100vh'}}>
-        {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices}/>}
+        {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} pricingConfig={pricingConfig}/>}
         {user.role==='underwriter'&&<UnderwriterView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
-        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} setApps={setApps}/>}
+        {user.role==='support'&&<SupportView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
+        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} setContracts={setContracts} pricingConfig={pricingConfig}/>}
       </div>
       <Toast toasts={toasts}/>
     </Ctx.Provider>
