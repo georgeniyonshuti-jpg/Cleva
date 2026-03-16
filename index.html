@@ -242,6 +242,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let seq=4;const gid=()=>'FF-'+String(++seq).padStart(4,'0');
 const OCCS=['Trader / Business owner','Teacher','Civil servant','Driver / Transport','Farmer','Healthcare worker','Student','Other'];
 const RELS=['Spouse','Parent','Sibling','Child','Colleague','Friend','Other'];
+const readFileAsDataURL=(file)=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file);});
 
 // ── SEED DATA ─────────────────────────────────────────────────
 const SEED=[
@@ -465,18 +466,20 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
   const {user}=useContext(Ctx);
   const requested=app.requestedChangeFields||[];
   const highlight=(key)=>requested.includes(key)?{borderLeft:'3px solid var(--warn)',background:'var(--warnBg)',padding:'8px 10px',margin:'0 -10px 8px -10px',borderRadius:'var(--r2)'}:{};
-  const [f,setF]=useState({name:app.c.name,nid:app.c.nid,phone:app.c.phone,addr:app.c.addr,occ:app.c.occ,income:String(app.c.income||''),kn:app.c.kin.name,kp:app.c.kin.phone,kr:app.c.kin.rel,did:app.dev.id});
+  const [f,setF]=useState({name:app.c.name,idType:app.c.idType||'nid',nid:app.c.nid,phone:app.c.phone,addr:app.c.addr,occ:app.c.occ,income:String(app.c.income||''),kn:app.c.kin.name,kp:app.c.kin.phone,kr:app.c.kin.rel,did:app.dev.id});
   const [e,setE]=useState({});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const validate=()=>{
     const er={};
-    if(!f.name.trim())er.name='Required';if(f.nid.replace(/\D/g,'').length<16)er.nid='Must be 16 digits';if(!f.phone.trim())er.phone='Required';if(!f.addr.trim())er.addr='Required';if(!f.occ)er.occ='Required';if(!f.income||isNaN(f.income)||+f.income<1)er.income='Enter a valid amount';if(!f.kn.trim())er.kn='Required';if(!f.kp.trim())er.kp='Required';if(!f.kr)er.kr='Required';if(!f.did)er.did='Select a device';
+    if(!f.name.trim())er.name='Required';
+    if(f.idType==='nid'){if(f.nid.replace(/\D/g,'').length!==16)er.nid='National ID must be 16 digits';}else{if(!f.nid.trim())er.nid='Passport number required';}
+    if(!f.phone.trim())er.phone='Required';if(!f.addr.trim())er.addr='Required';if(!f.occ)er.occ='Required';if(!f.income||isNaN(f.income)||+f.income<1)er.income='Enter a valid amount';if(!f.kn.trim())er.kn='Required';if(!f.kp.trim())er.kp='Required';if(!f.kr)er.kr='Required';if(!f.did)er.did='Select a device';
     setE(er);return!Object.keys(er).length;
   };
   const submit=()=>{
     if(!validate())return;
     const dev=(devices||[]).find(d=>d.id===f.did);if(!dev){addToast('err','Device required','');return;}
-    const c={name:f.name.trim(),nid:f.nid,phone:f.phone.trim(),addr:f.addr.trim(),occ:f.occ,income:+f.income,kin:{name:f.kn.trim(),phone:f.kp.trim(),rel:f.kr}};
+    const c={name:f.name.trim(),idType:f.idType||'nid',nid:f.nid,phone:f.phone.trim(),addr:f.addr.trim(),occ:f.occ,income:+f.income,kin:{name:f.kn.trim(),phone:f.kp.trim(),rel:f.kr}};
     onUpdate(app.id,{c,dev,status:ST.SUBMITTED,requestedChangeFields:[],tlEntry:{by:user.name,txt:'Resubmitted after changes — returned to reviewer'}});
     addToast('ok','Application resubmitted','Sent back to the reviewer');onBack();
   };
@@ -496,9 +499,10 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
       <Card sx={{padding:22}}>
         <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Customer information</div>
         <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-          <div style={highlight('name')}><FF label="Full name" req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder="As on national ID" className={e.name?'err':''}/></FF></div>
-          <div style={highlight('nid')}><FF label="National ID number" req err={e.nid}><input value={f.nid} onChange={ev=>s('nid',ev.target.value.replace(/\D/g,'').slice(0,16))} placeholder="16 digits" className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/></FF></div>
+          <div style={highlight('name')}><FF label="Full name" req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder="As on ID" className={e.name?'err':''}/></FF></div>
+          <div style={highlight('nid')}><FF label="ID type" req><select value={f.idType} onChange={ev=>{s('idType',ev.target.value);if(ev.target.value==='nid')s('nid',f.nid.replace(/\D/g,'').slice(0,16));}}><option value="nid">National ID</option><option value="passport">Passport</option></select></FF></div>
         </div>
+        <div style={highlight('nid')}><FF label={f.idType==='nid'?'National ID number (16 digits)':'Passport number'} req err={e.nid}><input value={f.nid} onChange={ev=>s('nid',f.idType==='nid'?ev.target.value.replace(/\D/g,'').slice(0,16):ev.target.value)} placeholder={f.idType==='nid'?'16 digits':'e.g. AB1234567'} className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/></FF></div>
         <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           <div style={highlight('phone')}><FF label="Phone number" req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF></div>
           <div style={highlight('occ')}><FF label="Occupation" req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">Select...</option>{OCCS.map(o=><option key={o}>{o}</option>)}</select></FF></div>
@@ -543,14 +547,23 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
 const NewApp=({onSubmit,onBack,devices})=>{
   const {user}=useContext(Ctx);
   const [step,setStep]=useState(1);
-  const [f,setF]=useState({name:'',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:''});
+  const [f,setF]=useState({name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:'',customerPhoto:null,idPhoto:null,incomeProof:null});
   const [e,setE]=useState({});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
-  const v1=()=>{const er={};if(!f.name.trim())er.name='Required';if(f.nid.replace(/\D/g,'').length<16)er.nid='Must be 16 digits';if(!f.phone.trim())er.phone='Required';if(!f.addr.trim())er.addr='Required';if(!f.occ)er.occ='Required';if(!f.income||isNaN(f.income)||+f.income<1)er.income='Enter a valid amount';if(!f.kn.trim())er.kn='Required';if(!f.kp.trim())er.kp='Required';if(!f.kr)er.kr='Required';setE(er);return!Object.keys(er).length;};
+  const handleFile=(k,file)=>{if(!file)return;readFileAsDataURL(file).then(url=>s(k,url)).catch(()=>{});};
+  const v1=()=>{
+    const er={};
+    if(!f.name.trim())er.name='Required';
+    if(f.idType==='nid'){if(f.nid.replace(/\D/g,'').length!==16)er.nid='National ID must be 16 digits';}
+    else{if(!f.nid.trim())er.nid='Passport number required';}
+    if(!f.phone.trim())er.phone='Required';if(!f.addr.trim())er.addr='Required';if(!f.occ)er.occ='Required';if(!f.income||isNaN(f.income)||+f.income<1)er.income='Enter a valid amount';if(!f.kn.trim())er.kn='Required';if(!f.kp.trim())er.kp='Required';if(!f.kr)er.kr='Required';
+    if(!f.customerPhoto)er.customerPhoto='Take customer photo (camera)';if(!f.idPhoto)er.idPhoto='Add ID document (photo or upload)';if(!f.incomeProof)er.incomeProof='Add proof of income (upload image or PDF)';
+    setE(er);return!Object.keys(er).length;
+  };
   const v2=()=>{const er={};if(!f.did)er.did='Please select a device';setE(er);return!Object.keys(er).length;};
   const next=()=>{if(step===1&&v1())setStep(2);else if(step===2&&v2())setStep(3);};
   const dev=(devices||[]).find(d=>d.id===f.did);
-  const STEPS=['Customer details','Select device','Review & submit'];
+  const STEPS=['Customer & documents','Select device','Review & submit'];
   return(
     <div className="fadeUp" style={{padding:'28px 32px',maxWidth:820}}>
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22}}>
@@ -573,15 +586,24 @@ const NewApp=({onSubmit,onBack,devices})=>{
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:2}}>Customer information</div>
             <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <FF label="Full name" req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder="As on national ID" className={e.name?'err':''}/></FF>
-              <FF label="National ID number" req err={e.nid}><input value={f.nid} onChange={ev=>s('nid',ev.target.value.replace(/\D/g,'').slice(0,16))} placeholder="16 digits" className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/></FF>
+              <FF label="Full name" req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder="As on ID" className={e.name?'err':''}/></FF>
+              <FF label="ID type" req><select value={f.idType} onChange={ev=>{s('idType',ev.target.value);if(ev.target.value==='nid')s('nid',f.nid.replace(/\D/g,'').slice(0,16));}}><option value="nid">National ID</option><option value="passport">Passport</option></select></FF>
             </div>
+            <FF label={f.idType==='nid'?'National ID number (16 digits)':'Passport number'} req err={e.nid}>
+              <input value={f.nid} onChange={ev=>s('nid',f.idType==='nid'?ev.target.value.replace(/\D/g,'').slice(0,16):ev.target.value)} placeholder={f.idType==='nid'?'16 digits':'e.g. AB1234567'} className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/>
+            </FF>
             <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <FF label="Phone number" req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF>
               <FF label="Occupation" req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">Select...</option>{OCCS.map(o=><option key={o}>{o}</option>)}</select></FF>
             </div>
             <FF label="Address / location" req err={e.addr}><input value={f.addr} onChange={ev=>s('addr',ev.target.value)} placeholder="Sector, district — e.g. Kimironko, Gasabo" className={e.addr?'err':''}/></FF>
             <FF label="Monthly income (RWF)" req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder="e.g. 150000" className={e.income?'err':''}/></FF>
+            <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Documents</div>
+              <FF label="Customer photo" req err={e.customerPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--brand)',color:'white',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📷 Take photo (camera only)<input type="file" accept="image/*" capture="user" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('customerPhoto',file);ev.target.value='';}}/></label>{f.customerPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ Photo taken</span>}</div></FF>
+              <FF label="ID document (photo)" req err={e.idPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📄 Take or upload ID<input type="file" accept="image/*" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('idPhoto',file);ev.target.value='';}}/></label>{f.idPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ ID added</span>}</div></FF>
+              <FF label="Proof of income" req err={e.incomeProof}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📎 Upload (image or PDF)<input type="file" accept="image/*,.pdf,application/pdf" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('incomeProof',file);ev.target.value='';}}/></label>{f.incomeProof&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ Document added</span>}</div></FF>
+            </div>
             <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Next of kin</div>
               <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 160px',gap:12}}>
@@ -615,7 +637,7 @@ const NewApp=({onSubmit,onBack,devices})=>{
           <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:22}}>
             <div>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Customer</div>
-              {[['Full name',f.name],['National ID',f.nid],['Phone',f.phone],['Address',f.addr],['Occupation',f.occ],['Monthly income',fmtRWF(+f.income)],['Next of kin',`${f.kn} (${f.kr})`],['Kin phone',f.kp]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+              {[['Full name',f.name],[f.idType==='nid'?'National ID':'Passport',f.nid],['Phone',f.phone],['Address',f.addr],['Occupation',f.occ],['Monthly income',fmtRWF(+f.income)],['Next of kin',`${f.kn} (${f.kr})`],['Kin phone',f.kp],['Documents','Customer photo ✓ · ID ✓ · Income proof ✓']].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
             </div>
             <div>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Selected device</div>
@@ -774,8 +796,8 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
         <Card sx={{padding:'16px 18px'}}>
           <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:13}}>Customer</div>
           {(isUnderwriter&&reviewable?[
-            ['name','Full name',c.name],['nid','National ID',c.nid],['phone','Phone',c.phone],['addr','Address',c.addr],['occ','Occupation',c.occ],['income','Monthly income',fmtRWF(c.income)]
-          ]:[['Full name',c.name],['National ID',c.nid],['Phone',c.phone],['Address',c.addr],['Occupation',c.occ],['Monthly income',fmtRWF(c.income)]]).map((arr)=>{
+            ['name','Full name',c.name],['nid',(c.idType==='passport'?'Passport number':'National ID'),c.nid],['phone','Phone',c.phone],['addr','Address',c.addr],['occ','Occupation',c.occ],['income','Monthly income',fmtRWF(c.income)]
+          ]:[['Full name',c.name],[(c.idType==='passport'?'Passport number':'National ID'),c.nid],['Phone',c.phone],['Address',c.addr],['Occupation',c.occ],['Monthly income',fmtRWF(c.income)]]).map((arr)=>{
             if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
             return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
           })}
@@ -788,6 +810,16 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
               return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
             })}
           </div>
+          {(app.customerPhoto||app.idPhoto||app.incomeProof)&&(
+            <div style={{borderTop:'1.5px solid var(--border)',paddingTop:11,marginTop:4}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Documents</div>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {app.customerPhoto&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>Customer photo</span><a href={app.customerPhoto} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>View</a><img src={app.customerPhoto} alt="Customer" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/></div>}
+                {app.idPhoto&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>ID document</span><a href={app.idPhoto} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>View</a><img src={app.idPhoto} alt="ID" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/></div>}
+                {app.incomeProof&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>Proof of income</span><a href={app.incomeProof} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>View</a>{app.incomeProof.startsWith('data:application/pdf')?<span style={{fontSize:10,background:'var(--surface)',padding:'2px 6px',borderRadius:4}}>PDF</span>:<img src={app.incomeProof} alt="Income" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/>}</div>}
+              </div>
+            </div>
+          )}
         </Card>
         <div style={{display:'flex',flexDirection:'column',gap:12}}>
           <Card sx={{padding:'16px 18px'}}>
@@ -917,7 +949,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
           </div>
         )}
         {pg==='new'&&<div className="page-content" style={{padding:'28px 32px'}}><NewApp devices={devices} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
-          const na={id:gid(),status:ST.SUBMITTED,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),rep:user.name,repId:user.id,c:{name:f.name,nid:f.nid,phone:f.phone,addr:f.addr,occ:f.occ,income:+f.income,kin:{name:f.kn,phone:f.kp,rel:f.kr}},dev,notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for review'}]};
+          const na={id:gid(),status:ST.SUBMITTED,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),rep:user.name,repId:user.id,c:{name:f.name,idType:f.idType||'nid',nid:f.nid,phone:f.phone,addr:f.addr,occ:f.occ,income:+f.income,kin:{name:f.kn,phone:f.kp,rel:f.kr}},dev,notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,customerPhoto:f.customerPhoto||null,idPhoto:f.idPhoto||null,incomeProof:f.incomeProof||null,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for review'}]};
           onUpdate(null,null,na);addToast('ok','Application submitted','Sent to the review queue');setPg('dash');
         }}/></div>}
         {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devices}/></div>}
