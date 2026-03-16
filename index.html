@@ -148,6 +148,15 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 @media (max-width:480px){
   .app-card-meta{flex-wrap:wrap!important}
 }
+
+/* Home action buttons (first page – big, touch-friendly) */
+.home-actions{display:flex;flex-direction:column;gap:12px;max-width:400px;margin:0 auto}
+.home-action-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:18px 24px;min-height:56px;font-size:16px;font-weight:600;border-radius:var(--r);border:2px solid transparent;cursor:pointer;transition:all .15s;text-align:center;text-decoration:none;color:inherit;box-sizing:border-box}
+.home-action-btn:active{transform:scale(0.98)}
+@media (max-width:768px){
+  .home-actions{max-width:none;gap:10px;padding:0 4px}
+  .home-action-btn{min-height:52px;padding:16px 20px;font-size:15px;-webkit-tap-highlight-color:transparent}
+}
 /* IMEI row: stack input and button on mobile */
 @media (max-width:480px){
   .imei-row{flex-direction:column!important;align-items:stretch!important}
@@ -315,8 +324,8 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
   const pending=apps.filter(a=>a.status===ST.SUBMITTED).length;
   const imeiNeeded=apps.filter(a=>a.status===ST.IMEI_PENDING&&a.repId===user.id).length;
   const navItems={
-    rep:[{k:'dash',l:'My Applications',badge:imeiNeeded>0?imeiNeeded:0},{k:'new',l:'New Application'},{k:'prices',l:'Price List'}],
-    underwriter:[{k:'queue',l:'Review Queue',badge:pending},{k:'all',l:'All Applications'}],
+    rep:[{k:'dash',l:'Home',badge:imeiNeeded>0?imeiNeeded:0},{k:'prices',l:'Price List'}],
+    underwriter:[{k:'dash',l:'Home',badge:pending},{k:'queue',l:'Review Queue',badge:pending},{k:'all',l:'All Applications'}],
     ops:[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},...(user.superuser?[{k:'admin',l:'Admin'}]:[])],
   }[user.role]||[];
   const initials=user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
@@ -867,18 +876,24 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'My applications':pg==='new'?'New application':pg==='prices'?'Price list':APP_NAME}</span></div>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':pg==='new'?'New application':pg==='active'?'Active applications':pg==='completed'?'Completed applications':pg==='prices'?'Price list':APP_NAME}</span></div>
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>My applications</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Welcome back, {user.name.split(' ')[0]}</p></div>
-            <div className="stats-grid-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:26}}>
-              {[['Total',mine.length,'var(--brand)'],['Active',grps.active.length,'var(--ok)'],['Under review',grps.review.length,'var(--info)'],['Action needed',grps.action.length,'var(--warn)']].map(([l,v,c])=>(
-                <Card key={l} sx={{padding:'13px 15px'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:4}}>{l}</div><div style={{fontSize:24,fontWeight:800,color:c}}>{v}</div></Card>
-              ))}
+            <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Welcome, {user.name.split(' ')[0]}</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
+            <div className="home-actions">
+              <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>setPg('new')}>➕ Start new application</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('active')}>📋 Active applications {(grps.action.length+grps.review.length+grps.active.length)>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.action.length+grps.review.length+grps.active.length}</span>}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('completed')}>✓ Completed applications {grps.other.length>0&&<span style={{background:'var(--bg)',color:'var(--textMid)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.other.length}</span>}</button>
             </div>
+            <div style={{marginTop:20,textAlign:'center'}}><button type="button" className="home-action-btn" style={{background:'transparent',color:'var(--textMid)',borderColor:'var(--border)',maxWidth:280,margin:'0 auto'}} onClick={()=>setPg('prices')}>📄 Price list</button></div>
+          </div>
+        )}
+        {pg==='active'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>Active applications</h1></div>
             {grps.action.length>0&&(
               <div style={{marginBottom:22}}>
-                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>ACTION NEEDED — Enter IMEI <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.action.length}</span></div>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Action needed — Enter IMEI <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.action.length}</span></div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
                   {grps.action.map(a=>(
                     <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -889,10 +904,16 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
                 </div>
               </div>
             )}
-            {grps.review.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>UNDER REVIEW</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.review.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
-            {grps.active.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>ACTIVE CONTRACTS</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.active.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
-            {grps.other.length>0&&<div><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>REJECTED / CHANGES NEEDED</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.other.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
-            {mine.length===0&&<Empty ico="📋" title="No applications yet" sub="Tap 'New Application' to get started"/>}
+            {grps.review.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Under review</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.review.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.active.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Active contracts</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.active.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.action.length===0&&grps.review.length===0&&grps.active.length===0&&<Empty ico="📋" title="No active applications" sub="Start a new application from Home"/>}
+          </div>
+        )}
+        {pg==='completed'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>Completed applications</h1></div>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:16}}>Rejected or changes requested. Tap to view or edit and resubmit.</p>
+            {grps.other.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.other.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title="No completed applications" sub="Applications you've closed or that need changes"/>}
           </div>
         )}
         {pg==='new'&&<div className="page-content" style={{padding:'28px 32px'}}><NewApp devices={devices} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
@@ -907,7 +928,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
 
 // ── UNDERWRITER VIEW ──────────────────────────────────────────
 const UnderwriterView=({apps,onUpdate,addToast})=>{
-  const [pg,setPg]=useState('queue');
+  const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
@@ -921,15 +942,25 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
   const queue=apps.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW].includes(a.status));
   const esc=apps.filter(a=>a.status===ST.ESCALATED);
   const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return a.c.name.toLowerCase().includes(s)||a.id.toLowerCase().includes(s);});
+  const pendingCount=queue.length+esc.length;
 
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='queue'?'Review queue':'All applications'}</span></div>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':pg==='queue'?'Review queue':'All applications'}</span></div>
+        {pg==='dash'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Underwriting</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
+            <div className="home-actions">
+              <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>setPg('queue')}>📋 Review queue {pendingCount>0&&<span style={{background:'rgba(255,255,255,0.25)',fontSize:13,padding:'2px 10px',borderRadius:99,marginLeft:8}}>{pendingCount}</span>}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('all')}>📄 All applications</button>
+            </div>
+          </div>
+        )}
         {pg==='queue'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{queue.length+esc.length} application{queue.length+esc.length!==1?'s':''} awaiting attention</p></div>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{queue.length+esc.length} application{queue.length+esc.length!==1?'s':''} awaiting attention</p></div></div>
             {queue.length>0&&(
               <div style={{marginBottom:24}}>
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>PENDING DECISION <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{queue.length}</span></div>
@@ -959,8 +990,8 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
         )}
         {pg==='all'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:16}}>All applications</h1>
-            <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{maxWidth:320,marginBottom:16}}/>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>All applications</h1></div>
+            <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{maxWidth:320,marginBottom:16,width:'100%'}}/>
             <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{all.length} result{all.length!==1?'s':''}</div>
             <div style={{display:'flex',flexDirection:'column',gap:8}}>{all.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
             {all.length===0&&<Empty ico="🔍" title="No results"/>}
