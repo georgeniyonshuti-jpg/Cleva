@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SellWise</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#0B3D2E;--brand2:#146344;--brand3:#1D8A5E;--brandPale:#E6F3EE;--brandPale2:#D0E9DE;
+  --accent:#D4700A;
+  --bg:#F2F0EB;--surface:#FFFFFF;
+  --border:rgba(11,61,46,0.11);--borderMed:rgba(11,61,46,0.2);
+  --text:#111B15;--textMid:#4A5E52;--textLight:#8FA898;
+  --ok:#1E6B3A;--okBg:#E8F5EE;--okBorder:#A8D8BC;
+  --warn:#A05800;--warnBg:#FEF3E2;--warnBorder:#F0C882;
+  --err:#B01C1C;--errBg:#FEE8E8;--errBorder:#F0AAAA;
+  --info:#1549A0;--infoBg:#E8EFFE;--infoBorder:#A8BCEC;
+  --pur:#5B21B6;--purBg:#EEE9FD;--purBorder:#C4AFEF;
+  --r:10px;--r2:6px;
+  --sh:0 1px 3px rgba(0,0,0,0.07),0 1px 2px rgba(0,0,0,0.04);
+  --sh2:0 4px 16px rgba(0,0,0,0.10),0 1px 4px rgba(0,0,0,0.06);
+}
+body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:15px;-webkit-font-smoothing:antialiased;line-height:1.5}
+input,select,textarea,button{font-family:'DM Sans',sans-serif;font-size:14px}
+input,select,textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r2);background:white;color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--brand2);box-shadow:0 0 0 3px rgba(20,99,68,0.10)}
+input.err,select.err{border-color:var(--err)}
+textarea{resize:vertical;min-height:80px;line-height:1.5}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.13);border-radius:3px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideRight{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fadeUp{animation:fadeUp .22s ease}
+.slideRight{animation:slideRight .2s ease}
+.spin{animation:spin .7s linear infinite}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useCallback,useContext,createContext}=React;
+
+// ── USERS ─────────────────────────────────────────────────────
+// In production, replace with real auth API. Passwords shown for demo purposes.
+const USERS=[
+  {id:'SR01',name:'Alice Ndayisaba',email:'alice@fieldfin.rw',password:'alice123',role:'rep',roleLabel:'Sales Representative'},
+  {id:'SR02',name:'Bob Nzeyimana',email:'bob@fieldfin.rw',password:'bob123',role:'rep',roleLabel:'Sales Representative'},
+  {id:'UW01',name:'Jane Murekatete',email:'jane@fieldfin.rw',password:'jane123',role:'underwriter',roleLabel:'Underwriter'},
+  {id:'UW02',name:'Eric Bizimana',email:'eric@fieldfin.rw',password:'eric123',role:'underwriter',roleLabel:'Underwriter'},
+  {id:'OP01',name:'Ops Support',email:'ops@fieldfin.rw',password:'ops123',role:'ops',roleLabel:'Ops & Support'},
+];
+
+// ── DEVICES ───────────────────────────────────────────────────
+const DEVICES=[
+  {id:'D01',brand:'Tecno',model:'Spark 40 Pro+',sku:'T-SP40PP',specs:'6.7″ AMOLED · 5000mAh · 4+128GB · A14',retail:179000,dep:35800,weekly:5550,wks:26},
+  {id:'D02',brand:'Tecno',model:'Spark Slim',sku:'T-SLIM',specs:'6.67″ AMOLED · 5000mAh · 4+128GB · A14',retail:155000,dep:31000,weekly:4800,wks:26},
+  {id:'D03',brand:'Infinix',model:'Hot 60 Pro+',sku:'I-H60PP',specs:'6.78″ AMOLED · 5000mAh · 4+128GB · A14',retail:168000,dep:33600,weekly:5200,wks:26},
+  {id:'D04',brand:'Itel',model:'S25 Ultra',sku:'IT-S25U',specs:'6.6″ HD+ · 5000mAh · 3+64GB · A13',retail:128000,dep:25600,weekly:3950,wks:26},
+  {id:'D05',brand:'Samsung',model:'Galaxy A06',sku:'S-A06',specs:'6.7″ HD+ · 5000mAh · 3+64GB · A14',retail:142000,dep:28400,weekly:4400,wks:26},
+  {id:'D06',brand:'Tecno',model:'Pop 9',sku:'T-POP9',specs:'6.6″ HD+ · 5000mAh · 2+64GB · A13',retail:92000,dep:18400,weekly:2850,wks:26},
+  {id:'D07',brand:'Infinix',model:'Smart 9 Plus',sku:'I-S9P',specs:'6.6″ HD+ · 5000mAh · 3+64GB · A13',retail:108000,dep:21600,weekly:3350,wks:26},
+  {id:'D08',brand:'Tecno',model:'Spark 40 Pro',sku:'T-SP40P',specs:'6.7″ HD+ · 5000mAh · 4+128GB · A14',retail:152000,dep:30400,weekly:4700,wks:26},
+];
+
+// ── STATUS ────────────────────────────────────────────────────
+const ST={SUBMITTED:'submitted',IN_REVIEW:'in_review',CHANGES:'changes_requested',REJECTED:'rejected',ESCALATED:'escalated',IMEI_PENDING:'imei_pending',IMEI_VERIFIED:'imei_verified',ACTIVE:'active'};
+const SM={
+  submitted:{label:'Pending review',c:'warn'},
+  in_review:{label:'Under review',c:'info'},
+  changes_requested:{label:'Changes needed',c:'warn'},
+  rejected:{label:'Rejected',c:'err'},
+  escalated:{label:'Escalated',c:'pur'},
+  imei_pending:{label:'IMEI needed',c:'warn'},
+  imei_verified:{label:'IMEI verified',c:'info'},
+  active:{label:'Active',c:'ok'},
+};
+const CC={warn:{bg:'var(--warnBg)',fg:'var(--warn)',bd:'var(--warnBorder)'},info:{bg:'var(--infoBg)',fg:'var(--info)',bd:'var(--infoBorder)'},ok:{bg:'var(--okBg)',fg:'var(--ok)',bd:'var(--okBorder)'},err:{bg:'var(--errBg)',fg:'var(--err)',bd:'var(--errBorder)'},pur:{bg:'var(--purBg)',fg:'var(--pur)',bd:'var(--purBorder)')};
+
+// ── HELPERS ───────────────────────────────────────────────────
+const fmtRWF=n=>'RWF '+Number(n).toLocaleString();
+const fmtD=d=>new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+const fmtT=d=>new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let seq=4;const gid=()=>'FF-'+String(++seq).padStart(4,'0');
+const OCCS=['Trader / Business owner','Teacher','Civil servant','Driver / Transport','Farmer','Healthcare worker','Student','Other'];
+const RELS=['Spouse','Parent','Sibling','Child','Colleague','Friend','Other'];
+
+// ── SEED DATA ─────────────────────────────────────────────────
+const SEED=[
+  {id:'FF-0001',status:ST.SUBMITTED,createdAt:new Date(Date.now()-10800000).toISOString(),updatedAt:new Date(Date.now()-10800000).toISOString(),
+   rep:'Alice Ndayisaba',repId:'SR01',
+   c:{name:'Jean Baptiste Habimana',nid:'1199880123456001',phone:'0781234567',addr:'Kimironko, Gasabo',occ:'Trader / Business owner',income:150000,kin:{name:'Marie Habimana',phone:'0789876543',rel:'Spouse'}},
+   dev:DEVICES[0],notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,
+   tl:[{at:new Date(Date.now()-10800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted for review'}]},
+  {id:'FF-0002',status:ST.IMEI_PENDING,createdAt:new Date(Date.now()-172800000).toISOString(),updatedAt:new Date(Date.now()-3600000).toISOString(),
+   rep:'Alice Ndayisaba',repId:'SR01',
+   c:{name:'Claudette Uwase',nid:'1200180123456002',phone:'0782345678',addr:'Nyamirambo, Nyarugenge',occ:'Teacher',income:180000,kin:{name:'Patrick Uwase',phone:'0786543210',rel:'Brother'}},
+   dev:DEVICES[2],notes:'Income confirmed via employer letter. Stable profile.',reviewer:'Jane Murekatete',upya:'UPYA-RW-2025-0892',imei:null,ptId:null,lockedAt:null,
+   tl:[{at:new Date(Date.now()-172800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted for review'},{at:new Date(Date.now()-86400000).toISOString(),by:'Jane Murekatete',txt:'Placed under review'},{at:new Date(Date.now()-3600000).toISOString(),by:'Jane Murekatete',txt:'Approved — UPYA contract UPYA-RW-2025-0892 created'}]},
+  {id:'FF-0003',status:ST.ACTIVE,createdAt:new Date(Date.now()-604800000).toISOString(),updatedAt:new Date(Date.now()-432000000).toISOString(),
+   rep:'Alice Ndayisaba',repId:'SR01',
+   c:{name:'Emmanuel Nkurunziza',nid:'1198180123456003',phone:'0783456789',addr:'Remera, Gasabo',occ:'Driver / Transport',income:200000,kin:{name:'Grace Nkurunziza',phone:'0785432109',rel:'Spouse'}},
+   dev:DEVICES[4],notes:'Very stable income. Strong profile.',reviewer:'Jane Murekatete',upya:'UPYA-RW-2025-0887',imei:'353456789012345',ptId:'PT-2025-04892',lockedAt:new Date(Date.now()-432000000).toISOString(),
+   tl:[{at:new Date(Date.now()-604800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted'},{at:new Date(Date.now()-518400000).toISOString(),by:'Jane Murekatete',txt:'Approved — UPYA contract UPYA-RW-2025-0887 created'},{at:new Date(Date.now()-475200000).toISOString(),by:'Alice Ndayisaba',txt:'IMEI 353456789012345 verified via Carlcare'},{at:new Date(Date.now()-475100000).toISOString(),by:'System',txt:'Registered in PayTrigger (PT-2025-04892)'},{at:new Date(Date.now()-432000000).toISOString(),by:'Alice Ndayisaba',txt:'Phone locked — contract activated, payments enabled'}]},
+  {id:'FF-0004',status:ST.ESCALATED,createdAt:new Date(Date.now()-86400000).toISOString(),updatedAt:new Date(Date.now()-1800000).toISOString(),
+   rep:'Bob Nzeyimana',repId:'SR02',
+   c:{name:'Florentine Mukamana',nid:'1200480123456004',phone:'0784567890',addr:'Gisozi, Gasabo',occ:'Trader / Business owner',income:350000,kin:{name:'Théogène Mukama',phone:'0784321098',rel:'Parent'}},
+   dev:DEVICES[1],notes:'Customer reported existing financing. Escalated to credit committee.',reviewer:'Jane Murekatete',upya:null,imei:null,ptId:null,lockedAt:null,
+   tl:[{at:new Date(Date.now()-86400000).toISOString(),by:'Bob Nzeyimana',txt:'Application submitted'},{at:new Date(Date.now()-1800000).toISOString(),by:'Jane Murekatete',txt:'Escalated to credit committee — prior financing flagged'}]},
+];
+
+// ── CONTEXT ───────────────────────────────────────────────────
+const Ctx=createContext(null);
+
+// ── UI COMPONENTS ─────────────────────────────────────────────
+const Badge=({st})=>{const m=SM[st]||{label:st,c:'info'};const c=CC[m.c]||CC.info;return <span style={{display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:99,fontSize:11,fontWeight:600,letterSpacing:'0.3px',background:c.bg,color:c.fg,border:`1px solid ${c.bd}`}}>{m.label}</span>;};
+const Spin=({size=14,dark=false})=><span className="spin" style={{display:'inline-block',width:size,height:size,border:`2px solid ${dark?'rgba(11,61,46,0.15)':'rgba(255,255,255,0.3)'}`,borderTopColor:dark?'var(--brand2)':'white',borderRadius:'50%',verticalAlign:'middle'}}/>;
+
+const Btn=({children,onClick,v='def',sz='md',disabled=false,loading=false,icon,full=false,style={}})=>{
+  const vs={primary:{bg:'var(--brand)',fg:'white',bd:'var(--brand)',hov:'var(--brand2)'},ok:{bg:'var(--okBg)',fg:'var(--ok)',bd:'var(--okBorder)',hov:'#C0E8D0'},warn:{bg:'var(--warnBg)',fg:'var(--warn)',bd:'var(--warnBorder)',hov:'#F5DFA8'},err:{bg:'var(--errBg)',fg:'var(--err)',bd:'var(--errBorder)',hov:'#F5C0C0'},info:{bg:'var(--infoBg)',fg:'var(--info)',bd:'var(--infoBorder)',hov:'#C0D0F5'},pur:{bg:'var(--purBg)',fg:'var(--pur)',bd:'var(--purBorder)',hov:'#D8CCF8'},def:{bg:'white',fg:'var(--text)',bd:'var(--border)',hov:'var(--bg)'},ghost:{bg:'transparent',fg:'var(--textMid)',bd:'transparent',hov:'rgba(0,0,0,0.05)'}};
+  const vv=vs[v]||vs.def;const pads={sm:'5px 11px',md:'9px 16px',lg:'12px 22px'};const fss={sm:12,md:14,lg:15};
+  const [h,setH]=useState(false);
+  return <button onClick={disabled||loading?undefined:onClick} disabled={disabled||loading} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{display:'inline-flex',alignItems:'center',gap:6,padding:pads[sz],fontSize:fss[sz],fontWeight:500,borderRadius:'var(--r2)',cursor:disabled||loading?'not-allowed':'pointer',border:`1.5px solid ${disabled?'var(--border)':vv.bd}`,background:disabled?'var(--bg)':h?vv.hov:vv.bg,color:disabled?'var(--textLight)':vv.fg,width:full?'100%':'auto',justifyContent:full?'center':'flex-start',transition:'all .13s',userSelect:'none',whiteSpace:'nowrap',...style}}>{loading?<Spin dark={v==='def'||v==='ghost'} size={13}/>:icon&&<span style={{fontSize:13,lineHeight:1}}>{icon}</span>}{children}</button>;
+};
+
+const Card=({children,sx={}})=><div style={{background:'var(--surface)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',boxShadow:'var(--sh)',...sx}}>{children}</div>;
+const Fld=({label,val,mono=false})=><div style={{paddingBottom:8,marginBottom:8,borderBottom:'1px solid rgba(0,0,0,0.05)'}}><div style={{fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:2}}>{label}</div><div style={{fontSize:13,fontFamily:mono?'DM Mono,monospace':undefined,color:val?'var(--text)':'var(--textLight)'}}>{val||'—'}</div></div>;
+const FF=({label,err,children,req=false})=><div style={{display:'flex',flexDirection:'column',gap:3}}>{label&&<label style={{fontSize:11,fontWeight:600,color:'var(--textMid)'}}>{label}{req&&<span style={{color:'var(--err)',marginLeft:2}}>*</span>}</label>}{children}{err&&<span style={{fontSize:11,color:'var(--err)'}}>{err}</span>}</div>;
+const Empty=({ico='📋',title,sub})=><div style={{textAlign:'center',padding:'56px 24px',color:'var(--textMid)'}}><div style={{fontSize:36,marginBottom:12}}>{ico}</div><div style={{fontWeight:600,fontSize:15,color:'var(--text)',marginBottom:4}}>{title}</div>{sub&&<div style={{fontSize:12,color:'var(--textLight)'}}>{sub}</div>}</div>;
+
+const ACard=({app,onClick})=>(
+  <div onClick={onClick} style={{background:'white',border:'1.5px solid var(--border)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',transition:'border-color .13s,box-shadow .13s'}}
+    onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--brand3)';e.currentTarget.style.boxShadow='0 2px 10px rgba(11,61,46,0.1)'}}
+    onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.boxShadow='none'}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
+      <div><div style={{fontWeight:600,fontSize:14}}>{app.c.name}</div><div style={{fontSize:10,color:'var(--textLight)',fontFamily:'DM Mono,monospace',marginTop:1}}>{app.id}</div></div>
+      <Badge st={app.status}/>
+    </div>
+    <div style={{display:'flex',gap:10,fontSize:11,color:'var(--textMid)'}}>
+      <span>{app.dev.brand} {app.dev.model}</span><span>·</span><span>{fmtD(app.createdAt)}</span><span>·</span><span>{app.rep.split(' ')[0]}</span>
+    </div>
+  </div>
+);
+
+const Toast=({toasts})=>(
+  <div style={{position:'fixed',top:20,right:20,zIndex:9999,display:'flex',flexDirection:'column',gap:8,pointerEvents:'none'}}>
+    {toasts.map(t=>{const c=CC[t.c]||CC.info;return <div key={t.id} className="slideRight" style={{background:c.bg,border:`1.5px solid ${c.bd}`,color:c.fg,borderRadius:'var(--r)',padding:'12px 16px',minWidth:280,maxWidth:360,boxShadow:'var(--sh2)'}}><div style={{fontWeight:600,fontSize:13}}>{t.title}</div>{t.msg&&<div style={{fontSize:11,marginTop:2,opacity:.85}}>{t.msg}</div>}</div>;})}
+  </div>
+);
+
+// ── SIDEBAR ───────────────────────────────────────────────────
+const Sidebar=({page,setPage,apps})=>{
+  const {user,logout}=useContext(Ctx);
+  const pending=apps.filter(a=>a.status===ST.SUBMITTED).length;
+  const imeiNeeded=apps.filter(a=>a.status===ST.IMEI_PENDING&&a.repId===user.id).length;
+  const navItems={
+    rep:[{k:'dash',l:'My Applications',badge:imeiNeeded>0?imeiNeeded:0},{k:'new',l:'New Application'},{k:'prices',l:'Price List'}],
+    underwriter:[{k:'queue',l:'Review Queue',badge:pending},{k:'all',l:'All Applications'}],
+    ops:[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'}],
+  }[user.role]||[];
+  const initials=user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  return(
+    <div style={{width:210,flexShrink:0,background:'var(--brand)',minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+      <div style={{padding:'22px 18px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+        <div style={{fontSize:20,fontWeight:800,color:'white',letterSpacing:'-0.5px'}}>SellWise</div>
+        <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:2,textTransform:'uppercase',letterSpacing:'1.5px'}}>PAYGO Underwriting</div>
+      </div>
+      <div style={{padding:'13px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',gap:10}}>
+        <div style={{width:34,height:34,borderRadius:17,background:'rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'white',flexShrink:0}}>{initials}</div>
+        <div style={{overflow:'hidden'}}>
+          <div style={{fontSize:13,color:'white',fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user.name}</div>
+          <div style={{fontSize:10,color:'rgba(255,255,255,0.45)',marginTop:1}}>{user.roleLabel}</div>
+        </div>
+      </div>
+      <nav style={{flex:1,padding:'10px 10px'}}>
+        {navItems.map(item=>{
+          const active=page===item.k;
+          return <button key={item.k} onClick={()=>setPage(item.k)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'9px 11px',marginBottom:2,background:active?'rgba(255,255,255,0.13)':'transparent',color:active?'white':'rgba(255,255,255,0.58)',border:'none',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:active?600:400,textAlign:'left',transition:'all .13s'}}
+            onMouseEnter={e=>{if(!active)e.currentTarget.style.background='rgba(255,255,255,0.07)'}}
+            onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent'}}>
+            <span>{item.l}</span>
+            {item.badge>0&&<span style={{background:'var(--accent)',color:'white',fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:99}}>{item.badge}</span>}
+          </button>;
+        })}
+      </nav>
+      <div style={{padding:'0 10px 18px'}}>
+        <button onClick={logout} style={{width:'100%',padding:'9px 11px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'var(--r2)',color:'rgba(255,255,255,0.5)',cursor:'pointer',fontSize:11,textAlign:'center'}}>Sign out</button>
+      </div>
+    </div>
+  );
+};
+
+// ── LOGIN ─────────────────────────────────────────────────────
+const Login=({onLogin})=>{
+  const [email,setEmail]=useState('');
+  const [pass,setPass]=useState('');
+  const [err,setErr]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [showPass,setShowPass]=useState(false);
+
+  const submit=async()=>{
+    setErr('');
+    if(!email.trim()||!pass.trim()){setErr('Enter your email and password');return;}
+    setLoading(true);
+    await sleep(600);
+    const user=USERS.find(u=>u.email.toLowerCase()===email.toLowerCase().trim()&&u.password===pass);
+    if(!user){setErr('Incorrect email or password');setLoading(false);return;}
+    onLogin(user);
+  };
+
+  return(
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(145deg,var(--brand) 0%,#1D6B4C 60%,#155239 100%)',padding:24,position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',top:-80,right:-80,width:320,height:320,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.05)'}}/>
+      <div style={{position:'absolute',bottom:-100,left:-100,width:400,height:400,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.04)'}}/>
+      <div style={{width:'100%',maxWidth:380,position:'relative'}}>
+        <div style={{textAlign:'center',marginBottom:40}}>
+          <div style={{fontSize:42,fontWeight:900,color:'white',letterSpacing:'-1.5px',marginBottom:6}}>SellWise</div>
+          <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'3px'}}>PAYGO Underwriting Platform</div>
+        </div>
+        <div style={{background:'rgba(255,255,255,0.06)',backdropFilter:'blur(12px)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'var(--r)',padding:'28px 26px'}}>
+          <div style={{fontSize:15,fontWeight:600,color:'white',marginBottom:20}}>Sign in to your account</div>
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.55)',display:'block',marginBottom:5}}>Email address</label>
+              <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="you@fieldfin.rw" style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.15)',color:'white',borderRadius:'var(--r2)'}} className={err?'err':''}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.55)',display:'block',marginBottom:5}}>Password</label>
+              <div style={{position:'relative'}}>
+                <input type={showPass?'text':'password'} value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="••••••••" style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.15)',color:'white',borderRadius:'var(--r2)',paddingRight:44}} className={err?'err':''}/>
+                <button onClick={()=>setShowPass(p=>!p)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'rgba(255,255,255,0.45)',cursor:'pointer',fontSize:12,padding:4}}>{showPass?'Hide':'Show'}</button>
+              </div>
+            </div>
+            {err&&<div style={{padding:'9px 12px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',fontWeight:500}}>{err}</div>}
+            <button onClick={submit} disabled={loading} style={{padding:'11px 0',background:loading?'rgba(255,255,255,0.15)':'white',border:'none',borderRadius:'var(--r2)',color:loading?'rgba(255,255,255,0.5)':'var(--brand)',fontWeight:700,fontSize:14,cursor:loading?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,transition:'all .15s',marginTop:4}}>
+              {loading?<><Spin size={14}/> Signing in…</>:'Sign in'}
+            </button>
+          </div>
+          <div style={{marginTop:20,padding:'12px 14px',background:'rgba(255,255,255,0.06)',borderRadius:'var(--r2)',border:'1px solid rgba(255,255,255,0.08)'}}>
+            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'rgba(255,255,255,0.35)',marginBottom:8}}>Demo accounts</div>
+            {[['alice@fieldfin.rw','alice123','Sales Rep'],['jane@fieldfin.rw','jane123','Underwriter'],['ops@fieldfin.rw','ops123','Ops']].map(([e,p,r])=>(
+              <div key={e} onClick={()=>{setEmail(e);setPass(p);setErr('');}} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                <span style={{fontSize:11,color:'rgba(255,255,255,0.5)',fontFamily:'DM Mono,monospace'}}>{e}</span>
+                <span style={{fontSize:9,background:'rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.4)',padding:'2px 7px',borderRadius:99}}>{r}</span>
+              </div>
+            ))}
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',marginTop:6}}>Click any row to auto-fill</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── PRICE LIST ────────────────────────────────────────────────
+const PriceList=()=>(
+  <div className="fadeUp" style={{padding:'28px 32px'}}>
+    <div style={{marginBottom:22}}>
+      <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Device price list</h1>
+      <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>26-week PAYGO contracts · All amounts in RWF · March 2026</p>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(230px,1fr))',gap:12}}>
+      {DEVICES.map(d=>{const tot=d.dep+d.weekly*d.wks;const rate=(((tot-d.retail)/d.retail)*100).toFixed(1);return(
+        <Card key={d.id} sx={{overflow:'hidden'}}>
+          <div style={{height:3,background:'linear-gradient(90deg,var(--brand),var(--brand3))'}}/>
+          <div style={{padding:'15px 16px'}}>
+            <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{d.model}</div>
+            <div style={{fontSize:10,color:'var(--textLight)',marginBottom:13,lineHeight:1.6}}>{d.specs}</div>
+            {[['Cash price',fmtRWF(d.retail)],['Deposit',fmtRWF(d.dep)],['Weekly × 26',fmtRWF(d.weekly)],['Total payable',fmtRWF(tot)]].map(([k,v])=>(
+              <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:5}}>
+                <span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span>
+              </div>
+            ))}
+            <div style={{display:'flex',justifyContent:'flex-end',marginTop:8,paddingTop:8,borderTop:'1px dashed rgba(0,0,0,0.07)'}}>
+              <span style={{background:'var(--warnBg)',color:'var(--warn)',fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:99}}>+{rate}% cost</span>
+            </div>
+          </div>
+        </Card>
+      );})}
+    </div>
+  </div>
+);
+
+// ── NEW APPLICATION ───────────────────────────────────────────
+const NewApp=({onSubmit,onBack})=>{
+  const {user}=useContext(Ctx);
+  const [step,setStep]=useState(1);
+  const [f,setF]=useState({name:'',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:''});
+  const [e,setE]=useState({});
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const v1=()=>{const er={};if(!f.name.trim())er.name='Required';if(f.nid.replace(/\D/g,'').length<16)er.nid='Must be 16 digits';if(!f.phone.trim())er.phone='Required';if(!f.addr.trim())er.addr='Required';if(!f.occ)er.occ='Required';if(!f.income||isNaN(f.income)||+f.income<1)er.income='Enter a valid amount';if(!f.kn.trim())er.kn='Required';if(!f.kp.trim())er.kp='Required';if(!f.kr)er.kr='Required';setE(er);return!Object.keys(er).length;};
+  const v2=()=>{const er={};if(!f.did)er.did='Please select a device';setE(er);return!Object.keys(er).length;};
+  const next=()=>{if(step===1&&v1())setStep(2);else if(step===2&&v2())setStep(3);};
+  const dev=DEVICES.find(d=>d.id===f.did);
+  const STEPS=['Customer details','Select device','Review & submit'];
+  return(
+    <div className="fadeUp" style={{padding:'28px 32px',maxWidth:820}}>
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22}}>
+        <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
+        <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>New application</h1><p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>Step {step} of 3 — {STEPS[step-1]}</p></div>
+      </div>
+      <div style={{display:'flex',alignItems:'center',marginBottom:26}}>
+        {STEPS.map((l,i)=>(
+          <React.Fragment key={i}>
+            <div style={{display:'flex',alignItems:'center',gap:7}}>
+              <div style={{width:26,height:26,borderRadius:13,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,background:step>i+1?'var(--ok)':step===i+1?'var(--brand)':'var(--border)',color:step>i+1||step===i+1?'white':'var(--textLight)'}}>{step>i+1?'✓':i+1}</div>
+              <span style={{fontSize:12,fontWeight:step===i+1?600:400,color:step===i+1?'var(--text)':'var(--textLight)'}}>{l}</span>
+            </div>
+            {i<2&&<div style={{flex:1,height:1,background:'var(--border)',margin:'0 10px'}}/>}
+          </React.Fragment>
+        ))}
+      </div>
+      <Card sx={{padding:22}}>
+        {step===1&&(
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:2}}>Customer information</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <FF label="Full name" req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder="As on national ID" className={e.name?'err':''}/></FF>
+              <FF label="National ID number" req err={e.nid}><input value={f.nid} onChange={ev=>s('nid',ev.target.value.replace(/\D/g,'').slice(0,16))} placeholder="16 digits" className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/></FF>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <FF label="Phone number" req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF>
+              <FF label="Occupation" req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">Select...</option>{OCCS.map(o=><option key={o}>{o}</option>)}</select></FF>
+            </div>
+            <FF label="Address / location" req err={e.addr}><input value={f.addr} onChange={ev=>s('addr',ev.target.value)} placeholder="Sector, district — e.g. Kimironko, Gasabo" className={e.addr?'err':''}/></FF>
+            <FF label="Monthly income (RWF)" req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder="e.g. 150000" className={e.income?'err':''}/></FF>
+            <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Next of kin</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 160px',gap:12}}>
+                <FF label="Full name" req err={e.kn}><input value={f.kn} onChange={ev=>s('kn',ev.target.value)} placeholder="Next of kin name" className={e.kn?'err':''}/></FF>
+                <FF label="Phone" req err={e.kp}><input value={f.kp} onChange={ev=>s('kp',ev.target.value)} placeholder="07XXXXXXXX" className={e.kp?'err':''}/></FF>
+                <FF label="Relationship" req err={e.kr}><select value={f.kr} onChange={ev=>s('kr',ev.target.value)} className={e.kr?'err':''}><option value="">Select...</option>{RELS.map(r=><option key={r}>{r}</option>)}</select></FF>
+              </div>
+            </div>
+          </div>
+        )}
+        {step===2&&(
+          <div>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Choose device</div>
+            {e.did&&<div style={{padding:'9px 13px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',marginBottom:12}}>{e.did}</div>}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
+              {DEVICES.map(d=>{const sel=f.did===d.id;const tot=d.dep+d.weekly*d.wks;return(
+                <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative'}}>
+                  {sel&&<div style={{position:'absolute',top:9,right:9,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
+                  <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
+                  <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>{d.model}</div>
+                  <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs}</div>
+                  {[['Deposit',fmtRWF(d.dep)],['Weekly',fmtRWF(d.weekly)],['Total',fmtRWF(tot)]].map(([k,v])=>(
+                    <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:4}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
+                  ))}
+                </div>
+              );})}
+            </div>
+          </div>
+        )}
+        {step===3&&dev&&(
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:22}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Customer</div>
+              {[['Full name',f.name],['National ID',f.nid],['Phone',f.phone],['Address',f.addr],['Occupation',f.occ],['Monthly income',fmtRWF(+f.income)],['Next of kin',`${f.kn} (${f.kr})`],['Kin phone',f.kp]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Selected device</div>
+              <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{dev.brand} {dev.model}</div>
+              <div style={{fontSize:11,color:'var(--textLight)',marginBottom:14}}>{dev.specs}</div>
+              {[['SKU',dev.sku],['Deposit',fmtRWF(dev.dep)],['Weekly × 26',fmtRWF(dev.weekly)],['Total contract',fmtRWF(dev.dep+dev.weekly*dev.wks)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+              <div style={{marginTop:12,padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6}}>Confirm all details are correct. The application enters the review queue immediately on submission.</div>
+            </div>
+          </div>
+        )}
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:22,paddingTop:18,borderTop:'1.5px solid var(--border)'}}>
+          {step>1?<Btn onClick={()=>setStep(p=>p-1)} v="def" icon="←">Back</Btn>:<div/>}
+          {step<3?<Btn onClick={next} v="primary" icon="→">Continue</Btn>:<Btn onClick={()=>onSubmit(f,dev)} v="primary" icon="✓">Submit for review</Btn>}
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+// ── IMEI FLOW ─────────────────────────────────────────────────
+const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
+  const {user}=useContext(Ctx);
+  const [imei,setImei]=useState(app.imei||'');
+  const [phase,setPhase]=useState(app.status===ST.IMEI_VERIFIED?'verified':'entry');
+  const [ld,setLd]=useState(null);
+
+  const verify=async()=>{
+    if(imei.length!==15||!/^\d+$/.test(imei)){addToast('err','Invalid IMEI','Must be exactly 15 digits');return;}
+    setLd('carlcare');await sleep(2400);
+    setLd('pt');await sleep(1700);
+    const ptId='PT-2026-'+Math.floor(10000+Math.random()*90000);
+    onUpdate(app.id,{imei,ptId,status:ST.IMEI_VERIFIED,tlEntry:{by:user.name,txt:`IMEI ${imei} verified via Carlcare`}});
+    onUpdate(app.id,{tlEntry:{by:'System',txt:`Registered in PayTrigger (${ptId})`}});
+    addToast('ok','IMEI verified','Carlcare confirmed · Registered in PayTrigger');
+    setPhase('verified');setLd(null);
+  };
+
+  const confirmLocked=async()=>{
+    setLd('lock');await sleep(2000);
+    onUpdate(app.id,{status:ST.ACTIVE,lockedAt:new Date().toISOString(),tlEntry:{by:user.name,txt:'Phone locked — contract activated, payments enabled'}});
+    addToast('ok','Contract activated!','Device added to UPYA inventory. Customer can now make payments.');
+    setLd(null);onBack();
+  };
+
+  return(
+    <div className="fadeUp" style={{padding:'28px 32px',maxWidth:640}}>
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22}}>
+        <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
+        <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>IMEI & activation</h1><p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>{app.id} · {app.c.name} · {app.dev.brand} {app.dev.model}</p></div>
+      </div>
+      <div style={{display:'flex',alignItems:'center',marginBottom:24}}>
+        {[{l:'Enter & verify IMEI',done:phase==='verified'||app.status===ST.ACTIVE},{l:'Lock phone & activate',done:app.status===ST.ACTIVE}].map((s,i)=>(
+          <React.Fragment key={i}>
+            <div style={{display:'flex',alignItems:'center',gap:7}}>
+              <div style={{width:26,height:26,borderRadius:13,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,background:s.done?'var(--ok)':'var(--brand)',color:'white'}}>{s.done?'✓':i+1}</div>
+              <span style={{fontSize:12,fontWeight:500,color:s.done?'var(--ok)':'var(--text)'}}>{s.l}</span>
+            </div>
+            {i<1&&<div style={{flex:1,height:1,background:'var(--border)',margin:'0 10px'}}/>}
+          </React.Fragment>
+        ))}
+      </div>
+      {app.upya&&<div style={{padding:'8px 12px',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:'var(--r2)',fontSize:12,color:'var(--brand2)',marginBottom:16}}>UPYA Contract: <strong style={{fontFamily:'DM Mono,monospace'}}>{app.upya}</strong></div>}
+      <Card sx={{padding:22}}>
+        {phase==='entry'&&(
+          <div>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:6}}>Enter device IMEI</div>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:18,lineHeight:1.7}}>Enter the 15-digit IMEI of the <strong>{app.dev.brand} {app.dev.model}</strong>. We'll verify it against <strong>Carlcare</strong> to confirm the device model matches, then automatically register it in <strong>PayTrigger</strong>.</p>
+            <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:8}}>
+              <div style={{flex:1}}>
+                <input value={imei} onChange={ev=>setImei(ev.target.value.replace(/\D/g,'').slice(0,15))} placeholder="15-digit IMEI number" style={{fontFamily:'DM Mono,monospace',fontSize:17,letterSpacing:'1.5px'}} maxLength={15}/>
+                <div style={{fontSize:10,color:'var(--textLight)',marginTop:4}}>Dial *#06# on the device · {imei.length}/15 digits</div>
+              </div>
+              <Btn onClick={verify} v="primary" sz="lg" loading={ld==='carlcare'||ld==='pt'} disabled={imei.length!==15}>
+                {ld==='carlcare'?'Checking…':ld==='pt'?'Registering…':'Verify IMEI'}
+              </Btn>
+            </div>
+            {(ld==='carlcare'||ld==='pt')&&<div style={{padding:'10px 13px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--info)',display:'flex',alignItems:'center',gap:8}}><Spin size={13} dark/><span>{ld==='carlcare'?'Verifying IMEI with Carlcare database…':'Uploading to PayTrigger locking system…'}</span></div>}
+          </div>
+        )}
+        {phase==='verified'&&(
+          <div>
+            <div style={{padding:'13px 15px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)',marginBottom:20}}>
+              <div style={{fontWeight:600,fontSize:13,color:'var(--ok)',marginBottom:3}}>✓ IMEI verified & registered in PayTrigger</div>
+              <div style={{fontSize:11,color:'var(--ok)',opacity:.85}}>IMEI: <span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{app.imei||imei}</span>{app.ptId&&<span> · PayTrigger: <span style={{fontFamily:'DM Mono,monospace'}}>{app.ptId}</span></span>}</div>
+            </div>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:6}}>Now lock the phone manually</div>
+            <p style={{fontSize:12,color:'var(--textMid)',lineHeight:1.7,marginBottom:14}}>Open PayTrigger and lock the device. Once the customer's phone shows the lock screen, confirm below to activate the contract and enable payments.</p>
+            <div style={{padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6,marginBottom:18}}><strong>Do not confirm</strong> until the lock screen is visible on the customer's phone.</div>
+            <a href="https://paytrigger.shalltry.com/pay-trigger/" target="_blank" style={{display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',color:'var(--info)',fontSize:12,fontWeight:500,textDecoration:'none',marginBottom:16}}>↗ Open PayTrigger portal</a>
+            <Btn onClick={confirmLocked} v="ok" sz="lg" full loading={ld==='lock'} icon="🔒">{ld==='lock'?'Activating contract…':'Confirm phone is locked — activate contract'}</Btn>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+// ── APP DETAIL ────────────────────────────────────────────────
+const AppDetail=({app,onUpdate,addToast,onBack})=>{
+  const {user}=useContext(Ctx);
+  const [note,setNote]=useState(app.notes||'');
+  const [ld,setLd]=useState(null);
+  const [showRej,setShowRej]=useState(false);
+  const [rejReason,setRejReason]=useState('');
+
+  const approve=async()=>{
+    setLd('ap');await sleep(2200);
+    const uid='UPYA-RW-2026-'+Math.floor(1000+Math.random()*9000);
+    onUpdate(app.id,{status:ST.IMEI_PENDING,notes:note,reviewer:user.name,upya:uid,tlEntry:{by:user.name,txt:`Approved — UPYA contract ${uid} created`}});
+    addToast('ok','Application approved',`UPYA contract ${uid} created`);setLd(null);onBack();
+  };
+  const reject=async()=>{
+    if(!rejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}
+    setLd('rej');await sleep(700);
+    onUpdate(app.id,{status:ST.REJECTED,notes:rejReason,reviewer:user.name,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});
+    addToast('info','Application rejected','Rep notified');setLd(null);onBack();
+  };
+  const requestChanges=async()=>{
+    setLd('ch');await sleep(700);
+    onUpdate(app.id,{status:ST.CHANGES,notes:note,reviewer:user.name,tlEntry:{by:user.name,txt:'Changes requested — returned to sales rep'}});
+    addToast('warn','Changes requested','Application returned to rep');setLd(null);onBack();
+  };
+  const escalate=async()=>{
+    setLd('esc');await sleep(700);
+    onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,tlEntry:{by:user.name,txt:'Escalated to credit committee'}});
+    addToast('info','Escalated','Sent to credit committee');setLd(null);onBack();
+  };
+
+  const c=app.c,d=app.dev,tot=d.dep+d.weekly*d.wks;
+  const ratio=c.income>0?(d.weekly/c.income*100):0;
+  const affordOk=c.income>0&&ratio<30;
+  const isUnderwriter=user.role==='underwriter';
+  const reviewable=[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(app.status);
+  return(
+    <div className="fadeUp" style={{padding:'28px 32px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22}}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
+          <div>
+            <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:3}}>
+              <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>{app.id}</span>
+              <Badge st={app.status}/>
+              {app.upya&&<span style={{fontSize:10,background:'var(--brandPale)',color:'var(--brand2)',padding:'2px 8px',borderRadius:99,fontFamily:'DM Mono,monospace'}}>{app.upya}</span>}
+            </div>
+            <h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>{c.name}</h1>
+          </div>
+        </div>
+        <div style={{textAlign:'right',fontSize:11,color:'var(--textLight)'}}><div>{fmtD(app.createdAt)} {fmtT(app.createdAt)}</div><div style={{marginTop:2}}>{app.rep}</div></div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+        <Card sx={{padding:'16px 18px'}}>
+          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:13}}>Customer</div>
+          {[['Full name',c.name],['National ID',c.nid],['Phone',c.phone],['Address',c.addr],['Occupation',c.occ],['Monthly income',fmtRWF(c.income)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+          <div style={{borderTop:'1.5px solid var(--border)',paddingTop:11,marginTop:4}}>
+            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Next of kin</div>
+            {[['Name',c.kin.name],['Phone',c.kin.phone],['Relationship',c.kin.rel]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+          </div>
+        </Card>
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          <Card sx={{padding:'16px 18px'}}>
+            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:1}}>{d.brand} {d.model}</div>
+            <div style={{fontSize:11,color:'var(--textLight)',marginBottom:13}}>{d.specs}</div>
+            {[['SKU',d.sku],['Deposit',fmtRWF(d.dep)],['Weekly × 26',fmtRWF(d.weekly)],['Total contract',fmtRWF(tot)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+            {app.imei&&<Fld label="IMEI" val={app.imei} mono/>}
+            {app.ptId&&<Fld label="PayTrigger ID" val={app.ptId} mono/>}
+          </Card>
+          <Card sx={{padding:'14px 16px'}}>
+            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Affordability check</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
+              <span style={{fontSize:12,color:'var(--textMid)'}}>Weekly repayment / income</span>
+              <span style={{fontFamily:'DM Mono,monospace',fontWeight:700,fontSize:16}}>{c.income>0?ratio.toFixed(1):'—'}%</span>
+            </div>
+            <div style={{height:7,background:'var(--bg)',borderRadius:4,overflow:'hidden',marginBottom:8}}>
+              <div style={{height:'100%',borderRadius:4,width:`${Math.min(100,ratio)}%`,background:affordOk?'var(--ok)':'var(--err)',transition:'width .5s'}}/>
+            </div>
+            <div style={{fontSize:11,fontWeight:600,padding:'6px 10px',borderRadius:'var(--r2)',background:affordOk?'var(--okBg)':'var(--errBg)',color:affordOk?'var(--ok)':'var(--err)'}}>{affordOk?'✓ Within policy (< 30% of income)':'⚠ Exceeds policy limit (> 30% of income)'}</div>
+          </Card>
+        </div>
+      </div>
+      {isUnderwriter&&reviewable&&(
+        <Card sx={{padding:18,marginBottom:14,border:'2px solid var(--brandPale2)'}}>
+          <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Credit decision</div>
+          <FF label="Underwriter notes"><textarea value={note} onChange={ev=>setNote(ev.target.value)} placeholder="Add notes (recommended for all decisions)..." rows={3}/></FF>
+          <div style={{display:'flex',gap:8,marginTop:13,flexWrap:'wrap'}}>
+            <Btn onClick={approve} v="ok" loading={ld==='ap'} icon="✓">Approve</Btn>
+            <Btn onClick={requestChanges} v="warn" loading={ld==='ch'} icon="↩">Request changes</Btn>
+            <Btn onClick={escalate} v="pur" loading={ld==='esc'} icon="↑">Escalate</Btn>
+            <Btn onClick={()=>setShowRej(p=>!p)} v="err" icon="✕">Reject</Btn>
+          </div>
+          {showRej&&(
+            <div style={{marginTop:13,padding:'13px 15px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)'}}>
+              <div style={{fontSize:11,fontWeight:600,color:'var(--err)',marginBottom:7}}>Rejection reason (required)</div>
+              <textarea value={rejReason} onChange={ev=>setRejReason(ev.target.value)} placeholder="Explain why the application is being rejected..." rows={2} style={{borderColor:'var(--errBorder)'}}/>
+              <div style={{marginTop:9}}><Btn onClick={reject} v="err" loading={ld==='rej'}>Confirm rejection</Btn></div>
+            </div>
+          )}
+        </Card>
+      )}
+      {app.notes&&!isUnderwriter&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Underwriter notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
+      <Card sx={{padding:'16px 18px'}}>
+        <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Activity timeline</div>
+        {(app.tl||[]).map((t,i)=>(
+          <div key={i} style={{display:'flex',gap:12,marginBottom:12,alignItems:'flex-start'}}>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',flexShrink:0,paddingTop:3}}>
+              <div style={{width:8,height:8,borderRadius:4,background:i===0?'var(--brand3)':'var(--border)',border:`2px solid ${i===0?'var(--brand)':'var(--borderMed)'}`}}/>
+              {i<(app.tl||[]).length-1&&<div style={{width:1,flex:1,minHeight:18,background:'var(--border)',marginTop:3}}/>}
+            </div>
+            <div style={{flex:1}}><div style={{fontSize:12,fontWeight:500}}>{t.txt}</div><div style={{fontSize:11,color:'var(--textLight)',marginTop:1}}>{t.by} · {fmtD(t.at)} at {fmtT(t.at)}</div></div>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+};
+
+// ── SALES REP VIEW ────────────────────────────────────────────
+const SalesRepView=({apps,onUpdate,addToast})=>{
+  const {user}=useContext(Ctx);
+  const [pg,setPg]=useState('dash');
+  const [sel,setSel]=useState(null);
+  const mine=apps.filter(a=>a.repId===user.id);
+  const grps={action:mine.filter(a=>[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(a.status)),review:mine.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(a.status)),active:mine.filter(a=>a.status===ST.ACTIVE),other:mine.filter(a=>[ST.REJECTED,ST.CHANGES].includes(a.status))};
+
+  if(sel){
+    const app=apps.find(a=>a.id===sel);
+    if(app&&[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(app.status))
+      return <div style={{display:'flex',flex:1}}><Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/><div style={{flex:1,overflow:'auto'}}><IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div>;
+    if(app) return <div style={{display:'flex',flex:1}}><Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/><div style={{flex:1,overflow:'auto'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div>;
+  }
+
+  return(
+    <div style={{display:'flex',flex:1,minHeight:0}}>
+      <Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/>
+      <div style={{flex:1,overflow:'auto'}}>
+        {pg==='dash'&&(
+          <div className="fadeUp" style={{padding:'28px 32px'}}>
+            <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>My applications</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Welcome back, {user.name.split(' ')[0]}</p></div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:26}}>
+              {[['Total',mine.length,'var(--brand)'],['Active',grps.active.length,'var(--ok)'],['Under review',grps.review.length,'var(--info)'],['Action needed',grps.action.length,'var(--warn)']].map(([l,v,c])=>(
+                <Card key={l} sx={{padding:'13px 15px'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:4}}>{l}</div><div style={{fontSize:24,fontWeight:800,color:c}}>{v}</div></Card>
+              ))}
+            </div>
+            {grps.action.length>0&&(
+              <div style={{marginBottom:22}}>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>ACTION NEEDED — Enter IMEI <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.action.length}</span></div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {grps.action.map(a=>(
+                    <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div><div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · Approved{a.upya&&` · ${a.upya}`}</div></div>
+                      <Btn v="warn" sz="sm">Enter IMEI →</Btn>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {grps.review.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>UNDER REVIEW</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.review.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.active.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>ACTIVE CONTRACTS</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.active.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.other.length>0&&<div><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>REJECTED / CHANGES NEEDED</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.other.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {mine.length===0&&<Empty ico="📋" title="No applications yet" sub="Tap 'New Application' to get started"/>}
+          </div>
+        )}
+        {pg==='new'&&<NewApp onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
+          const na={id:gid(),status:ST.SUBMITTED,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),rep:user.name,repId:user.id,c:{name:f.name,nid:f.nid,phone:f.phone,addr:f.addr,occ:f.occ,income:+f.income,kin:{name:f.kn,phone:f.kp,rel:f.kr}},dev,notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for review'}]};
+          onUpdate(null,null,na);addToast('ok','Application submitted','Sent to the review queue');setPg('dash');
+        }}/>}
+        {pg==='prices'&&<PriceList/>}
+      </div>
+    </div>
+  );
+};
+
+// ── UNDERWRITER VIEW ──────────────────────────────────────────
+const UnderwriterView=({apps,onUpdate,addToast})=>{
+  const [pg,setPg]=useState('queue');
+  const [sel,setSel]=useState(null);
+  const [q,setQ]=useState('');
+
+  if(sel){
+    const app=apps.find(a=>a.id===sel);
+    if(app) return <div style={{display:'flex',flex:1}}><Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/><div style={{flex:1,overflow:'auto'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div>;
+  }
+
+  const queue=apps.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW].includes(a.status));
+  const esc=apps.filter(a=>a.status===ST.ESCALATED);
+  const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return a.c.name.toLowerCase().includes(s)||a.id.toLowerCase().includes(s);});
+
+  return(
+    <div style={{display:'flex',flex:1,minHeight:0}}>
+      <Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/>
+      <div style={{flex:1,overflow:'auto'}}>
+        {pg==='queue'&&(
+          <div className="fadeUp" style={{padding:'28px 32px'}}>
+            <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{queue.length+esc.length} application{queue.length+esc.length!==1?'s':''} awaiting attention</p></div>
+            {queue.length>0&&(
+              <div style={{marginBottom:24}}>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>PENDING DECISION <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{queue.length}</span></div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {queue.map(a=>(
+                    <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'1.5px solid var(--border)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',transition:'all .13s'}}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--brand2)';e.currentTarget.style.boxShadow='0 2px 10px rgba(11,61,46,0.1)'}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.boxShadow='none'}}>
+                      <div>
+                        <div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div>
+                        <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · {fmtRWF(a.dev.dep+a.dev.weekly*a.dev.wks)} total · {fmtD(a.createdAt)} · {a.rep.split(' ')[0]}</div>
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}><Badge st={a.status}/><span style={{color:'var(--textLight)',fontSize:18}}>›</span></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {esc.length>0&&(
+              <div>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>ESCALATED — CREDIT COMMITTEE <span style={{background:'var(--purBg)',color:'var(--pur)',padding:'1px 7px',borderRadius:99}}>{esc.length}</span></div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>{esc.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
+              </div>
+            )}
+            {queue.length===0&&esc.length===0&&<Empty ico="✅" title="Queue is clear" sub="All applications have been reviewed"/>}
+          </div>
+        )}
+        {pg==='all'&&(
+          <div className="fadeUp" style={{padding:'28px 32px'}}>
+            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:16}}>All applications</h1>
+            <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{maxWidth:320,marginBottom:16}}/>
+            <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{all.length} result{all.length!==1?'s':''}</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>{all.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
+            {all.length===0&&<Empty ico="🔍" title="No results"/>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── OPS VIEW ──────────────────────────────────────────────────
+const OpsView=({apps,onUpdate,addToast})=>{
+  const [pg,setPg]=useState('overview');
+  const [sel,setSel]=useState(null);
+  const [q,setQ]=useState('');
+  const [fst,setFst]=useState('');
+
+  if(sel){
+    const app=apps.find(a=>a.id===sel);
+    if(app) return <div style={{display:'flex',flex:1}}><Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/><div style={{flex:1,overflow:'auto'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div>;
+  }
+
+  const filtered=apps.filter(a=>{const ms=!q||a.c.name.toLowerCase().includes(q.toLowerCase())||a.id.toLowerCase().includes(q.toLowerCase());const mst=!fst||a.status===fst;return ms&&mst;});
+
+  return(
+    <div style={{display:'flex',flex:1,minHeight:0}}>
+      <Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/>
+      <div style={{flex:1,overflow:'auto'}}>
+        {pg==='overview'&&(
+          <div className="fadeUp" style={{padding:'28px 32px'}}>
+            <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Operations overview</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>SellWise Rwanda · Live pipeline</p></div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
+              {[['Total applications',apps.length,'var(--brand)'],['Active contracts',apps.filter(a=>a.status===ST.ACTIVE).length,'var(--ok)'],['Pending review',apps.filter(a=>a.status===ST.SUBMITTED).length,'var(--warn)'],['IMEI needed',apps.filter(a=>a.status===ST.IMEI_PENDING).length,'var(--warn)'],['Escalated',apps.filter(a=>a.status===ST.ESCALATED).length,'var(--pur)'],['Rejected',apps.filter(a=>a.status===ST.REJECTED).length,'var(--err)']].map(([l,v,c])=>(
+                <Card key={l} sx={{padding:'14px 16px'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:5}}>{l}</div><div style={{fontSize:26,fontWeight:800,color:c}}>{v}</div></Card>
+              ))}
+            </div>
+            <Card sx={{padding:'16px 18px',marginBottom:22}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Pipeline status</div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {[[ST.SUBMITTED,'Submitted','var(--warn)'],[ST.IN_REVIEW,'In review','var(--info)'],[ST.ESCALATED,'Escalated','var(--pur)'],[ST.IMEI_PENDING,'IMEI pending','var(--warn)'],[ST.ACTIVE,'Active','var(--ok)'],[ST.REJECTED,'Rejected','var(--err)']].map(([st,l,c])=>{
+                  const n=apps.filter(a=>a.status===st).length;
+                  return <div key={st} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 12px',background:'var(--bg)',borderRadius:'var(--r2)',border:'1px solid var(--border)'}}><div style={{width:8,height:8,borderRadius:4,background:c}}/><span style={{fontSize:12,color:'var(--textMid)'}}>{l}</span><span style={{fontSize:12,fontWeight:700}}>{n}</span></div>;
+                })}
+              </div>
+            </Card>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>RECENT ACTIVITY</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>{[...apps].sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)).slice(0,8).map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
+          </div>
+        )}
+        {pg==='all'&&(
+          <div className="fadeUp" style={{padding:'28px 32px'}}>
+            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:16}}>All applications</h1>
+            <div style={{display:'flex',gap:10,marginBottom:16}}>
+              <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{flex:1,maxWidth:280}}/>
+              <select value={fst} onChange={ev=>setFst(ev.target.value)} style={{width:180}}><option value="">All statuses</option>{Object.entries(SM).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
+            </div>
+            <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{filtered.length} result{filtered.length!==1?'s':''}</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>{filtered.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
+            {filtered.length===0&&<Empty ico="🔍" title="No results found"/>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── ROOT ──────────────────────────────────────────────────────
+const App=()=>{
+  const [user,setUser]=useState(null);
+  const [apps,setApps]=useState(SEED);
+  const [toasts,setToasts]=useState([]);
+
+  const addToast=useCallback((c,title,msg='')=>{
+    const id=Date.now()+Math.random();
+    setToasts(p=>[...p,{id,c,title,msg}]);
+    setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),4200);
+  },[]);
+
+  const updateApp=useCallback((id,upd,newApp)=>{
+    if(newApp){setApps(p=>[...p,newApp]);return;}
+    setApps(p=>p.map(a=>{
+      if(a.id!==id)return a;
+      const entry=upd.tlEntry;
+      const tl=entry?[...(a.tl||[]),{at:new Date().toISOString(),by:entry.by,txt:entry.txt}]:a.tl;
+      const {tlEntry,...rest}=upd;
+      return{...a,...rest,tl,updatedAt:new Date().toISOString()};
+    }));
+  },[]);
+
+  const ctx={user,logout:()=>setUser(null)};
+
+  if(!user) return(
+    <Ctx.Provider value={ctx}>
+      <Login onLogin={setUser}/>
+      <Toast toasts={toasts}/>
+    </Ctx.Provider>
+  );
+
+  return(
+    <Ctx.Provider value={ctx}>
+      <div style={{display:'flex',minHeight:'100vh'}}>
+        {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
+        {user.role==='underwriter'&&<UnderwriterView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
+        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
+      </div>
+      <Toast toasts={toasts}/>
+    </Ctx.Provider>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
