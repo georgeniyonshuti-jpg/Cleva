@@ -110,6 +110,14 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 }
 @media (max-width:480px){.page-content{padding:14px 12px 20px!important}}
 
+/* New application: full-page form layout */
+.new-app-fullpage{height:100%;min-height:0}
+.new-app-form{box-sizing:border-box}
+.new-app-form header .step-connector{flex:1;max-width:40px}
+@media (max-width:640px){
+  .new-app-form .new-app-step-label{display:none!important}
+}
+
 /* Stats grids: single column on mobile */
 @media (max-width:768px){
   .stats-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
@@ -564,24 +572,28 @@ const NewApp=({onSubmit,onBack,devices})=>{
   const next=()=>{if(step===1&&v1())setStep(2);else if(step===2&&v2())setStep(3);};
   const dev=(devices||[]).find(d=>d.id===f.did);
   const STEPS=['Customer & documents','Select device','Review & submit'];
+  const goStep=(s)=>{if(s<step)setStep(s);else if(s===step){}else if(s===2&&v1())setStep(2);else if(s===3&&v1()&&v2())setStep(3);};
   return(
-    <div className="fadeUp" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,padding:'28px 32px',width:'100%',maxWidth:960}}>
-      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22,flexShrink:0}}>
-        <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
-        <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>New application</h1><p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>Step {step} of 3 — {STEPS[step-1]}</p></div>
-      </div>
-      <div className="step-row" style={{display:'flex',alignItems:'center',marginBottom:26,flexShrink:0}}>
-        {STEPS.map((l,i)=>(
-          <React.Fragment key={i}>
-            <div style={{display:'flex',alignItems:'center',gap:7}}>
-              <div style={{width:26,height:26,borderRadius:13,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,background:step>i+1?'var(--ok)':step===i+1?'var(--brand)':'var(--border)',color:step>i+1||step===i+1?'white':'var(--textLight)'}}>{step>i+1?'✓':i+1}</div>
-              <span style={{fontSize:12,fontWeight:step===i+1?600:400,color:step===i+1?'var(--text)':'var(--textLight)'}}>{l}</span>
-            </div>
-            {i<2&&<div className="step-connector" style={{flex:1,height:1,background:'var(--border)',margin:'0 10px'}}/>}
-          </React.Fragment>
-        ))}
-      </div>
-      <Card sx={{padding:22,flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'auto'}}>
+    <div className="fadeUp new-app-form" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,width:'100%',maxWidth:960,margin:'0 auto',padding:'0 24px'}}>
+      <header style={{flexShrink:0,padding:'20px 0 16px',borderBottom:'1.5px solid var(--border)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
+          <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Cancel</Btn>
+          <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>New application</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Step {step} of 3 — {STEPS[step-1]}</p></div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:0}}>
+          {STEPS.map((l,i)=>(
+            <React.Fragment key={i}>
+              <button type="button" onClick={()=>goStep(i+1)} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',border:'none',background:'transparent',cursor:step>i+1?'pointer':'default',borderRadius:'var(--r2)',fontSize:13,fontWeight:step===i+1?700:500,color:step>i+1?'var(--ok)':step===i+1?'var(--brand2)':'var(--textLight)'}}>
+                <span style={{width:28,height:28,borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,background:step>i+1?'var(--ok)':step===i+1?'var(--brand)':'var(--border)',color:step>i+1||step===i+1?'white':'var(--textLight)'}}>{step>i+1?'✓':i+1}</span>
+                <span className="new-app-step-label">{l}</span>
+              </button>
+              {i<2&&<div style={{width:24,height:1,background:'var(--border)',margin:'0 4px',alignSelf:'center'}}/>}
+            </React.Fragment>
+          ))}
+        </div>
+      </header>
+      <div style={{flex:1,minHeight:0,overflow:'auto',overflowX:'hidden',padding:'20px 0',WebkitOverflowScrolling:'touch'}}>
+      <Card sx={{padding:22,minHeight:'min-content'}}>
         {step===1&&(
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:2}}>Customer information</div>
@@ -648,11 +660,12 @@ const NewApp=({onSubmit,onBack,devices})=>{
             </div>
           </div>
         )}
-        <div style={{display:'flex',justifyContent:'space-between',marginTop:22,paddingTop:18,borderTop:'1.5px solid var(--border)'}}>
-          {step>1?<Btn onClick={()=>setStep(p=>p-1)} v="def" icon="←">Back</Btn>:<div/>}
-          {step<3?<Btn onClick={next} v="primary" icon="→">Continue</Btn>:<Btn onClick={()=>onSubmit(f,dev)} v="primary" icon="✓">Submit for review</Btn>}
-        </div>
       </Card>
+      </div>
+      <footer style={{flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,padding:'16px 24px 24px',paddingBottom:'max(24px, env(safe-area-inset-bottom))',borderTop:'1.5px solid var(--border)',background:'var(--bg)',margin:'0 -24px'}}>
+        {step>1?<Btn onClick={()=>setStep(p=>p-1)} v="def" icon="←">Back</Btn>:<div/>}
+        {step<3?<Btn onClick={next} v="primary" icon="→">Continue</Btn>:<Btn onClick={()=>onSubmit(f,dev)} v="primary" icon="✓">Submit for review</Btn>}
+      </footer>
     </div>
   );
 };
@@ -975,7 +988,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
             {grps.other.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.other.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title="No completed applications" sub="Applications you've closed or that need changes"/>}
           </div>
         )}
-        {pg==='new'&&<div className="page-content" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'auto',padding:'28px 32px'}}><NewApp devices={devices} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
+        {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devices} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
           const na={id:gid(),status:ST.SUBMITTED,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),rep:user.name,repId:user.id,c:{name:f.name,idType:f.idType||'nid',nid:f.nid,phone:f.phone,addr:f.addr,occ:f.occ,income:+f.income,kin:{name:f.kn,phone:f.kp,rel:f.kr}},dev,notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,customerPhoto:f.customerPhoto||null,idPhoto:f.idPhoto||null,incomeProof:f.incomeProof||null,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for review'}]};
           onUpdate(null,null,na);addToast('ok','Application submitted','Sent to the review queue');setPg('dash');
         }}/></div>}
