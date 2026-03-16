@@ -250,7 +250,7 @@ const USERS_SEED=[
   {id:'SR01',name:'Alice Ndayisaba',email:`alice@${EMAIL_DOMAIN_SEED}`,password:'alice123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG01',merchantCode:'M01',seniority:2,mustChangePassword:false},
   {id:'SR02',name:'Bob Nzeyimana',email:`bob@${EMAIL_DOMAIN_SEED}`,password:'bob123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG02',merchantCode:'M01',seniority:1,mustChangePassword:false},
   {id:'SR03',name:'Claire Uwera',email:`claire@${EMAIL_DOMAIN_SEED}`,password:'claire123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG03',merchantCode:'M02',seniority:1,mustChangePassword:false},
-  {id:'UW01',name:'Jane Murekatete',email:`jane@${EMAIL_DOMAIN_SEED}`,password:'jane123',role:'underwriter',roleLabel:'MBO (Underwriter)',merchantCodes:['M01','M02'],mustChangePassword:false},
+  {id:'UW01',name:'Jane Murekatete',email:`jane@${EMAIL_DOMAIN_SEED}`,password:'jane123',role:'underwriter',roleLabel:'Underwriter',merchantCodes:['M01','M02'],mustChangePassword:false},
   {id:'SU01',name:'Support User',email:`support@${EMAIL_DOMAIN_SEED}`,password:'support123',role:'support',roleLabel:'Support User',mustChangePassword:false},
   {id:'OP01',name:'Ops Superuser',email:`ops@${EMAIL_DOMAIN_SEED}`,password:'ops123',role:'ops',roleLabel:'Ops Superuser',superuser:true,mustChangePassword:false},
 ];
@@ -1019,6 +1019,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
 
 // ── UNDERWRITER VIEW ──────────────────────────────────────────
 const UnderwriterView=({apps,onUpdate,addToast})=>{
+  const {user}=useContext(Ctx);
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
@@ -1032,11 +1033,11 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
     if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
-  const merchantCodes=user.merchantCodes||[];
+  const merchantCodes=(user&&user.merchantCodes)||[];
   const queue=apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)&&(!merchantCodes.length||merchantCodes.includes(a.merchantCode)));
-  const esc=apps.filter(a=>a.status===ST.ARCHIVED);
+  const archived=apps.filter(a=>a.status===ST.ARCHIVED);
   const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return (a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s);});
-  const pendingCount=queue.length+esc.length;
+  const pendingCount=queue.length+archived.length;
 
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
@@ -1045,7 +1046,7 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
         <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':pg==='queue'?'Review queue':'All applications'}</span></div>
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Underwriting</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
+            <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Underwriter</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
             <div className="home-actions">
               <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>setPg('queue')}>📋 Review queue {pendingCount>0&&<span style={{background:'rgba(255,255,255,0.25)',fontSize:13,padding:'2px 10px',borderRadius:99,marginLeft:8}}>{pendingCount}</span>}</button>
               <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('all')}>📄 All applications</button>
@@ -1054,32 +1055,35 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
         )}
         {pg==='queue'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{queue.length+esc.length} application{queue.length+esc.length!==1?'s':''} awaiting attention</p></div></div>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{queue.length+archived.length} application{(queue.length+archived.length)!==1?'s':''} awaiting attention</p></div></div>
             {queue.length>0&&(
               <div style={{marginBottom:24}}>
-                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>PENDING DECISION <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{queue.length}</span></div>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Pending decision <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{queue.length}</span></div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                  {queue.map(a=>(
+                  {queue.map(a=>{
+                    const tot=a.dev?(a.dev.dep||0)+(a.dev.weekly||0)*(a.dev.wks||12):0;
+                    const repFirst=(a.rep||'').split(' ')[0];
+                    return (
                     <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'1.5px solid var(--border)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',transition:'all .13s'}}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--brand2)';e.currentTarget.style.boxShadow='0 2px 10px rgba(11,61,46,0.1)'}}
                       onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.boxShadow='none'}}>
                       <div>
-                        <div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div>
-                        <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · {fmtRWF(a.dev.dep+a.dev.weekly*a.dev.wks)} total · {fmtD(a.createdAt)} · {a.rep.split(' ')[0]}</div>
+                        <div style={{fontWeight:600,fontSize:14}}>{a.c?a.c.name:''}</div>
+                        <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev?a.dev.brand:''} {a.dev?a.dev.model:''} · {a.dev?fmtRWF(tot):'—'} total · {fmtD(a.createdAt)} · {repFirst}</div>
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:10}}><Badge st={a.status}/><span style={{color:'var(--textLight)',fontSize:18}}>›</span></div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </div>
             )}
-            {esc.length>0&&(
+            {archived.length>0&&(
               <div>
-                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>ESCALATED — CREDIT COMMITTEE <span style={{background:'var(--purBg)',color:'var(--pur)',padding:'1px 7px',borderRadius:99}}>{esc.length}</span></div>
-                <div style={{display:'flex',flexDirection:'column',gap:8}}>{esc.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Archived <span style={{background:'var(--purBg)',color:'var(--pur)',padding:'1px 7px',borderRadius:99}}>{archived.length}</span></div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>{archived.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
               </div>
             )}
-            {queue.length===0&&esc.length===0&&<Empty ico="✅" title="Queue is clear" sub="All applications have been reviewed"/>}
+            {queue.length===0&&archived.length===0&&<Empty ico="✅" title="Queue is clear" sub="All applications have been reviewed"/>}
           </div>
         )}
         {pg==='all'&&(
