@@ -58,16 +58,39 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
   .login-card{padding:20px 18px!important}
 }
 
-/* Sidebar: drawer on mobile */
-.sidebar-wrapper{flex-shrink:0}
+/* Sidebar: fixed size, no scroll; hamburger collapse on desktop; overlay on mobile */
+.app-layout{display:flex;min-height:100vh;height:100vh;overflow:hidden}
+.app-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.sidebar-wrapper{flex-shrink:0;height:100vh;overflow:hidden;display:flex;transition:width .22s ease}
 .sidebar-backdrop{display:none}
-.sidebar-drawer{width:210px}
+.sidebar-collapsed-bar{display:none;width:52px;height:100vh;background:var(--brand);flex-direction:column;align-items:center;padding-top:14px;border-right:1px solid rgba(255,255,255,0.08)}
+.sidebar-collapsed-bar .hamburger-desk{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border:none;border-radius:var(--r2);color:white;cursor:pointer;font-size:18px}
+.sidebar-drawer{width:210px;height:100vh;display:flex;flex-direction:column;background:var(--brand);flex-shrink:0;overflow:hidden}
+.sidebar-drawer .sidebar-nav{flex:1;overflow-y:auto;padding:10px;min-height:0}
+@media (min-width:769px){
+  .sidebar-wrapper{width:52px}
+  .sidebar-wrapper.desktop-collapsed{width:52px}
+  .sidebar-wrapper.desktop-collapsed .sidebar-drawer{display:none}
+  .sidebar-wrapper.desktop-collapsed .sidebar-collapsed-bar{display:flex}
+  .sidebar-wrapper.desktop-expanded{width:210px}
+  .sidebar-wrapper.desktop-expanded .sidebar-collapsed-bar{display:none}
+  .sidebar-wrapper.desktop-expanded .sidebar-drawer{display:flex}
+}
+.sidebar-drawer .sidebar-collapse-btn{width:100%;padding:10px 14px;border:none;background:transparent;color:rgba(255,255,255,0.6);cursor:pointer;font-size:14px;text-align:left;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sidebar-drawer .sidebar-collapse-btn:hover{background:rgba(255,255,255,0.06);color:white}
 @media (max-width:768px){
-  .sidebar-wrapper{width:0;min-width:0;overflow:visible}
-  .sidebar-drawer{position:fixed;left:0;top:0;bottom:0;width:260px;max-width:85vw;z-index:1001;transform:translateX(-100%);transition:transform .25s ease;box-shadow:4px 0 24px rgba(0,0,0,0.15);padding-top:env(safe-area-inset-top)}
-  .sidebar-drawer.mobile-open{transform:translateX(0)}
+  .sidebar-wrapper{width:0!important;min-width:0}
+  .sidebar-wrapper .sidebar-collapsed-bar{display:none!important}
+  .sidebar-wrapper .sidebar-drawer{position:fixed;left:0;top:0;bottom:0;width:260px;max-width:85vw;z-index:1001;transform:translateX(-100%);transition:transform .25s ease;box-shadow:4px 0 24px rgba(0,0,0,0.15);padding-top:env(safe-area-inset-top)}
+  .sidebar-wrapper .sidebar-drawer.mobile-open{transform:translateX(0)}
   .sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
   .sidebar-backdrop.visible{opacity:1;pointer-events:auto}
+}
+@media (min-width:769px){
+  .sidebar-wrapper.desktop-expanded .sidebar-drawer .sidebar-collapse-btn{display:flex}
+}
+@media (max-width:768px){
+  .sidebar-drawer .sidebar-collapse-btn{display:none}
 }
 
 /* Mobile header (hamburger + title) */
@@ -270,7 +293,7 @@ const Toast=({toasts})=>(
 );
 
 // ── SIDEBAR ───────────────────────────────────────────────────
-const Sidebar=({page,setPage,apps,mobileOpen=false,onClose})=>{
+const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
   const {user,logout}=useContext(Ctx);
   const pending=apps.filter(a=>a.status===ST.SUBMITTED).length;
   const imeiNeeded=apps.filter(a=>a.status===ST.IMEI_PENDING&&a.repId===user.id).length;
@@ -282,21 +305,25 @@ const Sidebar=({page,setPage,apps,mobileOpen=false,onClose})=>{
   const initials=user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const go=(k)=>{ setPage(k); onClose&&onClose(); };
   return(
-    <div className="sidebar-wrapper">
-      <div className={'sidebar-backdrop'+(mobileOpen?' visible':'')} onClick={onClose||(()=>{})} aria-hidden="true"/>
-      <div className={'sidebar-drawer'+(mobileOpen?' mobile-open':'')} style={{background:'var(--brand)',minHeight:'100vh',display:'flex',flexDirection:'column'}}>
-        <div style={{padding:'22px 18px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+    <div className={'sidebar-wrapper'+(open?' desktop-expanded':' desktop-collapsed')}>
+      <div className={'sidebar-backdrop'+(open?' visible':'')} onClick={onClose||(()=>{})} aria-hidden="true"/>
+      <div className="sidebar-collapsed-bar">
+        <button type="button" className="hamburger-desk" onClick={onOpen} aria-label="Open menu">☰</button>
+      </div>
+      <div className={'sidebar-drawer'+(open?' mobile-open':'')}>
+        <button type="button" className="sidebar-collapse-btn" onClick={onClose} aria-label="Close menu">◀ Hide menu</button>
+        <div style={{padding:'16px 18px 12px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div style={{fontSize:20,fontWeight:800,color:'white',letterSpacing:'-0.5px'}}>{APP_NAME}</div>
           <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:2,textTransform:'uppercase',letterSpacing:'1.5px'}}>PAYGO Underwriting</div>
         </div>
-        <div style={{padding:'13px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',gap:10}}>
+        <div style={{padding:'13px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
           <div style={{width:34,height:34,borderRadius:17,background:'rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'white',flexShrink:0}}>{initials}</div>
-          <div style={{overflow:'hidden'}}>
+          <div style={{overflow:'hidden',minWidth:0}}>
             <div style={{fontSize:13,color:'white',fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user.name}</div>
             <div style={{fontSize:10,color:'rgba(255,255,255,0.45)',marginTop:1}}>{user.roleLabel}</div>
           </div>
         </div>
-        <nav style={{flex:1,padding:'10px 10px'}}>
+        <nav className="sidebar-nav">
           {navItems.map(item=>{
             const active=page===item.k;
             return <button key={item.k} onClick={()=>go(item.k)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'12px 14px',marginBottom:2,background:active?'rgba(255,255,255,0.13)':'transparent',color:active?'white':'rgba(255,255,255,0.58)',border:'none',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:active?600:400,textAlign:'left',transition:'all .13s',minHeight:44}}
@@ -307,7 +334,7 @@ const Sidebar=({page,setPage,apps,mobileOpen=false,onClose})=>{
             </button>;
           })}
         </nav>
-        <div style={{padding:'0 10px 18px'}}>
+        <div style={{padding:'0 10px 18px',flexShrink:0}}>
           <button onClick={()=>{logout(); onClose&&onClose();}} style={{width:'100%',padding:'12px 11px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'var(--r2)',color:'rgba(255,255,255,0.5)',cursor:'pointer',fontSize:11,textAlign:'center',minHeight:44}}>Sign out</button>
         </div>
       </div>
@@ -708,19 +735,19 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
   const mine=apps.filter(a=>a.repId===user.id);
   const grps={action:mine.filter(a=>[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(a.status)),review:mine.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(a.status)),active:mine.filter(a=>a.status===ST.ACTIVE),other:mine.filter(a=>[ST.REJECTED,ST.CHANGES].includes(a.status))};
-  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,mobileOpen:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false)};
+  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
     if(app&&[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(app.status))
-      return <div style={{display:'flex',flex:1}}><Sidebar {...sidebarProps}/><div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
-    if(app) return <div style={{display:'flex',flex:1}}><Sidebar {...sidebarProps}/><div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
   return(
-    <div style={{display:'flex',flex:1,minHeight:0}}>
+    <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
-      <div className="main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
+      <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
         <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'My applications':pg==='new'?'New application':pg==='prices'?'Price list':APP_NAME}</span></div>
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
@@ -765,11 +792,11 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
-  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,mobileOpen:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false)};
+  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app) return <div style={{display:'flex',flex:1}}><Sidebar {...sidebarProps}/><div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
   const queue=apps.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW].includes(a.status));
@@ -777,9 +804,9 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
   const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return a.c.name.toLowerCase().includes(s)||a.id.toLowerCase().includes(s);});
 
   return(
-    <div style={{display:'flex',flex:1,minHeight:0}}>
+    <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
-      <div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
+      <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
         <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='queue'?'Review queue':'All applications'}</span></div>
         {pg==='queue'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
@@ -833,11 +860,11 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
   const [fst,setFst]=useState('');
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
   const {user}=useContext(Ctx);
-  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,mobileOpen:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false)};
+  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app) return <div style={{display:'flex',flex:1}}><Sidebar {...sidebarProps}/><div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
   const filtered=apps.filter(a=>{const ms=!q||a.c.name.toLowerCase().includes(q.toLowerCase())||a.id.toLowerCase().includes(q.toLowerCase());const mst=!fst||a.status===fst;return ms&&mst;});
@@ -859,6 +886,8 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
     const [tab,setTab]=useState('devices');
     const [du,setDu]=useState('');
     const [uu,setUu]=useState('');
+    const [showAddDevice,setShowAddDevice]=useState(false);
+    const [showAddUser,setShowAddUser]=useState(false);
     const [newDev,setNewDev]=useState({brand:'',model:'',sku:'',specs:'',retail:'',dep:'',weekly:'',wks:26});
     const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',superuser:false});
 
@@ -905,6 +934,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
       const d={id,brand:newDev.brand.trim(),model:newDev.model.trim(),sku:newDev.sku.trim(),specs:newDev.specs.trim(),retail,dep,weekly,wks};
       setDevices([...(devices||[]),d]);
       setNewDev({brand:'',model:'',sku:'',specs:'',retail:'',dep:'',weekly:'',wks:26});
+      setShowAddDevice(false);
       addToast('ok','Device added',`${d.brand} ${d.model}`);
     };
 
@@ -936,6 +966,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
       const u={id,name,email,password,role:newUser.role,roleLabel:roleLabelFor(newUser.role),superuser:!!newUser.superuser,mustChangePassword};
       setUsers([...(users||[]),u]);
       setNewUser({name:'',email:'',password:'',role:'rep',superuser:false});
+      setShowAddUser(false);
       addToast('ok','User added',customPwd?'User can sign in with the password you set.':`Login: ${email} · temp password ${password}`);
     };
 
@@ -951,11 +982,14 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
         </div>
 
         {tab==='devices'&&(
-          <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:'1.1fr .9fr',gap:14,alignItems:'start'}}>
+          <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:showAddDevice?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
             <Card sx={{padding:16}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
                 <div style={{fontWeight:700}}>Devices</div>
-                <input value={du} onChange={e=>setDu(e.target.value)} placeholder="Search devices…" style={{width:240}}/>
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <input value={du} onChange={e=>setDu(e.target.value)} placeholder="Search devices…" style={{width:240}}/>
+                  <Btn v="primary" sz="sm" onClick={()=>setShowAddDevice(true)} icon="＋">Add device</Btn>
+                </div>
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:10}}>
                 {devs.map(d=>{
@@ -991,8 +1025,12 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
               </div>
             </Card>
 
+            {showAddDevice&&(
             <Card sx={{padding:16}}>
-              <div style={{fontWeight:800,marginBottom:10}}>Add device</div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                <div style={{fontWeight:800}}>Add device</div>
+                <Btn v="def" sz="sm" onClick={()=>{setShowAddDevice(false);setNewDev({brand:'',model:'',sku:'',specs:'',retail:'',dep:'',weekly:'',wks:26});}}>Cancel</Btn>
+              </div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                 <FF label="Brand" req><input value={newDev.brand} onChange={e=>setNewDev(p=>({...p,brand:e.target.value}))}/></FF>
                 <FF label="Model" req><input value={newDev.model} onChange={e=>setNewDev(p=>({...p,model:e.target.value}))}/></FF>
@@ -1010,15 +1048,19 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
                 Note: this admin screen edits the current “weekly × weeks” pricing used across the app. (We can switch to the interest-rate monthly model next.)
               </div>
             </Card>
+            )}
           </div>
         )}
 
         {tab==='users'&&(
-          <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:'1.1fr .9fr',gap:14,alignItems:'start'}}>
+          <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:showAddUser?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
             <Card sx={{padding:16}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
                 <div style={{fontWeight:800}}>Users</div>
-                <input value={uu} onChange={e=>setUu(e.target.value)} placeholder="Search users…" style={{width:240}}/>
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <input value={uu} onChange={e=>setUu(e.target.value)} placeholder="Search users…" style={{width:240}}/>
+                  <Btn v="primary" sz="sm" onClick={()=>setShowAddUser(true)} icon="＋">Add user</Btn>
+                </div>
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:10}}>
                 {us.map(u=>(
@@ -1057,8 +1099,12 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
               </div>
             </Card>
 
+            {showAddUser&&(
             <Card sx={{padding:16}}>
-              <div style={{fontWeight:800,marginBottom:10}}>Add user</div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                <div style={{fontWeight:800}}>Add user</div>
+                <Btn v="def" sz="sm" onClick={()=>{setShowAddUser(false);setNewUser({name:'',email:'',password:'',role:'rep',superuser:false});}}>Cancel</Btn>
+              </div>
               <div style={{display:'flex',flexDirection:'column',gap:10}}>
                 <FF label="Full name" req><input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="e.g. Grace Mukamana"/></FF>
                 <FF label="Email (any domain)" req><input type="email" value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="e.g. grace@company.com or grace@leout.rw"/></FF>
@@ -1080,10 +1126,11 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
                 </FF>
                 <Btn v="primary" onClick={addUser} full icon="＋">Create user</Btn>
                 <div style={{fontSize:11,color:'var(--textLight)',lineHeight:1.5}}>
-                  New users appear in the login page demo accounts. If you leave password blank, a temporary password is generated and user should change it on first login.
+                  New users appear in the login page demo accounts. If you leave password blank, a temporary password is generated.
                 </div>
               </div>
             </Card>
+            )}
           </div>
         )}
       </div>
@@ -1092,9 +1139,9 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
 
   const mobileTitle=pg==='overview'?'Overview':pg==='all'?'All applications':pg==='admin'?'Admin':APP_NAME;
   return(
-    <div style={{display:'flex',flex:1,minHeight:0}}>
+    <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
-      <div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
+      <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
         <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{mobileTitle}</span></div>
         {pg==='overview'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
@@ -1178,7 +1225,7 @@ const App=()=>{
 
   return(
     <Ctx.Provider value={ctx}>
-      <div style={{display:'flex',minHeight:'100vh'}}>
+      <div className="app-layout" style={{display:'flex',minHeight:'100vh',height:'100vh'}}>
         {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices}/>}
         {user.role==='underwriter'&&<UnderwriterView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
         {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} setApps={setApps}/>}
