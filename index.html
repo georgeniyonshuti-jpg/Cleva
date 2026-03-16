@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Cleva</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -40,6 +40,91 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 .fadeUp{animation:fadeUp .22s ease}
 .slideRight{animation:slideRight .2s ease}
 .spin{animation:spin .7s linear infinite}
+
+/* Mobile: touch-friendly and safe area */
+@media (max-width:768px){
+  body{font-size:15px;-webkit-tap-highlight-color:transparent}
+  input,select,textarea,button{font-size:16px}
+  button,.btn-touch{min-height:44px;min-width:44px}
+}
+@media (max-width:480px){
+  body{font-size:14px}
+}
+/* Smooth scroll on iOS */
+.main-scroll{-webkit-overflow-scrolling:touch}
+/* Login: compact on small screens */
+@media (max-width:480px){
+  .login-wrap{padding:16px!important}
+  .login-card{padding:20px 18px!important}
+}
+
+/* Sidebar: drawer on mobile */
+.sidebar-wrapper{flex-shrink:0}
+.sidebar-backdrop{display:none}
+.sidebar-drawer{width:210px}
+@media (max-width:768px){
+  .sidebar-wrapper{width:0;min-width:0;overflow:visible}
+  .sidebar-drawer{position:fixed;left:0;top:0;bottom:0;width:260px;max-width:85vw;z-index:1001;transform:translateX(-100%);transition:transform .25s ease;box-shadow:4px 0 24px rgba(0,0,0,0.15);padding-top:env(safe-area-inset-top)}
+  .sidebar-drawer.mobile-open{transform:translateX(0)}
+  .sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+  .sidebar-backdrop.visible{opacity:1;pointer-events:auto}
+}
+
+/* Mobile header (hamburger + title) */
+.mobile-header{display:none;align-items:center;gap:12px;padding:12px 16px;padding-left:calc(16px + env(safe-area-inset-left));background:var(--surface);border-bottom:1.5px solid var(--border);flex-shrink:0}
+.mobile-header .hamburger{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r2);cursor:pointer;font-size:18px;color:var(--text);-webkit-tap-highlight-color:transparent}
+@media (max-width:768px){.mobile-header{display:flex}}
+
+/* Page content padding on mobile */
+@media (max-width:768px){
+  .page-content{padding:16px 14px 24px!important}
+  .page-content h1{font-size:18px!important}
+}
+@media (max-width:480px){.page-content{padding:14px 12px 20px!important}}
+
+/* Stats grids: single column on mobile */
+@media (max-width:768px){
+  .stats-grid-4{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
+  .stats-grid-3{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
+}
+@media (max-width:400px){
+  .stats-grid-4,.stats-grid-3{grid-template-columns:1fr!important}
+}
+
+/* Cards / detail grids: stack on mobile */
+@media (max-width:768px){
+  .detail-grid-2{grid-template-columns:1fr!important;gap:12px!important}
+  .form-grid-2{grid-template-columns:1fr!important}
+  .form-grid-3{grid-template-columns:1fr!important}
+  .step-row{flex-wrap:wrap;gap:8px!important}
+  .step-row .step-connector{display:none!important}
+}
+
+/* Price list & device grids */
+@media (max-width:768px){
+  .price-grid{grid-template-columns:1fr!important}
+  .device-select-grid{grid-template-columns:1fr!important}
+}
+
+/* Toast on mobile: full width, bottom, safe area */
+@media (max-width:768px){
+  .toast-container{top:auto!important;bottom:calc(16px + env(safe-area-inset-bottom))!important;left:calc(12px + env(safe-area-inset-left))!important;right:calc(12px + env(safe-area-inset-right))!important;min-width:auto!important;max-width:none!important}
+}
+
+/* Admin two-column → single column */
+@media (max-width:768px){
+  .admin-two-col{grid-template-columns:1fr!important}
+}
+
+/* Application cards: stack meta on small screens */
+@media (max-width:480px){
+  .app-card-meta{flex-wrap:wrap!important}
+}
+/* IMEI row: stack input and button on mobile */
+@media (max-width:480px){
+  .imei-row{flex-direction:column!important;align-items:stretch!important}
+  .imei-row .btn-wrap{width:100%!important}
+}
 </style>
 </head>
 <body>
@@ -172,20 +257,20 @@ const ACard=({app,onClick})=>(
       <div><div style={{fontWeight:600,fontSize:14}}>{app.c.name}</div><div style={{fontSize:10,color:'var(--textLight)',fontFamily:'DM Mono,monospace',marginTop:1}}>{app.id}</div></div>
       <Badge st={app.status}/>
     </div>
-    <div style={{display:'flex',gap:10,fontSize:11,color:'var(--textMid)'}}>
+    <div className="app-card-meta" style={{display:'flex',gap:10,fontSize:11,color:'var(--textMid)'}}>
       <span>{app.dev.brand} {app.dev.model}</span><span>·</span><span>{fmtD(app.createdAt)}</span><span>·</span><span>{app.rep.split(' ')[0]}</span>
     </div>
   </div>
 );
 
 const Toast=({toasts})=>(
-  <div style={{position:'fixed',top:20,right:20,zIndex:9999,display:'flex',flexDirection:'column',gap:8,pointerEvents:'none'}}>
-    {toasts.map(t=>{const c=CC[t.c]||CC.info;return <div key={t.id} className="slideRight" style={{background:c.bg,border:`1.5px solid ${c.bd}`,color:c.fg,borderRadius:'var(--r)',padding:'12px 16px',minWidth:280,maxWidth:360,boxShadow:'var(--sh2)'}}><div style={{fontWeight:600,fontSize:13}}>{t.title}</div>{t.msg&&<div style={{fontSize:11,marginTop:2,opacity:.85}}>{t.msg}</div>}</div>;})}
+  <div className="toast-container" style={{position:'fixed',top:20,right:20,zIndex:9999,display:'flex',flexDirection:'column',gap:8,pointerEvents:'none',minWidth:280,maxWidth:360}}>
+    {toasts.map(t=>{const c=CC[t.c]||CC.info;return <div key={t.id} className="slideRight" style={{background:c.bg,border:`1.5px solid ${c.bd}`,color:c.fg,borderRadius:'var(--r)',padding:'12px 16px',boxShadow:'var(--sh2)'}}><div style={{fontWeight:600,fontSize:13}}>{t.title}</div>{t.msg&&<div style={{fontSize:11,marginTop:2,opacity:.85}}>{t.msg}</div>}</div>;})}
   </div>
 );
 
 // ── SIDEBAR ───────────────────────────────────────────────────
-const Sidebar=({page,setPage,apps})=>{
+const Sidebar=({page,setPage,apps,mobileOpen=false,onClose})=>{
   const {user,logout}=useContext(Ctx);
   const pending=apps.filter(a=>a.status===ST.SUBMITTED).length;
   const imeiNeeded=apps.filter(a=>a.status===ST.IMEI_PENDING&&a.repId===user.id).length;
@@ -195,32 +280,36 @@ const Sidebar=({page,setPage,apps})=>{
     ops:[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},...(user.superuser?[{k:'admin',l:'Admin'}]:[])],
   }[user.role]||[];
   const initials=user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const go=(k)=>{ setPage(k); onClose&&onClose(); };
   return(
-    <div style={{width:210,flexShrink:0,background:'var(--brand)',minHeight:'100vh',display:'flex',flexDirection:'column'}}>
-      <div style={{padding:'22px 18px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-        <div style={{fontSize:20,fontWeight:800,color:'white',letterSpacing:'-0.5px'}}>{APP_NAME}</div>
-        <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:2,textTransform:'uppercase',letterSpacing:'1.5px'}}>PAYGO Underwriting</div>
-      </div>
-      <div style={{padding:'13px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',gap:10}}>
-        <div style={{width:34,height:34,borderRadius:17,background:'rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'white',flexShrink:0}}>{initials}</div>
-        <div style={{overflow:'hidden'}}>
-          <div style={{fontSize:13,color:'white',fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user.name}</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.45)',marginTop:1}}>{user.roleLabel}</div>
+    <div className="sidebar-wrapper">
+      <div className={'sidebar-backdrop'+(mobileOpen?' visible':'')} onClick={onClose||(()=>{})} aria-hidden="true"/>
+      <div className={'sidebar-drawer'+(mobileOpen?' mobile-open':'')} style={{background:'var(--brand)',minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+        <div style={{padding:'22px 18px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+          <div style={{fontSize:20,fontWeight:800,color:'white',letterSpacing:'-0.5px'}}>{APP_NAME}</div>
+          <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:2,textTransform:'uppercase',letterSpacing:'1.5px'}}>PAYGO Underwriting</div>
         </div>
-      </div>
-      <nav style={{flex:1,padding:'10px 10px'}}>
-        {navItems.map(item=>{
-          const active=page===item.k;
-          return <button key={item.k} onClick={()=>setPage(item.k)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'9px 11px',marginBottom:2,background:active?'rgba(255,255,255,0.13)':'transparent',color:active?'white':'rgba(255,255,255,0.58)',border:'none',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:active?600:400,textAlign:'left',transition:'all .13s'}}
-            onMouseEnter={e=>{if(!active)e.currentTarget.style.background='rgba(255,255,255,0.07)'}}
-            onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent'}}>
-            <span>{item.l}</span>
-            {item.badge>0&&<span style={{background:'var(--accent)',color:'white',fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:99}}>{item.badge}</span>}
-          </button>;
-        })}
-      </nav>
-      <div style={{padding:'0 10px 18px'}}>
-        <button onClick={logout} style={{width:'100%',padding:'9px 11px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'var(--r2)',color:'rgba(255,255,255,0.5)',cursor:'pointer',fontSize:11,textAlign:'center'}}>Sign out</button>
+        <div style={{padding:'13px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',gap:10}}>
+          <div style={{width:34,height:34,borderRadius:17,background:'rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'white',flexShrink:0}}>{initials}</div>
+          <div style={{overflow:'hidden'}}>
+            <div style={{fontSize:13,color:'white',fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user.name}</div>
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.45)',marginTop:1}}>{user.roleLabel}</div>
+          </div>
+        </div>
+        <nav style={{flex:1,padding:'10px 10px'}}>
+          {navItems.map(item=>{
+            const active=page===item.k;
+            return <button key={item.k} onClick={()=>go(item.k)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'12px 14px',marginBottom:2,background:active?'rgba(255,255,255,0.13)':'transparent',color:active?'white':'rgba(255,255,255,0.58)',border:'none',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:active?600:400,textAlign:'left',transition:'all .13s',minHeight:44}}
+              onMouseEnter={e=>{if(!active)e.currentTarget.style.background='rgba(255,255,255,0.07)'}}
+              onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent'}}>
+              <span>{item.l}</span>
+              {item.badge>0&&<span style={{background:'var(--accent)',color:'white',fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:99}}>{item.badge}</span>}
+            </button>;
+          })}
+        </nav>
+        <div style={{padding:'0 10px 18px'}}>
+          <button onClick={()=>{logout(); onClose&&onClose();}} style={{width:'100%',padding:'12px 11px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'var(--r2)',color:'rgba(255,255,255,0.5)',cursor:'pointer',fontSize:11,textAlign:'center',minHeight:44}}>Sign out</button>
+        </div>
       </div>
     </div>
   );
@@ -245,15 +334,15 @@ const Login=({onLogin,users})=>{
   };
 
   return(
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(145deg,var(--brand) 0%,#1D6B4C 60%,#155239 100%)',padding:24,position:'relative',overflow:'hidden'}}>
+    <div className="login-wrap" style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(145deg,var(--brand) 0%,#1D6B4C 60%,#155239 100%)',padding:24,position:'relative',overflow:'hidden'}}>
       <div style={{position:'absolute',top:-80,right:-80,width:320,height:320,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.05)'}}/>
       <div style={{position:'absolute',bottom:-100,left:-100,width:400,height:400,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.04)'}}/>
-      <div style={{width:'100%',maxWidth:380,position:'relative'}}>
+      <div style={{width:'100%',maxWidth:380,position:'relative',padding:'0 8px'}}>
         <div style={{textAlign:'center',marginBottom:40}}>
           <div style={{fontSize:42,fontWeight:900,color:'white',letterSpacing:'-1.5px',marginBottom:6}}>{APP_NAME}</div>
           <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'3px'}}>PAYGO Underwriting Platform</div>
         </div>
-        <div style={{background:'rgba(255,255,255,0.06)',backdropFilter:'blur(12px)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'var(--r)',padding:'28px 26px'}}>
+        <div className="login-card" style={{background:'rgba(255,255,255,0.06)',backdropFilter:'blur(12px)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'var(--r)',padding:'28px 26px'}}>
           <div style={{fontSize:15,fontWeight:600,color:'white',marginBottom:20}}>Sign in to your account</div>
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div>
@@ -295,7 +384,7 @@ const PriceList=({devices})=>(
       <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Device price list</h1>
       <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>26-week PAYGO contracts · All amounts in RWF · March 2026</p>
     </div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(230px,1fr))',gap:12}}>
+    <div className="price-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(230px,1fr))',gap:12}}>
       {(devices||[]).map(d=>{const tot=d.dep+d.weekly*d.wks;const rate=(((tot-d.retail)/d.retail)*100).toFixed(1);return(
         <Card key={d.id} sx={{overflow:'hidden'}}>
           <div style={{height:3,background:'linear-gradient(90deg,var(--brand),var(--brand3))'}}/>
@@ -336,14 +425,14 @@ const NewApp=({onSubmit,onBack,devices})=>{
         <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
         <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>New application</h1><p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>Step {step} of 3 — {STEPS[step-1]}</p></div>
       </div>
-      <div style={{display:'flex',alignItems:'center',marginBottom:26}}>
+      <div className="step-row" style={{display:'flex',alignItems:'center',marginBottom:26}}>
         {STEPS.map((l,i)=>(
           <React.Fragment key={i}>
             <div style={{display:'flex',alignItems:'center',gap:7}}>
               <div style={{width:26,height:26,borderRadius:13,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,background:step>i+1?'var(--ok)':step===i+1?'var(--brand)':'var(--border)',color:step>i+1||step===i+1?'white':'var(--textLight)'}}>{step>i+1?'✓':i+1}</div>
               <span style={{fontSize:12,fontWeight:step===i+1?600:400,color:step===i+1?'var(--text)':'var(--textLight)'}}>{l}</span>
             </div>
-            {i<2&&<div style={{flex:1,height:1,background:'var(--border)',margin:'0 10px'}}/>}
+            {i<2&&<div className="step-connector" style={{flex:1,height:1,background:'var(--border)',margin:'0 10px'}}/>}
           </React.Fragment>
         ))}
       </div>
@@ -351,11 +440,11 @@ const NewApp=({onSubmit,onBack,devices})=>{
         {step===1&&(
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:2}}>Customer information</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <FF label="Full name" req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder="As on national ID" className={e.name?'err':''}/></FF>
               <FF label="National ID number" req err={e.nid}><input value={f.nid} onChange={ev=>s('nid',ev.target.value.replace(/\D/g,'').slice(0,16))} placeholder="16 digits" className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/></FF>
             </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <FF label="Phone number" req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF>
               <FF label="Occupation" req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">Select...</option>{OCCS.map(o=><option key={o}>{o}</option>)}</select></FF>
             </div>
@@ -363,7 +452,7 @@ const NewApp=({onSubmit,onBack,devices})=>{
             <FF label="Monthly income (RWF)" req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder="e.g. 150000" className={e.income?'err':''}/></FF>
             <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Next of kin</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 160px',gap:12}}>
+              <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 160px',gap:12}}>
                 <FF label="Full name" req err={e.kn}><input value={f.kn} onChange={ev=>s('kn',ev.target.value)} placeholder="Next of kin name" className={e.kn?'err':''}/></FF>
                 <FF label="Phone" req err={e.kp}><input value={f.kp} onChange={ev=>s('kp',ev.target.value)} placeholder="07XXXXXXXX" className={e.kp?'err':''}/></FF>
                 <FF label="Relationship" req err={e.kr}><select value={f.kr} onChange={ev=>s('kr',ev.target.value)} className={e.kr?'err':''}><option value="">Select...</option>{RELS.map(r=><option key={r}>{r}</option>)}</select></FF>
@@ -375,7 +464,7 @@ const NewApp=({onSubmit,onBack,devices})=>{
           <div>
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Choose device</div>
             {e.did&&<div style={{padding:'9px 13px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',marginBottom:12}}>{e.did}</div>}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
+            <div className="device-select-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
               {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.dep+d.weekly*d.wks;return(
                 <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative'}}>
                   {sel&&<div style={{position:'absolute',top:9,right:9,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
@@ -391,7 +480,7 @@ const NewApp=({onSubmit,onBack,devices})=>{
           </div>
         )}
         {step===3&&dev&&(
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:22}}>
+          <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:22}}>
             <div>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Customer</div>
               {[['Full name',f.name],['National ID',f.nid],['Phone',f.phone],['Address',f.addr],['Occupation',f.occ],['Monthly income',fmtRWF(+f.income)],['Next of kin',`${f.kn} (${f.kr})`],['Kin phone',f.kp]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
@@ -462,14 +551,14 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
           <div>
             <div style={{fontWeight:600,fontSize:14,marginBottom:6}}>Enter device IMEI</div>
             <p style={{fontSize:12,color:'var(--textMid)',marginBottom:18,lineHeight:1.7}}>Enter the 15-digit IMEI of the <strong>{app.dev.brand} {app.dev.model}</strong>. We'll verify it against <strong>Carlcare</strong> to confirm the device model matches, then automatically register it in <strong>PayTrigger</strong>.</p>
-            <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:8}}>
-              <div style={{flex:1}}>
+            <div className="imei-row" style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:8,flexWrap:'wrap'}}>
+              <div style={{flex:1,minWidth:0}}>
                 <input value={imei} onChange={ev=>setImei(ev.target.value.replace(/\D/g,'').slice(0,15))} placeholder="15-digit IMEI number" style={{fontFamily:'DM Mono,monospace',fontSize:17,letterSpacing:'1.5px'}} maxLength={15}/>
                 <div style={{fontSize:10,color:'var(--textLight)',marginTop:4}}>Dial *#06# on the device · {imei.length}/15 digits</div>
               </div>
-              <Btn onClick={verify} v="primary" sz="lg" loading={ld==='carlcare'||ld==='pt'} disabled={imei.length!==15}>
+              <div className="btn-wrap" style={{flexShrink:0}}><Btn onClick={verify} v="primary" sz="lg" loading={ld==='carlcare'||ld==='pt'} disabled={imei.length!==15} full>
                 {ld==='carlcare'?'Checking…':ld==='pt'?'Registering…':'Verify IMEI'}
-              </Btn>
+              </Btn></div>
             </div>
             {(ld==='carlcare'||ld==='pt')&&<div style={{padding:'10px 13px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--info)',display:'flex',alignItems:'center',gap:8}}><Spin size={13} dark/><span>{ld==='carlcare'?'Verifying IMEI with Carlcare database…':'Uploading to PayTrigger locking system…'}</span></div>}
           </div>
@@ -530,11 +619,11 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
   const reviewable=[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(app.status);
   return(
     <div className="fadeUp" style={{padding:'28px 32px'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22}}>
-        <div style={{display:'flex',alignItems:'center',gap:12}}>
+      <div className="detail-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22,flexWrap:'wrap',gap:12}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,minWidth:0}}>
           <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
-          <div>
-            <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:3}}>
+          <div style={{minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:3,flexWrap:'wrap'}}>
               <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>{app.id}</span>
               <Badge st={app.status}/>
               {app.upya&&<span style={{fontSize:10,background:'var(--brandPale)',color:'var(--brand2)',padding:'2px 8px',borderRadius:99,fontFamily:'DM Mono,monospace'}}>{app.upya}</span>}
@@ -544,7 +633,7 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
         </div>
         <div style={{textAlign:'right',fontSize:11,color:'var(--textLight)'}}><div>{fmtD(app.createdAt)} {fmtT(app.createdAt)}</div><div style={{marginTop:2}}>{app.rep}</div></div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+      <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
         <Card sx={{padding:'16px 18px'}}>
           <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:13}}>Customer</div>
           {[['Full name',c.name],['National ID',c.nid],['Phone',c.phone],['Address',c.addr],['Occupation',c.occ],['Monthly income',fmtRWF(c.income)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
@@ -616,24 +705,27 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
   const {user}=useContext(Ctx);
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
   const mine=apps.filter(a=>a.repId===user.id);
   const grps={action:mine.filter(a=>[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(a.status)),review:mine.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(a.status)),active:mine.filter(a=>a.status===ST.ACTIVE),other:mine.filter(a=>[ST.REJECTED,ST.CHANGES].includes(a.status))};
+  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,mobileOpen:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false)};
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
     if(app&&[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(app.status))
-      return <div style={{display:'flex',flex:1}}><Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/><div style={{flex:1,overflow:'auto'}}><IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div>;
-    if(app) return <div style={{display:'flex',flex:1}}><Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/><div style={{flex:1,overflow:'auto'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div>;
+      return <div style={{display:'flex',flex:1}}><Sidebar {...sidebarProps}/><div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app) return <div style={{display:'flex',flex:1}}><Sidebar {...sidebarProps}/><div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
   return(
     <div style={{display:'flex',flex:1,minHeight:0}}>
-      <Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/>
-      <div style={{flex:1,overflow:'auto'}}>
+      <Sidebar {...sidebarProps}/>
+      <div className="main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'My applications':pg==='new'?'New application':pg==='prices'?'Price list':APP_NAME}</span></div>
         {pg==='dash'&&(
-          <div className="fadeUp" style={{padding:'28px 32px'}}>
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>My applications</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Welcome back, {user.name.split(' ')[0]}</p></div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:26}}>
+            <div className="stats-grid-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:26}}>
               {[['Total',mine.length,'var(--brand)'],['Active',grps.active.length,'var(--ok)'],['Under review',grps.review.length,'var(--info)'],['Action needed',grps.action.length,'var(--warn)']].map(([l,v,c])=>(
                 <Card key={l} sx={{padding:'13px 15px'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:4}}>{l}</div><div style={{fontSize:24,fontWeight:800,color:c}}>{v}</div></Card>
               ))}
@@ -657,11 +749,11 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
             {mine.length===0&&<Empty ico="📋" title="No applications yet" sub="Tap 'New Application' to get started"/>}
           </div>
         )}
-        {pg==='new'&&<NewApp devices={devices} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
+        {pg==='new'&&<div className="page-content" style={{padding:'28px 32px'}}><NewApp devices={devices} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
           const na={id:gid(),status:ST.SUBMITTED,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),rep:user.name,repId:user.id,c:{name:f.name,nid:f.nid,phone:f.phone,addr:f.addr,occ:f.occ,income:+f.income,kin:{name:f.kn,phone:f.kp,rel:f.kr}},dev,notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for review'}]};
           onUpdate(null,null,na);addToast('ok','Application submitted','Sent to the review queue');setPg('dash');
-        }}/>}
-        {pg==='prices'&&<PriceList devices={devices}/>}
+        }}/></div>}
+        {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devices}/></div>}
       </div>
     </div>
   );
@@ -672,10 +764,12 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
   const [pg,setPg]=useState('queue');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
+  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,mobileOpen:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false)};
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app) return <div style={{display:'flex',flex:1}}><Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/><div style={{flex:1,overflow:'auto'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div>;
+    if(app) return <div style={{display:'flex',flex:1}}><Sidebar {...sidebarProps}/><div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
   const queue=apps.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW].includes(a.status));
@@ -684,10 +778,11 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
 
   return(
     <div style={{display:'flex',flex:1,minHeight:0}}>
-      <Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/>
-      <div style={{flex:1,overflow:'auto'}}>
+      <Sidebar {...sidebarProps}/>
+      <div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='queue'?'Review queue':'All applications'}</span></div>
         {pg==='queue'&&(
-          <div className="fadeUp" style={{padding:'28px 32px'}}>
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{queue.length+esc.length} application{queue.length+esc.length!==1?'s':''} awaiting attention</p></div>
             {queue.length>0&&(
               <div style={{marginBottom:24}}>
@@ -717,7 +812,7 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
           </div>
         )}
         {pg==='all'&&(
-          <div className="fadeUp" style={{padding:'28px 32px'}}>
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:16}}>All applications</h1>
             <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{maxWidth:320,marginBottom:16}}/>
             <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{all.length} result{all.length!==1?'s':''}</div>
@@ -736,11 +831,13 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [fst,setFst]=useState('');
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
   const {user}=useContext(Ctx);
+  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,mobileOpen:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false)};
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app) return <div style={{display:'flex',flex:1}}><Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/><div style={{flex:1,overflow:'auto'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div>;
+    if(app) return <div style={{display:'flex',flex:1}}><Sidebar {...sidebarProps}/><div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
   const filtered=apps.filter(a=>{const ms=!q||a.c.name.toLowerCase().includes(q.toLowerCase())||a.id.toLowerCase().includes(q.toLowerCase());const mst=!fst||a.status===fst;return ms&&mst;});
@@ -852,7 +949,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
         </div>
 
         {tab==='devices'&&(
-          <div style={{display:'grid',gridTemplateColumns:'1.1fr .9fr',gap:14,alignItems:'start'}}>
+          <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:'1.1fr .9fr',gap:14,alignItems:'start'}}>
             <Card sx={{padding:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
                 <div style={{fontWeight:700}}>Devices</div>
@@ -915,7 +1012,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
         )}
 
         {tab==='users'&&(
-          <div style={{display:'grid',gridTemplateColumns:'1.1fr .9fr',gap:14,alignItems:'start'}}>
+          <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:'1.1fr .9fr',gap:14,alignItems:'start'}}>
             <Card sx={{padding:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
                 <div style={{fontWeight:800}}>Users</div>
@@ -1001,14 +1098,16 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
     );
   };
 
+  const mobileTitle=pg==='overview'?'Overview':pg==='all'?'All applications':pg==='admin'?'Admin':APP_NAME;
   return(
     <div style={{display:'flex',flex:1,minHeight:0}}>
-      <Sidebar page={pg} setPage={p=>{setPg(p);setSel(null)}} apps={apps}/>
-      <div style={{flex:1,overflow:'auto'}}>
+      <Sidebar {...sidebarProps}/>
+      <div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{mobileTitle}</span></div>
         {pg==='overview'&&(
-          <div className="fadeUp" style={{padding:'28px 32px'}}>
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Operations overview</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{APP_NAME} Rwanda · Live pipeline</p></div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
+            <div className="stats-grid-3" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
               {[['Total applications',apps.length,'var(--brand)'],['Active contracts',apps.filter(a=>a.status===ST.ACTIVE).length,'var(--ok)'],['Pending review',apps.filter(a=>a.status===ST.SUBMITTED).length,'var(--warn)'],['IMEI needed',apps.filter(a=>a.status===ST.IMEI_PENDING).length,'var(--warn)'],['Escalated',apps.filter(a=>a.status===ST.ESCALATED).length,'var(--pur)'],['Rejected',apps.filter(a=>a.status===ST.REJECTED).length,'var(--err)']].map(([l,v,c])=>(
                 <Card key={l} sx={{padding:'14px 16px'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:5}}>{l}</div><div style={{fontSize:26,fontWeight:800,color:c}}>{v}</div></Card>
               ))}
@@ -1027,11 +1126,11 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
           </div>
         )}
         {pg==='all'&&(
-          <div className="fadeUp" style={{padding:'28px 32px'}}>
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:16}}>All applications</h1>
-            <div style={{display:'flex',gap:10,marginBottom:16}}>
-              <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{flex:1,maxWidth:280}}/>
-              <select value={fst} onChange={ev=>setFst(ev.target.value)} style={{width:180}}><option value="">All statuses</option>{Object.entries(SM).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
+            <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap'}}>
+              <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{flex:1,minWidth:0,maxWidth:280}}/>
+              <select value={fst} onChange={ev=>setFst(ev.target.value)} style={{width:180,minWidth:0}}><option value="">All statuses</option>{Object.entries(SM).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
             </div>
             <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{filtered.length} result{filtered.length!==1?'s':''}</div>
             <div style={{display:'flex',flexDirection:'column',gap:8}}>{filtered.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
