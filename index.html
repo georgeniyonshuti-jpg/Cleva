@@ -192,7 +192,7 @@ const {useState,useCallback,useContext,createContext,useEffect}=React;
 const APP_NAME='Cleva';
 const EMAIL_DOMAIN='leout.rw';
 const LS={MERCHANTS:'cleva_merchants_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1',COMPANY:'cleva_company_v1'};
-const defaultCompanyInfo={name:'Cleva Financial Services Ltd',tagline:'Smart PAYGO Solutions — Empowering Access',address:'KG 15 Avenue, Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevapaygo.rw',website:'www.clevapaygo.rw',regNo:'RDB/2024/CL001',logo:null};
+const defaultCompanyInfo={name:'Cleva Financial Services Ltd',tagline:'Smart PAYGO Solutions — Empowering Access',address:'KG 15 Avenue, Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevapaygo.rw',website:'www.clevapaygo.rw',regNo:'RDB/2024/CL001',logo:null,signatoryName:'',signatoryTitle:'Authorised Signatory',signatorySig:null};
 const readLS=(k,fallback)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):fallback;}catch{return fallback;}};
 const writeLS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 const normEmail=s=>(s||'').trim().toLowerCase();
@@ -748,7 +748,15 @@ const ContractDoc=({data})=>{
       {S('Acknowledgement',<Para>The Customer confirms they have read and fully understood all terms of this Agreement, that all information provided is true and accurate, and that they freely agree to be bound by all terms and conditions herein.</Para>)}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24,marginTop:16}}>
         <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:8}}>CUSTOMER SIGNATURE</div><div style={{height:50,borderBottom:'1.5px solid var(--border)',marginBottom:6}}/><div style={{fontSize:11,color:'var(--textMid)'}}>{f.name}</div><div style={{fontSize:10,color:'var(--textLight)'}}>Date: {date}</div></div>
-        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:8}}>COMPANY REPRESENTATIVE</div><div style={{height:50,borderBottom:'1.5px solid var(--border)',marginBottom:6}}/><div style={{fontSize:11,color:'var(--textMid)'}}>{repName}</div><div style={{fontSize:10,color:'var(--textLight)'}}>Date: {date}</div></div>
+        <div>
+          <div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:8}}>FOR AND ON BEHALF OF {co.name.toUpperCase()}</div>
+          {co.signatorySig
+            ?<img src={co.signatorySig} alt="company signature" style={{height:50,maxWidth:'100%',objectFit:'contain',display:'block',marginBottom:6}}/>
+            :<div style={{height:50,borderBottom:'1.5px solid var(--border)',marginBottom:6}}/>}
+          <div style={{fontSize:11,color:'var(--textMid)'}}>{co.signatoryName||co.name}</div>
+          {co.signatoryTitle&&<div style={{fontSize:10,color:'var(--textLight)'}}>{co.signatoryTitle}</div>}
+          <div style={{fontSize:10,color:'var(--textLight)'}}>Date: {date}</div>
+        </div>
       </div>
     </div>
   );
@@ -869,13 +877,15 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
   doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);
   doc.text(app.fullName||'',M,sigStartY+38);
   doc.text('Date: '+date,M,sigStartY+43);
-  // Rep sig
-  doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text('COMPANY REPRESENTATIVE',colMid,sigStartY);
+  // Company signatory sig (pre-loaded from company settings)
+  doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text('FOR AND ON BEHALF OF '+co.name.toUpperCase(),colMid,sigStartY);
+  if(co.signatorySig){try{doc.addImage(co.signatorySig,'PNG',colMid,sigStartY+3,CW/2-8,28);}catch(e){}}
   doc.setDrawColor(...light);doc.setLineWidth(0.3);doc.line(colMid,sigStartY+33,colMid+CW/2-8,sigStartY+33);
   doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);
-  doc.text(repName||co.name,colMid,sigStartY+38);
-  doc.text('Date: '+date,colMid,sigStartY+43);
-  y=sigStartY+50;
+  doc.text(co.signatoryName||co.name,colMid,sigStartY+38);
+  if(co.signatoryTitle)doc.text(co.signatoryTitle,colMid,sigStartY+43);
+  doc.text('Date: '+date,colMid,co.signatoryTitle?sigStartY+48:sigStartY+43);
+  y=sigStartY+55;
 
   // ── Photos page ─────────────────────────────────────────────
   if(app.customerPhoto||app.idPhoto){
@@ -1615,6 +1625,13 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
     const [newDev,setNewDev]=useState({brand:'',model:'',ram:'',rom:'',cash:''});
     const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',superuser:false});
     const [cfgDraft,setCfgDraft]=useState({markupRate:Math.round(((pricingConfig||defaultPricingConfig).markupRate||0.60)*100),depositPct:Math.round(((pricingConfig||defaultPricingConfig).depositPct||0.20)*100)});
+    // Company info — hooks must be at component top level
+    const {companyInfo,setCompanyInfo}=useContext(Ctx);
+    const [coDraft,setCoDraft]=useState(()=>({...defaultCompanyInfo,...(companyInfo||{})}));
+    const sco=(k,v)=>setCoDraft(p=>({...p,[k]:v}));
+    const handleCoLogo=(e)=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>sco('logo',ev.target.result);reader.readAsDataURL(file);};
+    const handleCoSig=(e)=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>sco('signatorySig',ev.target.result);reader.readAsDataURL(file);};
+    const saveCompany=()=>{setCompanyInfo({...coDraft});addToast('ok','Company info saved','Changes will appear on all new contracts');};
 
     const cfg=pricingConfig||defaultPricingConfig;
 
@@ -1935,53 +1952,74 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
             )}
           </div>
         )}
-        {tab==='company'&&user.superuser&&(()=>{
-          const {companyInfo:co,setCompanyInfo:setCo}=useContext(Ctx);
-          const [draft,setDraft]=useState({...defaultCompanyInfo,...co});
-          const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
-          const save=()=>{setCo({...draft});addToast('ok','Company info saved','Changes will appear on all new contracts');};
-          const handleLogo=(e)=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>sd('logo',ev.target.result);reader.readAsDataURL(file);};
-          return(
-            <div style={{display:'flex',flexDirection:'column',gap:14}}>
-              <Card sx={{padding:'16px 18px'}}>
-                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Company identity (appears on all contracts)</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-                  <FF label="Company name" req><input value={draft.name} onChange={e=>sd('name',e.target.value)} placeholder="e.g. Cleva Financial Services Ltd"/></FF>
-                  <FF label="Registration number"><input value={draft.regNo||''} onChange={e=>sd('regNo',e.target.value)} placeholder="e.g. RDB/2024/CL001"/></FF>
-                </div>
-                <FF label="Tagline / slogan"><input value={draft.tagline||''} onChange={e=>sd('tagline',e.target.value)} placeholder="e.g. Smart PAYGO Solutions — Empowering Access"/></FF>
-                <div style={{marginTop:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                  <FF label="Address"><input value={draft.address||''} onChange={e=>sd('address',e.target.value)} placeholder="e.g. KG 15 Avenue, Kigali"/></FF>
-                  <FF label="Phone"><input value={draft.phone||''} onChange={e=>sd('phone',e.target.value)} placeholder="+250 788 000 000"/></FF>
-                  <FF label="Email"><input type="email" value={draft.email||''} onChange={e=>sd('email',e.target.value)} placeholder="info@company.rw"/></FF>
-                  <FF label="Website"><input value={draft.website||''} onChange={e=>sd('website',e.target.value)} placeholder="www.company.rw"/></FF>
-                </div>
-                <div style={{marginTop:14}}>
-                  <FF label="Company logo (PNG/JPEG — appears on contract PDF)">
-                    <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-                      <label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13}}>
-                        📤 Upload logo<input type="file" accept="image/*" style={{display:'none'}} onChange={handleLogo}/>
-                      </label>
-                      {draft.logo&&<div style={{display:'flex',alignItems:'center',gap:8}}><img src={draft.logo} alt="logo" style={{height:40,maxWidth:120,objectFit:'contain',border:'1px solid var(--border)',borderRadius:'var(--r2)',padding:4}}/><Btn v="def" sz="sm" onClick={()=>sd('logo',null)}>Remove</Btn></div>}
-                      {!draft.logo&&<span style={{fontSize:11,color:'var(--textLight)'}}>No logo — company name will appear as text on the contract</span>}
+        {tab==='company'&&user.superuser&&(
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            <Card sx={{padding:'16px 18px'}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Company identity — appears on all contracts</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+                <FF label="Company name" req><input value={coDraft.name} onChange={e=>sco('name',e.target.value)} placeholder="e.g. Cleva Financial Services Ltd"/></FF>
+                <FF label="Registration number"><input value={coDraft.regNo||''} onChange={e=>sco('regNo',e.target.value)} placeholder="e.g. RDB/2024/CL001"/></FF>
+              </div>
+              <FF label="Tagline / slogan"><input value={coDraft.tagline||''} onChange={e=>sco('tagline',e.target.value)} placeholder="e.g. Smart PAYGO Solutions — Empowering Access"/></FF>
+              <div style={{marginTop:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                <FF label="Address"><input value={coDraft.address||''} onChange={e=>sco('address',e.target.value)} placeholder="e.g. KG 15 Avenue, Kigali"/></FF>
+                <FF label="Phone"><input value={coDraft.phone||''} onChange={e=>sco('phone',e.target.value)} placeholder="+250 788 000 000"/></FF>
+                <FF label="Email"><input type="email" value={coDraft.email||''} onChange={e=>sco('email',e.target.value)} placeholder="info@company.rw"/></FF>
+                <FF label="Website"><input value={coDraft.website||''} onChange={e=>sco('website',e.target.value)} placeholder="www.company.rw"/></FF>
+              </div>
+              <div style={{marginTop:14,borderTop:'1.5px solid var(--border)',paddingTop:14}}>
+                <FF label="Company logo (PNG/JPEG — shown at top of all contract PDFs)">
+                  <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                    <label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13}}>
+                      📤 Upload logo<input type="file" accept="image/*" style={{display:'none'}} onChange={handleCoLogo}/>
+                    </label>
+                    {coDraft.logo&&<div style={{display:'flex',alignItems:'center',gap:8}}><img src={coDraft.logo} alt="logo" style={{height:40,maxWidth:120,objectFit:'contain',border:'1px solid var(--border)',borderRadius:'var(--r2)',padding:4}}/><Btn v="def" sz="sm" onClick={()=>sco('logo',null)}>Remove</Btn></div>}
+                    {!coDraft.logo&&<span style={{fontSize:11,color:'var(--textLight)'}}>No logo — company name will appear as text</span>}
+                  </div>
+                </FF>
+              </div>
+            </Card>
+
+            <Card sx={{padding:'16px 18px'}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:6}}>Company signatory — pre-loaded on all contracts</div>
+              <p style={{fontSize:11,color:'var(--textMid)',marginBottom:14,lineHeight:1.5}}>This person's signature and name will appear as the company representative on every contract PDF. Upload once, applies to all contracts.</p>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
+                <FF label="Signatory full name"><input value={coDraft.signatoryName||''} onChange={e=>sco('signatoryName',e.target.value)} placeholder="e.g. Jean Pierre Habimana"/></FF>
+                <FF label="Title / designation"><input value={coDraft.signatoryTitle||''} onChange={e=>sco('signatoryTitle',e.target.value)} placeholder="e.g. Chief Executive Officer"/></FF>
+              </div>
+              <FF label="Signatory signature (draw or upload — appears on every contract PDF)">
+                <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                  <label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,alignSelf:'flex-start'}}>
+                    📤 Upload signature image<input type="file" accept="image/*" style={{display:'none'}} onChange={handleCoSig}/>
+                  </label>
+                  {coDraft.signatorySig&&(
+                    <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',border:'1.5px solid var(--okBorder)',borderRadius:'var(--r)',background:'var(--okBg)'}}>
+                      <img src={coDraft.signatorySig} alt="signatory sig" style={{height:48,maxWidth:160,objectFit:'contain',background:'white',border:'1px solid var(--border)',borderRadius:'var(--r2)',padding:4}}/>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:600,color:'var(--ok)'}}>✓ Signature loaded</div>
+                        <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{coDraft.signatoryName||'No name set'} · {coDraft.signatoryTitle||''}</div>
+                      </div>
+                      <Btn v="def" sz="sm" onClick={()=>sco('signatorySig',null)} style={{marginLeft:'auto'}}>Remove</Btn>
                     </div>
-                  </FF>
+                  )}
+                  {!coDraft.signatorySig&&<span style={{fontSize:11,color:'var(--textLight)'}}>No signature — a blank line will appear on the contract</span>}
                 </div>
-              </Card>
-              <Card sx={{padding:'16px 18px',background:'var(--bg)'}}>
-                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Contract preview header</div>
-                <div style={{background:'white',border:'1.5px solid var(--border)',borderRadius:'var(--r)',padding:'16px 20px'}}>
-                  {draft.logo&&<img src={draft.logo} alt="logo" style={{height:36,marginBottom:8,display:'block'}}/>}
-                  <div style={{fontWeight:800,fontSize:16,color:'var(--brand)'}}>{draft.name||'Company name'}</div>
-                  <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{draft.tagline}</div>
-                  <div style={{fontSize:10,color:'var(--textLight)',marginTop:2}}>{[draft.address,draft.phone,draft.email].filter(Boolean).join(' · ')}</div>
-                  {draft.regNo&&<div style={{fontSize:9,color:'var(--textLight)',marginTop:1}}>Reg: {draft.regNo}</div>}
-                </div>
-              </Card>
-              <Btn v="primary" icon="✓" onClick={save}>Save company info</Btn>
-            </div>
-          );
-        })()}
+              </FF>
+            </Card>
+
+            <Card sx={{padding:'16px 18px',background:'var(--bg)'}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Contract header preview</div>
+              <div style={{background:'white',border:'1.5px solid var(--border)',borderRadius:'var(--r)',padding:'16px 20px'}}>
+                {coDraft.logo&&<img src={coDraft.logo} alt="logo" style={{height:36,marginBottom:8,display:'block'}}/>}
+                <div style={{fontWeight:800,fontSize:16,color:'var(--brand)'}}>{coDraft.name||'Company name'}</div>
+                <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{coDraft.tagline}</div>
+                <div style={{fontSize:10,color:'var(--textLight)',marginTop:2}}>{[coDraft.address,coDraft.phone,coDraft.email].filter(Boolean).join(' · ')}</div>
+                {coDraft.regNo&&<div style={{fontSize:9,color:'var(--textLight)',marginTop:1}}>Reg: {coDraft.regNo}</div>}
+              </div>
+            </Card>
+            <Btn v="primary" icon="✓" onClick={saveCompany}>Save company settings</Btn>
+          </div>
+        )}
       </div>
     );
   };
