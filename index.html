@@ -80,10 +80,9 @@ const DEVICES_SEED=[
   {id:'D08',brand:'Tecno',model:'Spark 40 Pro',sku:'T-SP40P',specs:'6.7″ HD+ · 5000mAh · 4+128GB · A14',cash:152000},
 ];
 
-// Temporary aliases while refactoring the app to persistent state.
-// These keep the current UI working; later patches will remove them.
-const USERS=USERS_SEED;
-const DEVICES=DEVICES_SEED.map(d=>({id:d.id,brand:d.brand,model:d.model,sku:d.sku,specs:d.specs,retail:d.cash,dep:Math.round(d.cash*0.2),weekly:Math.round((d.cash*1.27 - d.cash*0.2)/26),wks:26}));
+// Default devices use the legacy weekly contract structure used across the UI.
+// Superuser edits will persist in localStorage and update existing applications.
+const DEVICES_DEFAULT=DEVICES_SEED.map(d=>({id:d.id,brand:d.brand,model:d.model,sku:d.sku,specs:d.specs,retail:d.cash,dep:Math.round(d.cash*0.2),weekly:Math.round((d.cash*1.27 - d.cash*0.2)/26),wks:26}));
 // interestRate is applied on cash to get total price.
 // depositPct is taken on total price; monthly is over 12 months.
 const defaultCfg={interestRate:0.27,depositPct:0.2};
@@ -127,22 +126,22 @@ const SEED=[
   {id:'FF-0001',status:ST.SUBMITTED,createdAt:new Date(Date.now()-10800000).toISOString(),updatedAt:new Date(Date.now()-10800000).toISOString(),
    rep:'Alice Ndayisaba',repId:'SR01',
    c:{name:'Jean Baptiste Habimana',nid:'1199880123456001',phone:'0781234567',addr:'Kimironko, Gasabo',occ:'Trader / Business owner',income:150000,kin:{name:'Marie Habimana',phone:'0789876543',rel:'Spouse'}},
-   dev:DEVICES[0],notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,
+   dev:DEVICES_DEFAULT[0],notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,
    tl:[{at:new Date(Date.now()-10800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted for review'}]},
   {id:'FF-0002',status:ST.IMEI_PENDING,createdAt:new Date(Date.now()-172800000).toISOString(),updatedAt:new Date(Date.now()-3600000).toISOString(),
    rep:'Alice Ndayisaba',repId:'SR01',
    c:{name:'Claudette Uwase',nid:'1200180123456002',phone:'0782345678',addr:'Nyamirambo, Nyarugenge',occ:'Teacher',income:180000,kin:{name:'Patrick Uwase',phone:'0786543210',rel:'Brother'}},
-   dev:DEVICES[2],notes:'Income confirmed via employer letter. Stable profile.',reviewer:'Jane Murekatete',upya:'UPYA-RW-2025-0892',imei:null,ptId:null,lockedAt:null,
+   dev:DEVICES_DEFAULT[2],notes:'Income confirmed via employer letter. Stable profile.',reviewer:'Jane Murekatete',upya:'UPYA-RW-2025-0892',imei:null,ptId:null,lockedAt:null,
    tl:[{at:new Date(Date.now()-172800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted for review'},{at:new Date(Date.now()-86400000).toISOString(),by:'Jane Murekatete',txt:'Placed under review'},{at:new Date(Date.now()-3600000).toISOString(),by:'Jane Murekatete',txt:'Approved — UPYA contract UPYA-RW-2025-0892 created'}]},
   {id:'FF-0003',status:ST.ACTIVE,createdAt:new Date(Date.now()-604800000).toISOString(),updatedAt:new Date(Date.now()-432000000).toISOString(),
    rep:'Alice Ndayisaba',repId:'SR01',
    c:{name:'Emmanuel Nkurunziza',nid:'1198180123456003',phone:'0783456789',addr:'Remera, Gasabo',occ:'Driver / Transport',income:200000,kin:{name:'Grace Nkurunziza',phone:'0785432109',rel:'Spouse'}},
-   dev:DEVICES[4],notes:'Very stable income. Strong profile.',reviewer:'Jane Murekatete',upya:'UPYA-RW-2025-0887',imei:'353456789012345',ptId:'PT-2025-04892',lockedAt:new Date(Date.now()-432000000).toISOString(),
+   dev:DEVICES_DEFAULT[4],notes:'Very stable income. Strong profile.',reviewer:'Jane Murekatete',upya:'UPYA-RW-2025-0887',imei:'353456789012345',ptId:'PT-2025-04892',lockedAt:new Date(Date.now()-432000000).toISOString(),
    tl:[{at:new Date(Date.now()-604800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted'},{at:new Date(Date.now()-518400000).toISOString(),by:'Jane Murekatete',txt:'Approved — UPYA contract UPYA-RW-2025-0887 created'},{at:new Date(Date.now()-475200000).toISOString(),by:'Alice Ndayisaba',txt:'IMEI 353456789012345 verified via Carlcare'},{at:new Date(Date.now()-475100000).toISOString(),by:'System',txt:'Registered in PayTrigger (PT-2025-04892)'},{at:new Date(Date.now()-432000000).toISOString(),by:'Alice Ndayisaba',txt:'Phone locked — contract activated, payments enabled'}]},
   {id:'FF-0004',status:ST.ESCALATED,createdAt:new Date(Date.now()-86400000).toISOString(),updatedAt:new Date(Date.now()-1800000).toISOString(),
    rep:'Bob Nzeyimana',repId:'SR02',
    c:{name:'Florentine Mukamana',nid:'1200480123456004',phone:'0784567890',addr:'Gisozi, Gasabo',occ:'Trader / Business owner',income:350000,kin:{name:'Théogène Mukama',phone:'0784321098',rel:'Parent'}},
-   dev:DEVICES[1],notes:'Customer reported existing financing. Escalated to credit committee.',reviewer:'Jane Murekatete',upya:null,imei:null,ptId:null,lockedAt:null,
+   dev:DEVICES_DEFAULT[1],notes:'Customer reported existing financing. Escalated to credit committee.',reviewer:'Jane Murekatete',upya:null,imei:null,ptId:null,lockedAt:null,
    tl:[{at:new Date(Date.now()-86400000).toISOString(),by:'Bob Nzeyimana',txt:'Application submitted'},{at:new Date(Date.now()-1800000).toISOString(),by:'Jane Murekatete',txt:'Escalated to credit committee — prior financing flagged'}]},
 ];
 
@@ -193,7 +192,7 @@ const Sidebar=({page,setPage,apps})=>{
   const navItems={
     rep:[{k:'dash',l:'My Applications',badge:imeiNeeded>0?imeiNeeded:0},{k:'new',l:'New Application'},{k:'prices',l:'Price List'}],
     underwriter:[{k:'queue',l:'Review Queue',badge:pending},{k:'all',l:'All Applications'}],
-    ops:[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'}],
+    ops:[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},...(user.superuser?[{k:'admin',l:'Admin'}]:[])],
   }[user.role]||[];
   const initials=user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   return(
@@ -228,7 +227,7 @@ const Sidebar=({page,setPage,apps})=>{
 };
 
 // ── LOGIN ─────────────────────────────────────────────────────
-const Login=({onLogin})=>{
+const Login=({onLogin,users})=>{
   const [email,setEmail]=useState('');
   const [pass,setPass]=useState('');
   const [err,setErr]=useState('');
@@ -240,7 +239,7 @@ const Login=({onLogin})=>{
     if(!email.trim()||!pass.trim()){setErr('Enter your email and password');return;}
     setLoading(true);
     await sleep(600);
-    const user=USERS.find(u=>u.email.toLowerCase()===email.toLowerCase().trim()&&u.password===pass);
+    const user=(users||[]).find(u=>u.email.toLowerCase()===email.toLowerCase().trim()&&u.password===pass);
     if(!user){setErr('Incorrect email or password');setLoading(false);return;}
     onLogin(user);
   };
@@ -290,14 +289,14 @@ const Login=({onLogin})=>{
 };
 
 // ── PRICE LIST ────────────────────────────────────────────────
-const PriceList=()=>(
+const PriceList=({devices})=>(
   <div className="fadeUp" style={{padding:'28px 32px'}}>
     <div style={{marginBottom:22}}>
       <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Device price list</h1>
       <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>26-week PAYGO contracts · All amounts in RWF · March 2026</p>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(230px,1fr))',gap:12}}>
-      {DEVICES.map(d=>{const tot=d.dep+d.weekly*d.wks;const rate=(((tot-d.retail)/d.retail)*100).toFixed(1);return(
+      {(devices||[]).map(d=>{const tot=d.dep+d.weekly*d.wks;const rate=(((tot-d.retail)/d.retail)*100).toFixed(1);return(
         <Card key={d.id} sx={{overflow:'hidden'}}>
           <div style={{height:3,background:'linear-gradient(90deg,var(--brand),var(--brand3))'}}/>
           <div style={{padding:'15px 16px'}}>
@@ -320,7 +319,7 @@ const PriceList=()=>(
 );
 
 // ── NEW APPLICATION ───────────────────────────────────────────
-const NewApp=({onSubmit,onBack})=>{
+const NewApp=({onSubmit,onBack,devices})=>{
   const {user}=useContext(Ctx);
   const [step,setStep]=useState(1);
   const [f,setF]=useState({name:'',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:''});
@@ -329,7 +328,7 @@ const NewApp=({onSubmit,onBack})=>{
   const v1=()=>{const er={};if(!f.name.trim())er.name='Required';if(f.nid.replace(/\D/g,'').length<16)er.nid='Must be 16 digits';if(!f.phone.trim())er.phone='Required';if(!f.addr.trim())er.addr='Required';if(!f.occ)er.occ='Required';if(!f.income||isNaN(f.income)||+f.income<1)er.income='Enter a valid amount';if(!f.kn.trim())er.kn='Required';if(!f.kp.trim())er.kp='Required';if(!f.kr)er.kr='Required';setE(er);return!Object.keys(er).length;};
   const v2=()=>{const er={};if(!f.did)er.did='Please select a device';setE(er);return!Object.keys(er).length;};
   const next=()=>{if(step===1&&v1())setStep(2);else if(step===2&&v2())setStep(3);};
-  const dev=DEVICES.find(d=>d.id===f.did);
+  const dev=(devices||[]).find(d=>d.id===f.did);
   const STEPS=['Customer details','Select device','Review & submit'];
   return(
     <div className="fadeUp" style={{padding:'28px 32px',maxWidth:820}}>
@@ -377,7 +376,7 @@ const NewApp=({onSubmit,onBack})=>{
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Choose device</div>
             {e.did&&<div style={{padding:'9px 13px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',marginBottom:12}}>{e.did}</div>}
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
-              {DEVICES.map(d=>{const sel=f.did===d.id;const tot=d.dep+d.weekly*d.wks;return(
+              {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.dep+d.weekly*d.wks;return(
                 <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative'}}>
                   {sel&&<div style={{position:'absolute',top:9,right:9,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
                   <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
@@ -613,7 +612,7 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
 };
 
 // ── SALES REP VIEW ────────────────────────────────────────────
-const SalesRepView=({apps,onUpdate,addToast})=>{
+const SalesRepView=({apps,onUpdate,addToast,devices})=>{
   const {user}=useContext(Ctx);
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
@@ -658,11 +657,11 @@ const SalesRepView=({apps,onUpdate,addToast})=>{
             {mine.length===0&&<Empty ico="📋" title="No applications yet" sub="Tap 'New Application' to get started"/>}
           </div>
         )}
-        {pg==='new'&&<NewApp onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
+        {pg==='new'&&<NewApp devices={devices} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
           const na={id:gid(),status:ST.SUBMITTED,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),rep:user.name,repId:user.id,c:{name:f.name,nid:f.nid,phone:f.phone,addr:f.addr,occ:f.occ,income:+f.income,kin:{name:f.kn,phone:f.kp,rel:f.kr}},dev,notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for review'}]};
           onUpdate(null,null,na);addToast('ok','Application submitted','Sent to the review queue');setPg('dash');
         }}/>}
-        {pg==='prices'&&<PriceList/>}
+        {pg==='prices'&&<PriceList devices={devices}/>}
       </div>
     </div>
   );
@@ -732,11 +731,12 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
 };
 
 // ── OPS VIEW ──────────────────────────────────────────────────
-const OpsView=({apps,onUpdate,addToast})=>{
+const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps})=>{
   const [pg,setPg]=useState('overview');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [fst,setFst]=useState('');
+  const {user}=useContext(Ctx);
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
@@ -744,6 +744,262 @@ const OpsView=({apps,onUpdate,addToast})=>{
   }
 
   const filtered=apps.filter(a=>{const ms=!q||a.c.name.toLowerCase().includes(q.toLowerCase())||a.id.toLowerCase().includes(q.toLowerCase());const mst=!fst||a.status===fst;return ms&&mst;});
+
+  const roleLabelFor=r=>({rep:'Sales Representative',underwriter:'Underwriter',ops:'Ops & Support'}[r]||r);
+  const mkUserId=r=>{
+    const pref=r==='rep'?'SR':r==='underwriter'?'UW':'OP';
+    const nums=(users||[]).filter(u=>u.id?.startsWith(pref)).map(u=>parseInt(String(u.id).slice(2),10)).filter(n=>!isNaN(n));
+    const next=(nums.length?Math.max(...nums):0)+1;
+    return pref+String(next).padStart(2,'0');
+  };
+  const mkDevId=()=>{
+    const nums=(devices||[]).map(d=>parseInt(String(d.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));
+    const next=(nums.length?Math.max(...nums):0)+1;
+    return 'D'+String(next).padStart(2,'0');
+  };
+
+  const Admin=()=>{
+    const [tab,setTab]=useState('devices');
+    const [du,setDu]=useState('');
+    const [uu,setUu]=useState('');
+    const [newDev,setNewDev]=useState({brand:'',model:'',sku:'',specs:'',retail:'',dep:'',weekly:'',wks:26});
+    const [newUser,setNewUser]=useState({name:'',local:'',role:'rep',superuser:false});
+
+    const devs=(devices||[]).filter(d=>{
+      if(!du.trim()) return true;
+      const s=du.toLowerCase();
+      return (d.brand||'').toLowerCase().includes(s)||(d.model||'').toLowerCase().includes(s)||(d.sku||'').toLowerCase().includes(s)||String(d.id).toLowerCase().includes(s);
+    });
+    const us=(users||[]).filter(u=>{
+      if(!uu.trim()) return true;
+      const s=uu.toLowerCase();
+      return (u.name||'').toLowerCase().includes(s)||(u.email||'').toLowerCase().includes(s)||String(u.id).toLowerCase().includes(s);
+    });
+
+    const patchAppsDevice=(devId,devObj)=>{
+      setApps(p=>(p||[]).map(a=>a?.dev?.id===devId?{...a,dev:devObj,updatedAt:new Date().toISOString()}:a));
+    };
+
+    const upDev=(id,patch)=>{
+      const next=(devices||[]).map(d=>d.id===id?{...d,...patch}:d);
+      setDevices(next);
+      const updated=next.find(d=>d.id===id);
+      if(updated) patchAppsDevice(id,updated);
+    };
+    const rmDev=(id)=>{
+      const used=(apps||[]).some(a=>a?.dev?.id===id);
+      if(used){addToast('err','Cannot remove device','Device is used by existing applications');return;}
+      setDevices((devices||[]).filter(d=>d.id!==id));
+      addToast('ok','Device removed','');
+    };
+    const addDev=()=>{
+      const er=[];
+      if(!newDev.brand.trim()) er.push('brand');
+      if(!newDev.model.trim()) er.push('model');
+      const retail=+newDev.retail;
+      const dep=+newDev.dep;
+      const weekly=+newDev.weekly;
+      const wks=+newDev.wks||26;
+      if(!retail||retail<1) er.push('retail');
+      if(dep<0) er.push('dep');
+      if(weekly<0) er.push('weekly');
+      if(er.length){addToast('err','Missing fields','Please fill the required fields');return;}
+      const id=mkDevId();
+      const d={id,brand:newDev.brand.trim(),model:newDev.model.trim(),sku:newDev.sku.trim(),specs:newDev.specs.trim(),retail,dep,weekly,wks};
+      setDevices([...(devices||[]),d]);
+      setNewDev({brand:'',model:'',sku:'',specs:'',retail:'',dep:'',weekly:'',wks:26});
+      addToast('ok','Device added',`${d.brand} ${d.model}`);
+    };
+
+    const upUser=(id,patch)=>{
+      setUsers((users||[]).map(u=>u.id===id?{...u,...patch,roleLabel:roleLabelFor(patch.role||u.role)}:u));
+    };
+    const rmUser=(id)=>{
+      if(id===user.id){addToast('err','Not allowed','You cannot remove your own account');return;}
+      setUsers((users||[]).filter(u=>u.id!==id));
+      addToast('ok','User removed','');
+    };
+    const resetPwd=(id)=>{
+      const tmp=randPwd();
+      const u=(users||[]).find(x=>x.id===id);
+      if(!u) return;
+      upUser(id,{password:tmp,mustChangePassword:true});
+      addToast('info','Temporary password set',`Email to ${u.email}: temp password ${tmp}`);
+    };
+    const addUser=()=>{
+      const name=newUser.name.trim();
+      const local=normEmail(newUser.local).replace(/@.*/,'').replace(/[^a-z0-9._-]/g,'');
+      if(!name||!local){addToast('err','Missing fields','Name and email are required');return;}
+      const email=`${local}@${EMAIL_DOMAIN}`;
+      if((users||[]).some(u=>normEmail(u.email)===email)){addToast('err','Email already exists',email);return;}
+      const id=mkUserId(newUser.role);
+      const tmp=randPwd();
+      const u={id,name,email,password:tmp,role:newUser.role,roleLabel:roleLabelFor(newUser.role),superuser:!!newUser.superuser,mustChangePassword:true};
+      setUsers([...(users||[]),u]);
+      setNewUser({name:'',local:'',role:'rep',superuser:false});
+      addToast('ok','User added',`Email to ${email}: temp password ${tmp}`);
+    };
+
+    return(
+      <div className="fadeUp" style={{padding:'28px 32px'}}>
+        <div style={{marginBottom:18}}>
+          <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Admin</h1>
+          <p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Superuser management for devices (prices) and users</p>
+        </div>
+        <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+          <Btn v={tab==='devices'?'primary':'def'} onClick={()=>setTab('devices')}>Devices & prices</Btn>
+          <Btn v={tab==='users'?'primary':'def'} onClick={()=>setTab('users')}>Users</Btn>
+        </div>
+
+        {tab==='devices'&&(
+          <div style={{display:'grid',gridTemplateColumns:'1.1fr .9fr',gap:14,alignItems:'start'}}>
+            <Card sx={{padding:16}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                <div style={{fontWeight:700}}>Devices</div>
+                <input value={du} onChange={e=>setDu(e.target.value)} placeholder="Search devices…" style={{width:240}}/>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {devs.map(d=>{
+                  const tot=(+d.dep)+(+d.weekly)*(+d.wks||0);
+                  return(
+                    <Card key={d.id} sx={{padding:14,boxShadow:'none'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',marginBottom:10}}>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontWeight:800}}>{d.brand} {d.model} <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({d.id})</span></div>
+                          <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{d.sku} · {d.specs}</div>
+                        </div>
+                        <div style={{display:'flex',gap:8}}>
+                          <Btn v="err" sz="sm" onClick={()=>rmDev(d.id)}>Remove</Btn>
+                        </div>
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                        <FF label="Brand"><input value={d.brand} onChange={e=>upDev(d.id,{brand:e.target.value})}/></FF>
+                        <FF label="Model"><input value={d.model} onChange={e=>upDev(d.id,{model:e.target.value})}/></FF>
+                        <FF label="SKU"><input value={d.sku} onChange={e=>upDev(d.id,{sku:e.target.value})}/></FF>
+                        <FF label="Specs"><input value={d.specs} onChange={e=>upDev(d.id,{specs:e.target.value})}/></FF>
+                        <FF label="Cash price (retail)"><input type="number" value={d.retail} onChange={e=>upDev(d.id,{retail:+e.target.value})}/></FF>
+                        <FF label="Deposit"><input type="number" value={d.dep} onChange={e=>upDev(d.id,{dep:+e.target.value})}/></FF>
+                        <FF label="Weekly payment"><input type="number" value={d.weekly} onChange={e=>upDev(d.id,{weekly:+e.target.value})}/></FF>
+                        <FF label="Weeks"><input type="number" value={d.wks} onChange={e=>upDev(d.id,{wks:+e.target.value})}/></FF>
+                      </div>
+                      <div style={{marginTop:10,fontSize:11,color:'var(--textMid)'}}>
+                        Total payable: <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{fmtRWF(tot)}</span>
+                      </div>
+                    </Card>
+                  );
+                })}
+                {devs.length===0&&<Empty ico="📱" title="No devices found"/>}
+              </div>
+            </Card>
+
+            <Card sx={{padding:16}}>
+              <div style={{fontWeight:800,marginBottom:10}}>Add device</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                <FF label="Brand" req><input value={newDev.brand} onChange={e=>setNewDev(p=>({...p,brand:e.target.value}))}/></FF>
+                <FF label="Model" req><input value={newDev.model} onChange={e=>setNewDev(p=>({...p,model:e.target.value}))}/></FF>
+                <FF label="SKU"><input value={newDev.sku} onChange={e=>setNewDev(p=>({...p,sku:e.target.value}))}/></FF>
+                <FF label="Specs"><input value={newDev.specs} onChange={e=>setNewDev(p=>({...p,specs:e.target.value}))}/></FF>
+                <FF label="Cash price (retail)" req><input type="number" value={newDev.retail} onChange={e=>setNewDev(p=>({...p,retail:e.target.value}))}/></FF>
+                <FF label="Deposit"><input type="number" value={newDev.dep} onChange={e=>setNewDev(p=>({...p,dep:e.target.value}))}/></FF>
+                <FF label="Weekly payment"><input type="number" value={newDev.weekly} onChange={e=>setNewDev(p=>({...p,weekly:e.target.value}))}/></FF>
+                <FF label="Weeks"><input type="number" value={newDev.wks} onChange={e=>setNewDev(p=>({...p,wks:+e.target.value}))}/></FF>
+              </div>
+              <div style={{marginTop:12}}>
+                <Btn v="primary" onClick={addDev} full icon="＋">Add device</Btn>
+              </div>
+              <div style={{marginTop:10,fontSize:11,color:'var(--textLight)',lineHeight:1.5}}>
+                Note: this admin screen edits the current “weekly × weeks” pricing used across the app. (We can switch to the interest-rate monthly model next.)
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {tab==='users'&&(
+          <div style={{display:'grid',gridTemplateColumns:'1.1fr .9fr',gap:14,alignItems:'start'}}>
+            <Card sx={{padding:16}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                <div style={{fontWeight:800}}>Users</div>
+                <input value={uu} onChange={e=>setUu(e.target.value)} placeholder="Search users…" style={{width:240}}/>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {us.map(u=>(
+                  <Card key={u.id} sx={{padding:14,boxShadow:'none'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',marginBottom:10}}>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontWeight:800}}>{u.name} <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({u.id})</span></div>
+                        <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{u.email}</div>
+                      </div>
+                      <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}>
+                        <Btn v="info" sz="sm" onClick={()=>resetPwd(u.id)}>Reset password</Btn>
+                        <Btn v="err" sz="sm" onClick={()=>rmUser(u.id)}>Remove</Btn>
+                      </div>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                      <FF label="Name"><input value={u.name} onChange={e=>upUser(u.id,{name:e.target.value})}/></FF>
+                      <FF label="Email (local part)">
+                        <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                          <input value={String(u.email||'').split('@')[0]} onChange={e=>{
+                            const local=normEmail(e.target.value).replace(/@.*/,'').replace(/[^a-z0-9._-]/g,'');
+                            upUser(u.id,{email:`${local}@${EMAIL_DOMAIN}`});
+                          }}/>
+                          <span style={{fontSize:12,color:'var(--textLight)'}}>@{EMAIL_DOMAIN}</span>
+                        </div>
+                      </FF>
+                      <FF label="Role">
+                        <select value={u.role} onChange={e=>upUser(u.id,{role:e.target.value,roleLabel:roleLabelFor(e.target.value)})}>
+                          <option value="rep">Sales Representative</option>
+                          <option value="underwriter">Underwriter</option>
+                          <option value="ops">Ops & Support</option>
+                        </select>
+                      </FF>
+                      <FF label="Superuser (ops only)">
+                        <select value={u.superuser?'yes':'no'} onChange={e=>upUser(u.id,{superuser:e.target.value==='yes'})} disabled={u.role!=='ops'}>
+                          <option value="no">No</option>
+                          <option value="yes">Yes</option>
+                        </select>
+                      </FF>
+                    </div>
+                    {u.mustChangePassword&&<div style={{marginTop:10,fontSize:11,color:'var(--warn)',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',padding:'8px 10px'}}>User must change password on next login</div>}
+                  </Card>
+                ))}
+                {us.length===0&&<Empty ico="👤" title="No users found"/>}
+              </div>
+            </Card>
+
+            <Card sx={{padding:16}}>
+              <div style={{fontWeight:800,marginBottom:10}}>Add user</div>
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                <FF label="Full name" req><input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="e.g. Grace Mukamana"/></FF>
+                <FF label="Email" req>
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    <input value={newUser.local} onChange={e=>setNewUser(p=>({...p,local:e.target.value}))} placeholder="e.g. grace"/>
+                    <span style={{fontSize:12,color:'var(--textLight)'}}>@{EMAIL_DOMAIN}</span>
+                  </div>
+                </FF>
+                <FF label="Role">
+                  <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value,superuser:false}))}>
+                    <option value="rep">Sales Representative</option>
+                    <option value="underwriter">Underwriter</option>
+                    <option value="ops">Ops & Support</option>
+                  </select>
+                </FF>
+                <FF label="Make superuser (ops only)">
+                  <select value={newUser.superuser?'yes':'no'} onChange={e=>setNewUser(p=>({...p,superuser:e.target.value==='yes'}))} disabled={newUser.role!=='ops'}>
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </FF>
+                <Btn v="primary" onClick={addUser} full icon="＋">Create user & email temp password</Btn>
+                <div style={{fontSize:11,color:'var(--textLight)',lineHeight:1.5}}>
+                  New users get a temporary password and are forced to change it on first login (simulated email via toast).
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return(
     <div style={{display:'flex',flex:1,minHeight:0}}>
@@ -782,6 +1038,9 @@ const OpsView=({apps,onUpdate,addToast})=>{
             {filtered.length===0&&<Empty ico="🔍" title="No results found"/>}
           </div>
         )}
+        {pg==='admin'&&user.superuser&&(
+          <Admin/>
+        )}
       </div>
     </div>
   );
@@ -790,14 +1049,21 @@ const OpsView=({apps,onUpdate,addToast})=>{
 // ── ROOT ──────────────────────────────────────────────────────
 const App=()=>{
   const [user,setUser]=useState(null);
-  const [apps,setApps]=useState(SEED);
   const [toasts,setToasts]=useState([]);
+
+  const [users,setUsers]=useState(()=>readLS(LS.USERS,USERS_SEED));
+  const [devices,setDevices]=useState(()=>readLS(LS.DEVICES,DEVICES_DEFAULT));
+  const [apps,setApps]=useState(()=>readLS(LS.APPS,SEED));
 
   const addToast=useCallback((c,title,msg='')=>{
     const id=Date.now()+Math.random();
     setToasts(p=>[...p,{id,c,title,msg}]);
     setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),4200);
   },[]);
+
+  useEffect(()=>writeLS(LS.USERS,users),[users]);
+  useEffect(()=>writeLS(LS.DEVICES,devices),[devices]);
+  useEffect(()=>writeLS(LS.APPS,apps),[apps]);
 
   const updateApp=useCallback((id,upd,newApp)=>{
     if(newApp){setApps(p=>[...p,newApp]);return;}
@@ -814,7 +1080,7 @@ const App=()=>{
 
   if(!user) return(
     <Ctx.Provider value={ctx}>
-      <Login onLogin={setUser}/>
+      <Login onLogin={setUser} users={users}/>
       <Toast toasts={toasts}/>
     </Ctx.Provider>
   );
@@ -822,9 +1088,9 @@ const App=()=>{
   return(
     <Ctx.Provider value={ctx}>
       <div style={{display:'flex',minHeight:'100vh'}}>
-        {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
+        {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices}/>}
         {user.role==='underwriter'&&<UnderwriterView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
-        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
+        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} setApps={setApps}/>}
       </div>
       <Toast toasts={toasts}/>
     </Ctx.Provider>
