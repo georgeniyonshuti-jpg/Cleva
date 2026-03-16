@@ -347,7 +347,7 @@ const Login=({onLogin,users})=>{
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div>
               <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.55)',display:'block',marginBottom:5}}>Email address</label>
-              <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder={`you@${EMAIL_DOMAIN}`} style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.15)',color:'white',borderRadius:'var(--r2)'}} className={err?'err':''}/>
+              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="you@company.com" style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.15)',color:'white',borderRadius:'var(--r2)'}} className={err?'err':''}/>
             </div>
             <div>
               <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.55)',display:'block',marginBottom:5}}>Password</label>
@@ -363,10 +363,10 @@ const Login=({onLogin,users})=>{
           </div>
           <div style={{marginTop:20,padding:'12px 14px',background:'rgba(255,255,255,0.06)',borderRadius:'var(--r2)',border:'1px solid rgba(255,255,255,0.08)'}}>
             <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'rgba(255,255,255,0.35)',marginBottom:8}}>Demo accounts</div>
-            {[[`alice@${EMAIL_DOMAIN}`,'alice123','Sales Rep'],[`jane@${EMAIL_DOMAIN}`,'jane123','Underwriter'],[`ops@${EMAIL_DOMAIN}`,'ops123','Ops Superuser']].map(([e,p,r])=>(
-              <div key={e} onClick={()=>{setEmail(e);setPass(p);setErr('');}} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-                <span style={{fontSize:11,color:'rgba(255,255,255,0.5)',fontFamily:'DM Mono,monospace'}}>{e}</span>
-                <span style={{fontSize:9,background:'rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.4)',padding:'2px 7px',borderRadius:99}}>{r}</span>
+            {(users||[]).map(u=>(
+              <div key={u.id} onClick={()=>{setEmail(u.email);setPass(u.password);setErr('');}} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                <span style={{fontSize:11,color:'rgba(255,255,255,0.5)',fontFamily:'DM Mono,monospace',wordBreak:'break-all'}}>{u.email}</span>
+                <span style={{fontSize:9,background:'rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.4)',padding:'2px 7px',borderRadius:99,flexShrink:0,marginLeft:6}}>{u.roleLabel}</span>
               </div>
             ))}
             <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',marginTop:6}}>Click any row to auto-fill</div>
@@ -860,7 +860,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
     const [du,setDu]=useState('');
     const [uu,setUu]=useState('');
     const [newDev,setNewDev]=useState({brand:'',model:'',sku:'',specs:'',retail:'',dep:'',weekly:'',wks:26});
-    const [newUser,setNewUser]=useState({name:'',local:'',role:'rep',superuser:false});
+    const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',superuser:false});
 
     const devs=(devices||[]).filter(d=>{
       if(!du.trim()) return true;
@@ -925,16 +925,18 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
     };
     const addUser=()=>{
       const name=newUser.name.trim();
-      const local=normEmail(newUser.local).replace(/@.*/,'').replace(/[^a-z0-9._-]/g,'');
-      if(!name||!local){addToast('err','Missing fields','Name and email are required');return;}
-      const email=`${local}@${EMAIL_DOMAIN}`;
+      const email=normEmail(String(newUser.email||'').trim());
+      if(!name||!email){addToast('err','Missing fields','Name and full email are required');return;}
+      if(!email.includes('@')||email.startsWith('@')||email.endsWith('@')){addToast('err','Invalid email','Enter a full email address (e.g. user@company.com)');return;}
       if((users||[]).some(u=>normEmail(u.email)===email)){addToast('err','Email already exists',email);return;}
       const id=mkUserId(newUser.role);
-      const tmp=randPwd();
-      const u={id,name,email,password:tmp,role:newUser.role,roleLabel:roleLabelFor(newUser.role),superuser:!!newUser.superuser,mustChangePassword:true};
+      const customPwd=String(newUser.password||'').trim();
+      const password=customPwd||randPwd();
+      const mustChangePassword=!customPwd;
+      const u={id,name,email,password,role:newUser.role,roleLabel:roleLabelFor(newUser.role),superuser:!!newUser.superuser,mustChangePassword};
       setUsers([...(users||[]),u]);
-      setNewUser({name:'',local:'',role:'rep',superuser:false});
-      addToast('ok','User added',`Email to ${email}: temp password ${tmp}`);
+      setNewUser({name:'',email:'',password:'',role:'rep',superuser:false});
+      addToast('ok','User added',customPwd?'User can sign in with the password you set.':`Login: ${email} · temp password ${password}`);
     };
 
     return(
@@ -1033,15 +1035,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
                     </div>
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                       <FF label="Name"><input value={u.name} onChange={e=>upUser(u.id,{name:e.target.value})}/></FF>
-                      <FF label="Email (local part)">
-                        <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                          <input value={String(u.email||'').split('@')[0]} onChange={e=>{
-                            const local=normEmail(e.target.value).replace(/@.*/,'').replace(/[^a-z0-9._-]/g,'');
-                            upUser(u.id,{email:`${local}@${EMAIL_DOMAIN}`});
-                          }}/>
-                          <span style={{fontSize:12,color:'var(--textLight)'}}>@{EMAIL_DOMAIN}</span>
-                        </div>
-                      </FF>
+                      <FF label="Email (any domain)"><input type="email" value={u.email||''} onChange={e=>upUser(u.id,{email:normEmail(e.target.value.trim())})} placeholder="user@domain.com"/></FF>
                       <FF label="Role">
                         <select value={u.role} onChange={e=>upUser(u.id,{role:e.target.value,roleLabel:roleLabelFor(e.target.value)})}>
                           <option value="rep">Sales Representative</option>
@@ -1067,11 +1061,9 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
               <div style={{fontWeight:800,marginBottom:10}}>Add user</div>
               <div style={{display:'flex',flexDirection:'column',gap:10}}>
                 <FF label="Full name" req><input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="e.g. Grace Mukamana"/></FF>
-                <FF label="Email" req>
-                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                    <input value={newUser.local} onChange={e=>setNewUser(p=>({...p,local:e.target.value}))} placeholder="e.g. grace"/>
-                    <span style={{fontSize:12,color:'var(--textLight)'}}>@{EMAIL_DOMAIN}</span>
-                  </div>
+                <FF label="Email (any domain)" req><input type="email" value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="e.g. grace@company.com or grace@leout.rw"/></FF>
+                <FF label="Password (optional – superuser can set custom)">
+                  <input type="password" value={newUser.password} onChange={e=>setNewUser(p=>({...p,password:e.target.value}))} placeholder="Leave blank to auto-generate temp password"/>
                 </FF>
                 <FF label="Role">
                   <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value,superuser:false}))}>
@@ -1086,9 +1078,9 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
                     <option value="yes">Yes</option>
                   </select>
                 </FF>
-                <Btn v="primary" onClick={addUser} full icon="＋">Create user & email temp password</Btn>
+                <Btn v="primary" onClick={addUser} full icon="＋">Create user</Btn>
                 <div style={{fontSize:11,color:'var(--textLight)',lineHeight:1.5}}>
-                  New users get a temporary password and are forced to change it on first login (simulated email via toast).
+                  New users appear in the login page demo accounts. If you leave password blank, a temporary password is generated and user should change it on first login.
                 </div>
               </div>
             </Card>
