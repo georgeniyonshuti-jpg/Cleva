@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ClevaFin</title>
+<title>Cleva</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -48,7 +48,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 const {useState,useCallback,useContext,createContext,useEffect}=React;
 
 // ── APP CONFIG ────────────────────────────────────────────────
-const APP_NAME='ClevaFin';
+const APP_NAME='Cleva';
 const EMAIL_DOMAIN='leout.rw';
 const LS={USERS:'clevafin_users_v1',DEVICES:'clevafin_devices_v1',APPS:'clevafin_apps_v1',CFG:'clevafin_cfg_v1'};
 const readLS=(k,fallback)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):fallback;}catch{return fallback;}};
