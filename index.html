@@ -218,18 +218,16 @@ const appendAudit=(auditLog,entry)=>{
 };
 
 // ── PRICING ENGINE ────────────────────────────────────────────
-const RISK_GROUPS=[{id:1,name:'Low risk',rateAdd:0},{id:2,name:'Medium risk',rateAdd:0.05},{id:3,name:'High risk',rateAdd:0.12}];
-const defaultPricingConfig={interestRate:0.27,depositPct:0.2,termOptions:[6,12],promo3mPct:0.05,promo6mPct:0.03};
-const calcDealFromDevice=(device,cfg,riskGroup=1)=>{
-  const rateAdd=(RISK_GROUPS.find(r=>r.id===riskGroup)||RISK_GROUPS[0]).rateAdd;
-  const rate=(cfg.interestRate??0.27)+rateAdd;
-  const cogs=Math.round(device.cogs||device.cash||0);
-  const totalCost=Math.round(cogs*(1+rate));
-  const depositPct=cfg.depositPct??0.2;
-  const upfrontPayment=Math.round(totalCost*depositPct);
-  const termOption=cfg.termOptions?.[0]??12;
-  const recurrentPayment=Math.round((totalCost-upfrontPayment)/termOption);
-  return {deviceModel:device.model,manufacturer:device.brand,RAM:device.ram,ROM:device.rom,dealId:device.id,dealName:device.model,dealType:'PAYG',termOption,upfrontPayment,recurrentPayment,totalCost,cogs,interestRate:rate,depositPct,riskGroup};
+// totalCost = cashPrice × (1 + markupRate); deposit = totalCost × depositPct; monthly = (totalCost - deposit) / 12
+const defaultPricingConfig={markupRate:0.60,depositPct:0.20};
+const calcDealFromDevice=(device,cfg)=>{
+  const markupRate=cfg.markupRate??0.60;
+  const depositPct=cfg.depositPct??0.20;
+  const cashPrice=Math.round(device.cash||device.cogs||0);
+  const totalCost=Math.round(cashPrice*(1+markupRate));
+  const deposit=Math.round(totalCost*depositPct);
+  const monthly=Math.round((totalCost-deposit)/12);
+  return {deviceModel:device.model,manufacturer:device.brand,RAM:device.ram,ROM:device.rom,dealId:device.id,dealName:device.model,dealType:'PAYG',termOption:12,upfrontPayment:deposit,recurrentPayment:monthly,totalCost,cogs:cashPrice,markupRate,depositPct};
 };
 
 // ── IMEI: 15 digits + Luhn check ───────────────────────────────
@@ -255,9 +253,9 @@ const USERS_SEED=[
   {id:'OP01',name:'Ops Superuser',email:`ops@${EMAIL_DOMAIN_SEED}`,password:'ops123',role:'ops',roleLabel:'Ops Superuser',superuser:true,mustChangePassword:false},
 ];
 const DEVICES_SEED=[
-  {id:'D01',brand:'Tecno',model:'Spark 40 Pro+',sku:'T-SP40PP',ram:'4GB',rom:'128GB',cogs:179000,cash:179000},
-  {id:'D02',brand:'Tecno',model:'Spark Slim',sku:'T-SLIM',ram:'4GB',rom:'128GB',cogs:155000,cash:155000},
-  {id:'D03',brand:'Infinix',model:'Hot 60 Pro+',sku:'I-H60PP',ram:'4GB',rom:'128GB',cogs:168000,cash:168000},
+  {id:'D01',brand:'Tecno',model:'Spark 40 Pro+',ram:'4GB',rom:'128GB',cash:179000},
+  {id:'D02',brand:'Tecno',model:'Spark Slim',ram:'4GB',rom:'128GB',cash:155000},
+  {id:'D03',brand:'Infinix',model:'Hot 60 Pro+',ram:'4GB',rom:'128GB',cash:168000},
 ];
 const PRICING_CONFIG_SEED=defaultPricingConfig;
 function seedIfMissing(){
@@ -269,7 +267,7 @@ function seedIfMissing(){
   if(!readLS(LS.CONTRACTS)){
     const cfg=readLS(LS.PRICING_CONFIG,PRICING_CONFIG_SEED);
     const devs=readLS(LS.DEVICES,DEVICES_SEED);
-    const d0=devs[0];const deal0=calcDealFromDevice(d0,cfg,1);
+    const d0=devs[0];const deal0=calcDealFromDevice(d0,cfg);
     const contracts=[{id:'C-0001',merchantCode:'M01',status:ST.PENDING_APPROVAL,createdAt:new Date(Date.now()-10800000).toISOString(),updatedAt:new Date(Date.now()-10800000).toISOString(),repId:'SR01',repName:'Alice Ndayisaba',application:{fullName:'Jean Baptiste Habimana',dateOfBirth:'1990-05-15',nationalIdNumber:'1199880123456001',phoneNumber:'0781234567',address:'Kimironko, Gasabo',kycStatus:'pending',guarantorName:'Marie Habimana',guarantorPhone:'0789876543',neighbourName:'Pierre Habimana',neighbourPhone:'0781111111',employerName:'Self',employmentType:'self-employed',monthlyIncomeRwf:150000,monthlyExpensesRwf:50000,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],freeCashflowRwf:100000},deal:deal0,dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date(Date.now()-10800000).toISOString(),by:'Alice Ndayisaba',txt:'Application submitted for approval'}]}];
     writeLS(LS.CONTRACTS,contracts);
   }
@@ -457,27 +455,33 @@ const PriceList=({devices})=>(
   <div className="fadeUp" style={{padding:'28px 32px'}}>
     <div style={{marginBottom:22}}>
       <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Device price list</h1>
-      <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>26-week PAYGO contracts · All amounts in RWF · March 2026</p>
+      <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>12-month PAYGO contracts · All amounts in RWF</p>
     </div>
     <div className="price-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(230px,1fr))',gap:12}}>
-      {(devices||[]).map(d=>{const tot=d.dep+d.weekly*d.wks;const rate=(((tot-d.retail)/d.retail)*100).toFixed(1);return(
-        <Card key={d.id} sx={{overflow:'hidden'}}>
-          <div style={{height:3,background:'linear-gradient(90deg,var(--brand),var(--brand3))'}}/>
-          <div style={{padding:'15px 16px'}}>
-            <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{d.model}</div>
-            <div style={{fontSize:10,color:'var(--textLight)',marginBottom:13,lineHeight:1.6}}>{d.specs}</div>
-            {[['Cash price',fmtRWF(d.retail)],['Deposit',fmtRWF(d.dep)],['Weekly × 26',fmtRWF(d.weekly)],['Total payable',fmtRWF(tot)]].map(([k,v])=>(
-              <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:5}}>
-                <span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span>
+      {(devices||[]).map(d=>{
+        const cashPrice=d.retail||d.cogs||d.cash||0;
+        const totalCost=d.totalCost||(d.dep+(d.weekly||0)*12);
+        const markup=cashPrice>0?(((totalCost-cashPrice)/cashPrice)*100).toFixed(0):0;
+        const specs=d.specs||[d.RAM||d.ram,d.ROM||d.rom].filter(Boolean).join(' / ');
+        return(
+          <Card key={d.id} sx={{overflow:'hidden'}}>
+            <div style={{height:3,background:'linear-gradient(90deg,var(--brand),var(--brand3))'}}/>
+            <div style={{padding:'15px 16px'}}>
+              <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{d.brand||d.manufacturer}</div>
+              <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{d.model||d.deviceModel}</div>
+              <div style={{fontSize:10,color:'var(--textLight)',marginBottom:13,lineHeight:1.6}}>{specs}</div>
+              {[['Cash price',fmtRWF(cashPrice)],['Total price',fmtRWF(totalCost)],['Deposit',fmtRWF(d.dep||d.upfrontPayment||0)],['Monthly × 12',fmtRWF(d.weekly||d.recurrentPayment||0)]].map(([k,v])=>(
+                <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:5}}>
+                  <span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span>
+                </div>
+              ))}
+              <div style={{display:'flex',justifyContent:'flex-end',marginTop:8,paddingTop:8,borderTop:'1px dashed rgba(0,0,0,0.07)'}}>
+                <span style={{background:'var(--warnBg)',color:'var(--warn)',fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:99}}>+{markup}% markup</span>
               </div>
-            ))}
-            <div style={{display:'flex',justifyContent:'flex-end',marginTop:8,paddingTop:8,borderTop:'1px dashed rgba(0,0,0,0.07)'}}>
-              <span style={{background:'var(--warnBg)',color:'var(--warn)',fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:99}}>+{rate}% cost</span>
             </div>
-          </div>
-        </Card>
-      );})}
+          </Card>
+        );
+      })}
     </div>
   </div>
 );
@@ -502,7 +506,7 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
     const dev=(devices||[]).find(d=>d.id===f.did);if(!dev){addToast('err','Device required','');return;}
     const ap=app.application||{};
     const application={...ap,fullName:f.name.trim(),nationalIdNumber:f.nid,phoneNumber:f.phone.trim(),address:f.addr.trim(),employmentType:f.occ,monthlyIncomeRwf:+f.income,guarantorName:f.kn.trim(),guarantorPhone:f.kp.trim(),fieldCorrectionRequests:(ap.fieldCorrectionRequests||[]).map(r=>({...r,resolvedAt:r.resolvedAt||new Date().toISOString()}))};
-    const deal=app.deal?{...app.deal,dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:(dev.dep||0)+(dev.weekly||0)*(dev.wks||12),cogs:dev.retail}:{dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:(dev.dep||0)+(dev.weekly||0)*(dev.wks||12),cogs:dev.retail,riskGroup:app.riskGroup||1};
+    const deal=app.deal?{...app.deal,dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12,cogs:dev.retail}:{dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12,cogs:dev.retail};
     onUpdate(app.id,{application,deal,status:ST.PENDING_APPROVAL,tlEntry:{by:user.name,txt:'Resubmitted after changes — returned to reviewer'}});
     addToast('ok','Application resubmitted','Sent back to the reviewer');onBack();
   };
@@ -543,13 +547,13 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
         <div style={{borderTop:'1.5px solid var(--border)',paddingTop:18,marginTop:14}}>
           <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
           <div className="device-select-grid" style={{...highlight('device_id'),display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
-            {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.dep+d.weekly*d.wks;return(
+            {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.totalCost||(d.dep+(d.weekly||0)*12);return(
               <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative'}}>
                 {sel&&<div style={{position:'absolute',top:9,right:9,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
                 <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
                 <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>{d.model}</div>
-                <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs}</div>
-                {[['Deposit',fmtRWF(d.dep)],['Weekly',fmtRWF(d.weekly)],['Total',fmtRWF(tot)]].map(([k,v])=>(
+                <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs||[d.ram,d.rom].filter(Boolean).join(' / ')}</div>
+                {[['Deposit',fmtRWF(d.dep)],['Monthly × 12',fmtRWF(d.weekly)],['Total price',fmtRWF(tot)]].map(([k,v])=>(
                   <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:4}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
                 ))}
               </div>
@@ -646,13 +650,13 @@ const NewApp=({onSubmit,onBack,devices})=>{
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Choose device</div>
             {e.did&&<div style={{padding:'9px 13px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',marginBottom:12}}>{e.did}</div>}
             <div className="device-select-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
-              {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.dep+d.weekly*d.wks;return(
+              {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.totalCost||(d.dep+(d.weekly||0)*12);return(
                 <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative'}}>
                   {sel&&<div style={{position:'absolute',top:9,right:9,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
                   <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
                   <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>{d.model}</div>
-                  <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs}</div>
-                  {[['Deposit',fmtRWF(d.dep)],['Weekly',fmtRWF(d.weekly)],['Total',fmtRWF(tot)]].map(([k,v])=>(
+                  <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs||[d.ram,d.rom].filter(Boolean).join(' / ')}</div>
+                  {[['Deposit',fmtRWF(d.dep)],['Monthly × 12',fmtRWF(d.weekly)],['Total price',fmtRWF(tot)]].map(([k,v])=>(
                     <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:4}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
                   ))}
                 </div>
@@ -670,7 +674,7 @@ const NewApp=({onSubmit,onBack,devices})=>{
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Selected device</div>
               <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{dev.brand} {dev.model}</div>
               <div style={{fontSize:11,color:'var(--textLight)',marginBottom:14}}>{dev.specs}</div>
-              {[['SKU',dev.sku],['Deposit',fmtRWF(dev.dep)],['Weekly × 26',fmtRWF(dev.weekly)],['Total contract',fmtRWF(dev.dep+dev.weekly*dev.wks)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+              {[['Deposit',fmtRWF(dev.dep)],['Monthly × 12',fmtRWF(dev.weekly)],['Total price',fmtRWF(dev.totalCost||(dev.dep+(dev.weekly||0)*12))]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
               <div style={{marginTop:12,padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6}}>Confirm all details are correct. The application enters the review queue immediately on submission.</div>
             </div>
           </div>
@@ -810,7 +814,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
     addToast('info','Archived','');setLd(null);onBack();
   };
 
-  const c=app.c,d=app.dev,tot=d.dep+d.weekly*d.wks;
+  const c=app.c,d=app.dev,tot=d.totalCost||(d.dep+(d.weekly||0)*12);
   const ratio=c.income>0?(d.weekly/c.income*100):0;
   const affordOk=c.income>0&&ratio<30;
   const isUnderwriter=user.role==='underwriter';
@@ -868,8 +872,8 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
             {!(isUnderwriter&&reviewable)&&<div style={{fontWeight:700,fontSize:15,marginBottom:1}}>{d.brand} {d.model}</div>}
             {!(isUnderwriter&&reviewable)&&<div style={{fontSize:11,color:'var(--textLight)',marginBottom:13}}>{d.specs}</div>}
             {(isUnderwriter&&reviewable?[
-              ['device_id','Device',`${d.brand} ${d.model}`],['sku','SKU',d.sku],['dep','Deposit',fmtRWF(d.dep)],['weekly','Weekly × 26',fmtRWF(d.weekly)],['tot','Total contract',fmtRWF(tot)]
-            ]:[['SKU',d.sku],['Deposit',fmtRWF(d.dep)],['Weekly × 26',fmtRWF(d.weekly)],['Total contract',fmtRWF(tot)]]).map((arr)=>{
+              ['device_id','Device',`${d.brand} ${d.model}`],['dep','Deposit',fmtRWF(d.dep)],['weekly','Monthly × 12',fmtRWF(d.weekly)],['tot','Total price',fmtRWF(tot)]
+            ]:[['Deposit',fmtRWF(d.dep)],['Monthly × 12',fmtRWF(d.weekly)],['Total price',fmtRWF(tot)]]).map((arr)=>{
               if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
               return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
             })}
@@ -879,7 +883,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
           <Card sx={{padding:'14px 16px'}}>
             <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Affordability check</div>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
-              <span style={{fontSize:12,color:'var(--textMid)'}}>Weekly repayment / income</span>
+              <span style={{fontSize:12,color:'var(--textMid)'}}>Monthly repayment / income</span>
               <span style={{fontFamily:'DM Mono,monospace',fontWeight:700,fontSize:16}}>{c.income>0?ratio.toFixed(1):'—'}%</span>
             </div>
             <div style={{height:7,background:'var(--bg)',borderRadius:4,overflow:'hidden',marginBottom:8}}>
@@ -947,7 +951,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const [sel,setSel]=useState(null);
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
   const cfg=pricingConfig||defaultPricingConfig;
-  const devicesWithPricing=React.useMemo(()=>(devices||[]).map(d=>{const deal=calcDealFromDevice(d,cfg,1);return{...d,...deal,dep:deal.upfrontPayment,weekly:deal.recurrentPayment,wks:deal.termOption,retail:deal.cogs};}),[devices,cfg]);
+  const devicesWithPricing=React.useMemo(()=>(devices||[]).map(d=>{const deal=calcDealFromDevice(d,cfg);return{...d,...deal,dep:deal.upfrontPayment,weekly:deal.recurrentPayment,wks:deal.termOption,retail:deal.cogs};}),[devices,cfg]);
   const mine=apps.filter(a=>a.repId===user.id&&(!user.merchantCode||a.merchantCode===user.merchantCode));
   const grps={action:mine.filter(a=>a.status===ST.OFFER_SELECTION),review:mine.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)),active:mine.filter(a=>a.status===ST.ACTIVE),other:mine.filter(a=>a.mboDecision==='REJECTED'||(a.status===ST.UNDER_REVIEW&&(a.requestedChangeFields||[]).length>0))};
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
@@ -1006,12 +1010,12 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
           </div>
         )}
         {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devicesWithPricing} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
-          const deal=dev.dealId?dev:{dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,RAM:dev.RAM,ROM:dev.ROM,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:(dev.dep||0)+(dev.weekly||0)*(dev.wks||12),cogs:dev.retail||dev.cogs,interestRate:cfg.interestRate,depositPct:cfg.depositPct,riskGroup:1};
+          const deal=dev.dealId?dev:{dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,RAM:dev.RAM,ROM:dev.ROM,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12,cogs:dev.retail||dev.cogs,markupRate:cfg.markupRate,depositPct:cfg.depositPct};
           const freeCashflow=Math.max(0,(+f.income||0)-0);
           const newContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',status:ST.PENDING_APPROVAL,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:freeCashflow,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof},deal,dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for approval'}]};
           onUpdate(null,null,newContract);addToast('ok','Application submitted','Sent for approval');setPg('dash');
         }}/></div>}
-        {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devices}/></div>}
+        {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devicesWithPricing}/></div>}
       </div>
     </div>
   );
@@ -1061,7 +1065,7 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Pending decision <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{queue.length}</span></div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
                   {queue.map(a=>{
-                    const tot=a.dev?(a.dev.dep||0)+(a.dev.weekly||0)*(a.dev.wks||12):0;
+                    const tot=a.dev?(a.dev.totalCost||(a.dev.dep||0)+(a.dev.weekly||0)*12):0;
                     const repFirst=(a.rep||'').split(' ')[0];
                     return (
                     <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'1.5px solid var(--border)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',transition:'all .13s'}}
@@ -1141,7 +1145,7 @@ const SupportView=({apps,onUpdate,addToast})=>{
 };
 
 // ── OPS VIEW ──────────────────────────────────────────────────
-const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setContracts,pricingConfig})=>{
+const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setContracts,pricingConfig,setPricingConfig})=>{
   const [pg,setPg]=useState('overview');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
@@ -1176,13 +1180,74 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
     const [uu,setUu]=useState('');
     const [showAddDevice,setShowAddDevice]=useState(false);
     const [showAddUser,setShowAddUser]=useState(false);
-    const [newDev,setNewDev]=useState({brand:'',model:'',sku:'',specs:'',retail:'',dep:'',weekly:'',wks:26});
+    const [newDev,setNewDev]=useState({brand:'',model:'',ram:'',rom:'',cash:''});
     const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',superuser:false});
+    const [cfgDraft,setCfgDraft]=useState({markupRate:Math.round(((pricingConfig||defaultPricingConfig).markupRate||0.60)*100),depositPct:Math.round(((pricingConfig||defaultPricingConfig).depositPct||0.20)*100)});
+
+    const cfg=pricingConfig||defaultPricingConfig;
+
+    const calcPreview=(cashStr)=>{
+      const cash=Math.round(+cashStr||0);
+      const total=Math.round(cash*(1+(cfgDraft.markupRate/100)));
+      const deposit=Math.round(total*(cfgDraft.depositPct/100));
+      const monthly=Math.round((total-deposit)/12);
+      return {cash,total,deposit,monthly};
+    };
+
+    const downloadCsvTemplate=()=>{
+      const rows=[['brand','model','ram','rom','cash_price_rwf'],['Tecno','Spark 40 Pro+','4GB','128GB','179000']];
+      const csv=rows.map(r=>r.join(',')).join('\n');
+      const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='devices_template.csv';a.click();
+    };
+
+    const handleCsvUpload=(e)=>{
+      const file=e.target.files?.[0];if(!file)return;
+      const reader=new FileReader();
+      reader.onload=(ev)=>{
+        const lines=(ev.target.result||'').split('\n').map(l=>l.trim()).filter(Boolean);
+        if(lines.length<2){addToast('err','CSV error','File must have a header row and at least one data row');return;}
+        const header=lines[0].toLowerCase().split(',').map(h=>h.trim().replace(/"/g,''));
+        const idxBrand=header.findIndex(h=>h.includes('brand'));
+        const idxModel=header.findIndex(h=>h.includes('model'));
+        const idxRam=header.findIndex(h=>h==='ram');
+        const idxRom=header.findIndex(h=>h==='rom'||h.includes('storage'));
+        const idxCash=header.findIndex(h=>h.includes('cash'));
+        if(idxModel<0||idxCash<0){addToast('err','CSV error','CSV must have model and cash_price_rwf columns');return;}
+        let added=0,skipped=0;
+        const newDevices=[...(devices||[])];
+        lines.slice(1).forEach(line=>{
+          const cols=line.split(',').map(c=>c.trim().replace(/"/g,''));
+          const brand=idxBrand>=0?cols[idxBrand]||'':'';
+          const model=cols[idxModel]||'';
+          const ram=idxRam>=0?cols[idxRam]||'':'';
+          const rom=idxRom>=0?cols[idxRom]||'':'';
+          const cash=+cols[idxCash]||0;
+          if(!model||cash<1){skipped++;return;}
+          const nums=newDevices.map(d=>parseInt(String(d.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));
+          const next=(nums.length?Math.max(...nums):0)+1;
+          newDevices.push({id:'D'+String(next).padStart(2,'0'),brand,model,ram,rom,cash});
+          added++;
+        });
+        setDevices(newDevices);
+        addToast('ok',`${added} device(s) imported`,skipped?`${skipped} rows skipped`:'');
+      };
+      reader.readAsText(file);
+      e.target.value='';
+    };
+
+    const savePricing=()=>{
+      const markupRate=Math.max(0,Math.min(200,+cfgDraft.markupRate||0))/100;
+      const depositPct=Math.max(0,Math.min(100,+cfgDraft.depositPct||0))/100;
+      setPricingConfig({markupRate,depositPct});
+      addToast('ok','Pricing updated',`Markup ${Math.round(markupRate*100)}% · Deposit ${Math.round(depositPct*100)}%`);
+    };
+
+    const prev=calcPreview(newDev.cash);
 
     const devs=(devices||[]).filter(d=>{
       if(!du.trim()) return true;
       const s=du.toLowerCase();
-      return (d.brand||'').toLowerCase().includes(s)||(d.model||'').toLowerCase().includes(s)||(d.sku||'').toLowerCase().includes(s)||String(d.id).toLowerCase().includes(s);
+      return (d.brand||'').toLowerCase().includes(s)||(d.model||'').toLowerCase().includes(s)||String(d.id).toLowerCase().includes(s);
     });
     const us=(users||[]).filter(u=>{
       if(!uu.trim()) return true;
@@ -1192,7 +1257,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
 
     const patchAppsDevice=(devId,devObj)=>{
       if(!setContracts)return;
-      setContracts(p=>(p||[]).map(c=>{if(c.deal?.dealId!==devId)return c;const newDeal=calcDealFromDevice(devObj,pricingConfig||defaultPricingConfig,c.riskGroup||1);return{...c,deal:newDeal,updatedAt:new Date().toISOString()};}));
+      setContracts(p=>(p||[]).map(c=>{if(c.deal?.dealId!==devId)return c;const newDeal=calcDealFromDevice(devObj,pricingConfig||defaultPricingConfig);return{...c,deal:newDeal,updatedAt:new Date().toISOString()};}));
     };
 
     const upDev=(id,patch)=>{
@@ -1208,21 +1273,13 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
       addToast('ok','Device removed','');
     };
     const addDev=()=>{
-      const er=[];
-      if(!newDev.brand.trim()) er.push('brand');
-      if(!newDev.model.trim()) er.push('model');
-      const retail=+newDev.retail;
-      const dep=+newDev.dep;
-      const weekly=+newDev.weekly;
-      const wks=+newDev.wks||26;
-      if(!retail||retail<1) er.push('retail');
-      if(dep<0) er.push('dep');
-      if(weekly<0) er.push('weekly');
-      if(er.length){addToast('err','Missing fields','Please fill the required fields');return;}
+      if(!newDev.brand.trim()||!newDev.model.trim()){addToast('err','Missing fields','Brand and model are required');return;}
+      const cash=+newDev.cash;
+      if(!cash||cash<1){addToast('err','Missing fields','Cash price is required');return;}
       const id=mkDevId();
-      const d={id,brand:newDev.brand.trim(),model:newDev.model.trim(),sku:newDev.sku.trim(),specs:newDev.specs.trim(),retail,dep,weekly,wks};
+      const d={id,brand:newDev.brand.trim(),model:newDev.model.trim(),ram:newDev.ram.trim(),rom:newDev.rom.trim(),cash};
       setDevices([...(devices||[]),d]);
-      setNewDev({brand:'',model:'',sku:'',specs:'',retail:'',dep:'',weekly:'',wks:26});
+      setNewDev({brand:'',model:'',ram:'',rom:'',cash:''});
       setShowAddDevice(false);
       addToast('ok','Device added',`${d.brand} ${d.model}`);
     };
@@ -1263,49 +1320,70 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
       <div className="fadeUp" style={{padding:'28px 32px'}}>
         <div style={{marginBottom:18}}>
           <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Admin</h1>
-          <p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Superuser management for devices (prices) and users</p>
+          <p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Superuser management for pricing, devices, and users</p>
         </div>
         <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
-          <Btn v={tab==='devices'?'primary':'def'} onClick={()=>setTab('devices')}>Devices & prices</Btn>
+          <Btn v={tab==='pricing'?'primary':'def'} onClick={()=>setTab('pricing')}>Pricing rules</Btn>
+          <Btn v={tab==='devices'?'primary':'def'} onClick={()=>setTab('devices')}>Devices</Btn>
           <Btn v={tab==='users'?'primary':'def'} onClick={()=>setTab('users')}>Users</Btn>
         </div>
+
+        {tab==='pricing'&&(
+          <div style={{maxWidth:520}}>
+            <Card sx={{padding:20,marginBottom:14}}>
+              <div style={{fontWeight:800,marginBottom:4}}>Global pricing rates</div>
+              <div style={{fontSize:12,color:'var(--textMid)',marginBottom:16,lineHeight:1.6}}>These rates apply to all devices automatically. Total price = Cash price × (1 + Markup). Deposit = Total × Deposit %. Monthly = (Total − Deposit) ÷ 12.</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}}>
+                <FF label="Markup rate (%)"><input type="number" min="0" max="200" value={cfgDraft.markupRate} onChange={e=>setCfgDraft(p=>({...p,markupRate:e.target.value}))} placeholder="e.g. 60"/></FF>
+                <FF label="Deposit rate (%)"><input type="number" min="0" max="100" value={cfgDraft.depositPct} onChange={e=>setCfgDraft(p=>({...p,depositPct:e.target.value}))} placeholder="e.g. 20"/></FF>
+              </div>
+              <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'12px 14px',marginBottom:16,fontSize:12}}>
+                <div style={{fontWeight:700,marginBottom:8,fontSize:11,textTransform:'uppercase',letterSpacing:'0.5px',color:'var(--textLight)'}}>Preview — device at RWF 179,000 cash price</div>
+                {(()=>{const p=calcPreview('179000');return [['Cash price',fmtRWF(p.cash)],['Total price',fmtRWF(p.total)],['Deposit',fmtRWF(p.deposit)],['Monthly × 12',fmtRWF(p.monthly)]].map(([k,v])=>(<div key={k} style={{display:'flex',justifyContent:'space-between',marginBottom:5}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>));})()}
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <Btn v="primary" onClick={savePricing} icon="✓">Save pricing</Btn>
+                <div style={{fontSize:11,color:'var(--textLight)'}}>Current: Markup {Math.round((cfg.markupRate||0.60)*100)}% · Deposit {Math.round((cfg.depositPct||0.20)*100)}%</div>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {tab==='devices'&&(
           <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:showAddDevice?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
             <Card sx={{padding:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
                 <div style={{fontWeight:700}}>Devices</div>
-                <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                  <input value={du} onChange={e=>setDu(e.target.value)} placeholder="Search devices…" style={{width:240}}/>
+                <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                  <input value={du} onChange={e=>setDu(e.target.value)} placeholder="Search…" style={{width:160}}/>
+                  <Btn v="def" sz="sm" onClick={downloadCsvTemplate} icon="↓">CSV template</Btn>
+                  <label style={{cursor:'pointer'}}><span style={{display:'inline-flex',alignItems:'center',gap:6,padding:'6px 12px',fontSize:12,fontWeight:600,borderRadius:'var(--r2)',border:'1.5px solid var(--border)',background:'white',color:'var(--text)',whiteSpace:'nowrap'}}>↑ Upload CSV</span><input type="file" accept=".csv,text/csv" style={{display:'none'}} onChange={handleCsvUpload}/></label>
                   <Btn v="primary" sz="sm" onClick={()=>setShowAddDevice(true)} icon="＋">Add device</Btn>
                 </div>
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:10}}>
                 {devs.map(d=>{
-                  const tot=(+d.dep)+(+d.weekly)*(+d.wks||0);
+                  const deal=calcDealFromDevice(d,cfg);
                   return(
                     <Card key={d.id} sx={{padding:14,boxShadow:'none'}}>
                       <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',marginBottom:10}}>
                         <div style={{minWidth:0}}>
                           <div style={{fontWeight:800}}>{d.brand} {d.model} <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({d.id})</span></div>
-                          <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{d.sku} · {d.specs}</div>
+                          <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{[d.ram,d.rom].filter(Boolean).join(' / ')}</div>
                         </div>
-                        <div style={{display:'flex',gap:8}}>
-                          <Btn v="err" sz="sm" onClick={()=>rmDev(d.id)}>Remove</Btn>
-                        </div>
+                        <Btn v="err" sz="sm" onClick={()=>rmDev(d.id)}>Remove</Btn>
                       </div>
-                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                        <FF label="Brand"><input value={d.brand} onChange={e=>upDev(d.id,{brand:e.target.value})}/></FF>
-                        <FF label="Model"><input value={d.model} onChange={e=>upDev(d.id,{model:e.target.value})}/></FF>
-                        <FF label="SKU"><input value={d.sku} onChange={e=>upDev(d.id,{sku:e.target.value})}/></FF>
-                        <FF label="Specs"><input value={d.specs} onChange={e=>upDev(d.id,{specs:e.target.value})}/></FF>
-                        <FF label="Cash price (retail)"><input type="number" value={d.retail} onChange={e=>upDev(d.id,{retail:+e.target.value})}/></FF>
-                        <FF label="Deposit"><input type="number" value={d.dep} onChange={e=>upDev(d.id,{dep:+e.target.value})}/></FF>
-                        <FF label="Weekly payment"><input type="number" value={d.weekly} onChange={e=>upDev(d.id,{weekly:+e.target.value})}/></FF>
-                        <FF label="Weeks"><input type="number" value={d.wks} onChange={e=>upDev(d.id,{wks:+e.target.value})}/></FF>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                        <FF label="Brand"><input value={d.brand||''} onChange={e=>upDev(d.id,{brand:e.target.value})}/></FF>
+                        <FF label="Model"><input value={d.model||''} onChange={e=>upDev(d.id,{model:e.target.value})}/></FF>
+                        <FF label="RAM"><input value={d.ram||''} onChange={e=>upDev(d.id,{ram:e.target.value})} placeholder="e.g. 4GB"/></FF>
+                        <FF label="Storage"><input value={d.rom||''} onChange={e=>upDev(d.id,{rom:e.target.value})} placeholder="e.g. 128GB"/></FF>
+                        <FF label="Cash price (RWF)"><input type="number" value={d.cash||d.cogs||''} onChange={e=>upDev(d.id,{cash:+e.target.value,cogs:+e.target.value})}/></FF>
                       </div>
-                      <div style={{marginTop:10,fontSize:11,color:'var(--textMid)'}}>
-                        Total payable: <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{fmtRWF(tot)}</span>
+                      <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 12px',fontSize:11,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
+                        {[['Total price',fmtRWF(deal.totalCost)],['Deposit',fmtRWF(deal.upfrontPayment)],['Monthly × 12',fmtRWF(deal.recurrentPayment)]].map(([k,v])=>(
+                          <div key={k}><div style={{color:'var(--textLight)',marginBottom:1}}>{k}</div><div style={{fontFamily:'DM Mono,monospace',fontWeight:700,fontSize:12}}>{v}</div></div>
+                        ))}
                       </div>
                     </Card>
                   );
@@ -1318,23 +1396,25 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
             <Card sx={{padding:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
                 <div style={{fontWeight:800}}>Add device</div>
-                <Btn v="def" sz="sm" onClick={()=>{setShowAddDevice(false);setNewDev({brand:'',model:'',sku:'',specs:'',retail:'',dep:'',weekly:'',wks:26});}}>Cancel</Btn>
+                <Btn v="def" sz="sm" onClick={()=>{setShowAddDevice(false);setNewDev({brand:'',model:'',ram:'',rom:'',cash:''});}}>Cancel</Btn>
               </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                <FF label="Brand" req><input value={newDev.brand} onChange={e=>setNewDev(p=>({...p,brand:e.target.value}))}/></FF>
-                <FF label="Model" req><input value={newDev.model} onChange={e=>setNewDev(p=>({...p,model:e.target.value}))}/></FF>
-                <FF label="SKU"><input value={newDev.sku} onChange={e=>setNewDev(p=>({...p,sku:e.target.value}))}/></FF>
-                <FF label="Specs"><input value={newDev.specs} onChange={e=>setNewDev(p=>({...p,specs:e.target.value}))}/></FF>
-                <FF label="Cash price (retail)" req><input type="number" value={newDev.retail} onChange={e=>setNewDev(p=>({...p,retail:e.target.value}))}/></FF>
-                <FF label="Deposit"><input type="number" value={newDev.dep} onChange={e=>setNewDev(p=>({...p,dep:e.target.value}))}/></FF>
-                <FF label="Weekly payment"><input type="number" value={newDev.weekly} onChange={e=>setNewDev(p=>({...p,weekly:e.target.value}))}/></FF>
-                <FF label="Weeks"><input type="number" value={newDev.wks} onChange={e=>setNewDev(p=>({...p,wks:+e.target.value}))}/></FF>
-              </div>
-              <div style={{marginTop:12}}>
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                  <FF label="Brand" req><input value={newDev.brand} onChange={e=>setNewDev(p=>({...p,brand:e.target.value}))} placeholder="e.g. Tecno"/></FF>
+                  <FF label="Model name" req><input value={newDev.model} onChange={e=>setNewDev(p=>({...p,model:e.target.value}))} placeholder="e.g. Spark 40 Pro+"/></FF>
+                  <FF label="RAM"><input value={newDev.ram} onChange={e=>setNewDev(p=>({...p,ram:e.target.value}))} placeholder="e.g. 4GB"/></FF>
+                  <FF label="Storage (ROM)"><input value={newDev.rom} onChange={e=>setNewDev(p=>({...p,rom:e.target.value}))} placeholder="e.g. 128GB"/></FF>
+                </div>
+                <FF label="Cash price (RWF)" req><input type="number" value={newDev.cash} onChange={e=>setNewDev(p=>({...p,cash:e.target.value}))} placeholder="e.g. 179000"/></FF>
+                {newDev.cash&&+newDev.cash>0&&(
+                  <div style={{background:'var(--brandPale)',borderRadius:'var(--r2)',padding:'10px 13px',fontSize:11}}>
+                    <div style={{fontWeight:700,marginBottom:6,color:'var(--brand2)'}}>Calculated pricing</div>
+                    {[['Total price',fmtRWF(prev.total)],['Deposit',fmtRWF(prev.deposit)],['Monthly × 12',fmtRWF(prev.monthly)]].map(([k,v])=>(
+                      <div key={k} style={{display:'flex',justifyContent:'space-between',marginBottom:3}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
+                    ))}
+                  </div>
+                )}
                 <Btn v="primary" onClick={addDev} full icon="＋">Add device</Btn>
-              </div>
-              <div style={{marginTop:10,fontSize:11,color:'var(--textLight)',lineHeight:1.5}}>
-                Note: this admin screen edits the current “weekly × weeks” pricing used across the app. (We can switch to the interest-rate monthly model next.)
               </div>
             </Card>
             )}
@@ -1479,7 +1559,7 @@ function contractToLegacyApp(c){
   return {
     ...app,
     c:{name:ap.fullName||ap.name||'',nid:ap.nationalIdNumber||'',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kin:{name:ap.guarantorName||'',phone:ap.guarantorPhone||'',rel:'Guarantor'},idType:ap.idType||'nid'},
-    dev:{id:deal.dealId,brand:deal.manufacturer,model:deal.deviceModel,sku:deal.dealId,specs:[deal.RAM,deal.ROM].filter(Boolean).join(' '),dep:deal.upfrontPayment||0,weekly:deal.recurrentPayment||0,wks:deal.termOption||12,retail:deal.cogs},
+    dev:{id:deal.dealId,brand:deal.manufacturer,model:deal.deviceModel,sku:deal.dealId,specs:[deal.RAM,deal.ROM].filter(Boolean).join(' '),dep:deal.upfrontPayment||0,weekly:deal.recurrentPayment||0,wks:deal.termOption||12,retail:deal.cogs,totalCost:deal.totalCost},
     rep:app.repName||'',repId:app.repId,
     notes:app.mboRejectionReason||app.notes||'',reviewer:app.mboReviewedBy||null,upya:app.upya||null,imei:app.imei,ptId:app.ptId,lockedAt:app.lockedAt,
     customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto,incomeProof:ap.incomeProof,
@@ -1497,7 +1577,7 @@ const App=()=>{
   const [users,setUsers]=useState(()=>readLS(LS.USERS,USERS_SEED));
   const [devices,setDevices]=useState(()=>readLS(LS.DEVICES,DEVICES_SEED));
   const [contracts,setContracts]=useState(()=>readLS(LS.CONTRACTS,[]));
-  const pricingConfig=readLS(LS.PRICING_CONFIG,defaultPricingConfig);
+  const [pricingConfig,setPricingConfig]=useState(()=>readLS(LS.PRICING_CONFIG,defaultPricingConfig));
   const apps=React.useMemo(()=>(contracts||[]).map(contractToLegacyApp),[contracts]);
 
   const addToast=useCallback((c,title,msg='')=>{
@@ -1509,6 +1589,7 @@ const App=()=>{
   useEffect(()=>writeLS(LS.USERS,users),[users]);
   useEffect(()=>writeLS(LS.DEVICES,devices),[devices]);
   useEffect(()=>writeLS(LS.CONTRACTS,contracts),[contracts]);
+  useEffect(()=>writeLS(LS.PRICING_CONFIG,pricingConfig),[pricingConfig]);
 
   const updateApp=useCallback((id,upd,newContract)=>{
     if(newContract){setContracts(p=>[...p,newContract]);return;}
@@ -1538,7 +1619,7 @@ const App=()=>{
         {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} pricingConfig={pricingConfig}/>}
         {user.role==='underwriter'&&<UnderwriterView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
         {user.role==='support'&&<SupportView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
-        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} setContracts={setContracts} pricingConfig={pricingConfig}/>}
+        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} setContracts={setContracts} pricingConfig={pricingConfig} setPricingConfig={setPricingConfig}/>}
       </div>
       <Toast toasts={toasts}/>
     </Ctx.Provider>
