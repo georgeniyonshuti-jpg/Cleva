@@ -123,6 +123,10 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 @media (max-width:640px){
   .new-app-form .new-app-step-label{display:none!important}
 }
+/* On mobile, new-app-fullpage is a true full-screen overlay (no nested-tab look) */
+@media (max-width:768px){
+  .new-app-fullpage{position:fixed;inset:0;z-index:200;background:var(--bg);overflow:hidden;padding-top:env(safe-area-inset-top);height:100dvh!important;}
+}
 
 /* Stats grids: single column on mobile */
 @media (max-width:768px){
@@ -482,7 +486,7 @@ const Login=({onLogin,users})=>{
 };
 
 // ── PRICE LIST ────────────────────────────────────────────────
-const TERM_OPTIONS=[{t:3,label:'3 months',badge:'30% off',disc:0.30},{t:6,label:'6 months',badge:'20% off',disc:0.20},{t:12,label:'12 months',badge:'Standard',disc:0}];
+const TERM_OPTIONS=[{t:3,label:'Pay off in 3 months',badge:'30% early discount',disc:0.30},{t:6,label:'Pay off in 6 months',badge:'20% early discount',disc:0.20},{t:12,label:'Standard 12 months',badge:'No discount',disc:0}];
 const PriceList=({devices,onStartApp})=>{
   const [selId,setSelId]=useState(null);
   const [term,setTerm]=useState(12);
@@ -526,13 +530,16 @@ const PriceList=({devices,onStartApp})=>{
             </div>
           </div>
           <div style={{marginBottom:18}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:10}}>Payment duration</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:6}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)'}}>Early payoff discount</div>
+            </div>
+            <p style={{fontSize:11,color:'var(--textMid)',marginBottom:12,lineHeight:1.5}}>All contracts run 12 months. Customers who pay off early get a discount applied upfront.</p>
             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
               {TERM_OPTIONS.map(({t,label,badge,disc})=>{
                 const active=term===t;
                 return(
-                  <button key={t} type="button" onClick={()=>setTerm(t)} style={{flex:'1 1 90px',padding:'11px 10px',border:`${active?2:1.5}px solid ${active?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',background:active?'var(--brandPale)':'white',cursor:'pointer',textAlign:'center',transition:'all .13s'}}>
-                    <div style={{fontWeight:700,fontSize:14,color:active?'var(--brand)':'var(--text)',marginBottom:4}}>{label}</div>
+                  <button key={t} type="button" onClick={()=>setTerm(t)} style={{flex:'1 1 120px',padding:'11px 10px',border:`${active?2:1.5}px solid ${active?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',background:active?'var(--brandPale)':'white',cursor:'pointer',textAlign:'center',transition:'all .13s'}}>
+                    <div style={{fontWeight:700,fontSize:13,color:active?'var(--brand)':'var(--text)',marginBottom:4}}>{label}</div>
                     <div style={{fontSize:10,fontWeight:700,color:disc>0?'var(--ok)':'var(--textLight)',background:disc>0?'var(--okBg)':'var(--bg)',padding:'2px 8px',borderRadius:99,display:'inline-block'}}>{badge}</div>
                   </button>
                 );
@@ -542,11 +549,11 @@ const PriceList=({devices,onStartApp})=>{
           <div style={{background:'var(--bg)',borderRadius:'var(--r)',padding:'16px 18px',marginBottom:18}}>
             {pricing.disc>0&&(
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,padding:'9px 13px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)'}}>
-                <span style={{fontSize:12,fontWeight:700,color:'var(--ok)'}}>You save ({Math.round(pricing.disc*100)}% discount)</span>
+                <span style={{fontSize:12,fontWeight:700,color:'var(--ok)'}}>Early payoff saving ({Math.round(pricing.disc*100)}% off)</span>
                 <span style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:14,color:'var(--ok)'}}>− {fmtRWF(pricing.savings)}</span>
               </div>
             )}
-            {[['Total price',fmtRWF(pricing.total)],['Deposit (upfront)',fmtRWF(pricing.dep)],[`Monthly × ${term}`,fmtRWF(pricing.monthly)]].map(([k,v])=>(
+            {[['Total price',fmtRWF(pricing.total)],['Deposit (upfront)',fmtRWF(pricing.dep)],['Monthly × 12',fmtRWF(pricing.monthly)]].map(([k,v])=>(
               <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:10}}>
                 <span style={{fontSize:13,color:'var(--textMid)'}}>{k}</span>
                 <span style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:16}}>{v}</span>
@@ -721,47 +728,80 @@ const NewApp=({onSubmit,onBack,devices,preSelDevId=null,preSelTerm=12})=>{
             </div>
           </div>
         )}
-        {step===2&&(
-          <div>
-            <div style={{marginBottom:18}}>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Payment duration</div>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
-                {TERM_OPTIONS.map(({t,label,badge,disc})=>{
-                  const active=f.term===t;
+        {step===2&&(()=>{
+          const selDev2=(devices||[]).find(d=>d.id===f.did);
+          const pricing2=selDev2?calcTermPricing(selDev2,f.term):null;
+          return(
+            <div>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Choose device</div>
+              {e.did&&<div style={{padding:'9px 13px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',marginBottom:12}}>{e.did}</div>}
+              <div className="device-select-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:10,marginBottom:selDev2?20:0}}>
+                {(devices||[]).map(d=>{
+                  const isSel=f.did===d.id;
+                  const cashPrice=d.retail||d.cogs||d.cash||0;
+                  const specs=d.specs||[d.ram,d.rom].filter(Boolean).join(' / ');
                   return(
-                    <button key={t} type="button" onClick={()=>s('term',t)} style={{flex:'1 1 90px',padding:'10px 10px',border:`${active?2:1.5}px solid ${active?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',background:active?'var(--brandPale)':'white',cursor:'pointer',textAlign:'center',transition:'all .13s'}}>
-                      <div style={{fontWeight:700,fontSize:13,color:active?'var(--brand)':'var(--text)',marginBottom:3}}>{label}</div>
-                      <div style={{fontSize:10,fontWeight:700,color:disc>0?'var(--ok)':'var(--textLight)',background:disc>0?'var(--okBg)':'var(--bg)',padding:'2px 7px',borderRadius:99,display:'inline-block'}}>{badge}</div>
-                    </button>
+                    <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${isSel?2:1.5}px solid ${isSel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'13px 14px',cursor:'pointer',background:isSel?'var(--brandPale)':'white',transition:'all .13s',position:'relative',overflow:'hidden'}}>
+                      <div style={{height:3,background:isSel?'linear-gradient(90deg,var(--brand),var(--brand3))':'var(--border)',margin:'-13px -14px 11px'}}/>
+                      {isSel&&<div style={{position:'absolute',top:12,right:12,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
+                      <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
+                      <div style={{fontWeight:700,fontSize:14,marginBottom:3,paddingRight:isSel?20:0}}>{d.model}</div>
+                      <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{specs}</div>
+                      <div style={{fontSize:11,color:'var(--textMid)'}}>Cash: <span style={{fontWeight:700,color:'var(--text)',fontFamily:'DM Mono,monospace'}}>{fmtRWF(cashPrice)}</span></div>
+                    </div>
                   );
                 })}
               </div>
-            </div>
-            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Choose device</div>
-            {e.did&&<div style={{padding:'9px 13px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',marginBottom:12}}>{e.did}</div>}
-            <div className="device-select-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
-              {(devices||[]).map(d=>{
-                const sel=f.did===d.id;
-                const tp=calcTermPricing(d,f.term);
-                return(
-                  <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative',overflow:'hidden'}}>
-                    <div style={{height:2,background:sel?'linear-gradient(90deg,var(--brand),var(--brand3))':'var(--border)',margin:'-12px -13px 10px'}}/>
-                    {sel&&<div style={{position:'absolute',top:12,right:11,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
-                    <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
-                    <div style={{fontWeight:700,fontSize:13,marginBottom:2,paddingRight:sel?20:0}}>{d.model}</div>
-                    <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs||[d.ram,d.rom].filter(Boolean).join(' / ')}</div>
-                    {tp.disc>0&&<div style={{fontSize:10,fontWeight:700,color:'var(--ok)',marginBottom:6}}>Save {fmtRWF(tp.savings)}</div>}
-                    {[['Deposit',fmtRWF(tp.dep)],[`Monthly × ${f.term}`,fmtRWF(tp.monthly)],['Total price',fmtRWF(tp.total)]].map(([k,v])=>(
-                      <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:4}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
+              {selDev2&&pricing2&&(
+                <div style={{border:'1.5px solid var(--border)',borderRadius:'var(--r)',padding:20,background:'white'}} className="slideRight">
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:10,marginBottom:16,paddingBottom:14,borderBottom:'1.5px solid var(--border)'}}>
+                    <div>
+                      <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{selDev2.brand}</div>
+                      <div style={{fontWeight:800,fontSize:16,marginBottom:2}}>{selDev2.model}</div>
+                      <div style={{fontSize:11,color:'var(--textLight)'}}>{selDev2.specs||[selDev2.ram,selDev2.rom].filter(Boolean).join(' / ')}</div>
+                    </div>
+                    <div style={{textAlign:'right'}}>
+                      <div style={{fontSize:10,color:'var(--textLight)',marginBottom:1}}>Cash price</div>
+                      <div style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:15}}>{fmtRWF(selDev2.retail||selDev2.cogs||0)}</div>
+                    </div>
+                  </div>
+                  <div style={{marginBottom:16}}>
+                    <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:4}}>Early payoff discount</div>
+                    <p style={{fontSize:11,color:'var(--textMid)',marginBottom:10,lineHeight:1.5}}>All contracts run 12 months. Customers who commit to paying off early get a discount applied upfront.</p>
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                      {TERM_OPTIONS.map(({t,label,badge,disc})=>{
+                        const active=f.term===t;
+                        return(
+                          <button key={t} type="button" onClick={()=>s('term',t)} style={{flex:'1 1 120px',padding:'10px 10px',border:`${active?2:1.5}px solid ${active?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',background:active?'var(--brandPale)':'white',cursor:'pointer',textAlign:'center',transition:'all .13s'}}>
+                            <div style={{fontWeight:700,fontSize:12,color:active?'var(--brand)':'var(--text)',marginBottom:3}}>{label}</div>
+                            <div style={{fontSize:10,fontWeight:700,color:disc>0?'var(--ok)':'var(--textLight)',background:disc>0?'var(--okBg)':'var(--bg)',padding:'2px 7px',borderRadius:99,display:'inline-block'}}>{badge}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div style={{background:'var(--bg)',borderRadius:'var(--r)',padding:'14px 16px'}}>
+                    {pricing2.disc>0&&(
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,padding:'8px 12px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)'}}>
+                        <span style={{fontSize:11,fontWeight:700,color:'var(--ok)'}}>Early payoff saving ({Math.round(pricing2.disc*100)}% off)</span>
+                        <span style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:13,color:'var(--ok)'}}>− {fmtRWF(pricing2.savings)}</span>
+                      </div>
+                    )}
+                    {[['Total price',fmtRWF(pricing2.total)],['Deposit (upfront)',fmtRWF(pricing2.dep)],['Monthly × 12',fmtRWF(pricing2.monthly)]].map(([k,v])=>(
+                      <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
+                        <span style={{fontSize:12,color:'var(--textMid)'}}>{k}</span>
+                        <span style={{fontFamily:'DM Mono,monospace',fontWeight:700,fontSize:14}}>{v}</span>
+                      </div>
                     ))}
                   </div>
-                );
-              })}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
         {step===3&&dev&&(()=>{
           const tp=calcTermPricing(dev,f.term);
+          const termLabel=f.term===12?'Standard 12 months':f.term===3?'Pay off in 3 months':'Pay off in 6 months';
           return(
             <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:22}}>
               <div>
@@ -772,8 +812,8 @@ const NewApp=({onSubmit,onBack,devices,preSelDevId=null,preSelTerm=12})=>{
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Selected device & deal</div>
                 <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{dev.brand} {dev.model}</div>
                 <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{dev.specs||[dev.ram,dev.rom].filter(Boolean).join(' / ')}</div>
-                {tp.disc>0&&<div style={{padding:'7px 11px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)',fontSize:11,fontWeight:700,color:'var(--ok)',marginBottom:10}}>{Math.round(tp.disc*100)}% discount applied · you save {fmtRWF(tp.savings)}</div>}
-                {[['Payment term',`${f.term} months`],['Deposit (upfront)',fmtRWF(tp.dep)],[`Monthly × ${f.term}`,fmtRWF(tp.monthly)],['Total price',fmtRWF(tp.total)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+                {tp.disc>0&&<div style={{padding:'7px 11px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)',fontSize:11,fontWeight:700,color:'var(--ok)',marginBottom:10}}>Early payoff: {Math.round(tp.disc*100)}% discount applied · saving {fmtRWF(tp.savings)}</div>}
+                {[['Payoff plan',termLabel],['Deposit (upfront)',fmtRWF(tp.dep)],['Monthly × 12',fmtRWF(tp.monthly)],['Total price',fmtRWF(tp.total)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
                 <div style={{marginTop:12,padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6}}>Confirm all details are correct. The application enters the review queue immediately on submission.</div>
               </div>
             </div>
