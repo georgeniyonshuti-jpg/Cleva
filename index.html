@@ -736,7 +736,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
 };
 
 // ── APP DETAIL ────────────────────────────────────────────────
-const AppDetail=({app,onUpdate,addToast,onBack})=>{
+const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const {user}=useContext(Ctx);
   const [note,setNote]=useState(app.notes||'');
   const [ld,setLd]=useState(null);
@@ -744,6 +744,15 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
   const [rejReason,setRejReason]=useState('');
   const [requestedFields,setRequestedFields]=useState(()=>app.requestedChangeFields||[]);
   const toggleRequest=(key)=>{setRequestedFields(p=>p.includes(key)?p.filter(x=>x!==key):[...p,key]);};
+  const isSuperuser=!!user.superuser;
+  const [showEditCustomer,setShowEditCustomer]=useState(false);
+  const [editC,setEditC]=useState(()=>({...app.c,kin:app.c.kin?{...app.c.kin}:{name:'',phone:'',rel:''}}));
+  const [editNotes,setEditNotes]=useState(app.notes||'');
+  const [newTlTxt,setNewTlTxt]=useState('');
+  const saveCustomer=()=>{const c={name:editC.name.trim(),idType:editC.idType||'nid',nid:editC.nid,phone:editC.phone.trim(),addr:editC.addr.trim(),occ:editC.occ,income:+editC.income,kin:{name:editC.kin.name.trim(),phone:editC.kin.phone.trim(),rel:editC.kin.rel}};onUpdate(app.id,{c,tlEntry:{by:user.name,txt:'Customer info updated (superuser)'}});addToast('ok','Customer updated','');setShowEditCustomer(false);};
+  const saveNotes=()=>{onUpdate(app.id,{notes:editNotes});addToast('ok','Notes updated','');};
+  const addTlEntry=()=>{if(!newTlTxt.trim())return;onUpdate(app.id,{tlEntry:{by:user.name,txt:newTlTxt.trim()}});addToast('ok','Timeline entry added','');setNewTlTxt('');};
+  useEffect(()=>{setEditNotes(app.notes||'');},[app.id,app.notes]);
 
   const approve=async()=>{
     setLd('ap');await sleep(2200);
@@ -776,6 +785,7 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
   const affordOk=c.income>0&&ratio<30;
   const isUnderwriter=user.role==='underwriter';
   const reviewable=[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(app.status);
+  const statusOptions=Object.entries(ST).map(([k,v])=>[v,SM[v]?.label||v]);
   return(
     <div className="fadeUp" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,padding:'28px 32px'}}>
       <div className="detail-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22,flexWrap:'wrap',gap:12,flexShrink:0}}>
@@ -869,7 +879,20 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
           )}
         </Card>
       )}
-      {app.notes&&!isUnderwriter&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Underwriter notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
+      {isSuperuser&&(
+        <Card sx={{padding:18,marginBottom:14,border:'2px solid var(--purBorder)',background:'var(--purBg)'}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:12,color:'var(--pur)'}}>⚙ Superuser — manage application</div>
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            <div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Set status</label><select value={app.status} onChange={ev=>{const v=ev.target.value;onUpdate(app.id,{status:v,tlEntry:{by:user.name,txt:`Status set to ${SM[v]?.label||v} (superuser)`}});addToast('ok','Status updated','');}} style={{padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid var(--border)',minWidth:180}}>{statusOptions.map(([val,label])=><option key={val} value={val}>{label}</option>)}</select></div>
+            <div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Notes</label><textarea value={editNotes} onChange={ev=>setEditNotes(ev.target.value)} placeholder="Internal notes..." rows={2} style={{width:'100%',padding:10,borderRadius:'var(--r2)',border:'1.5px solid var(--border)'}}/><div style={{marginTop:6}}><Btn onClick={saveNotes} v="def" sz="sm">Save notes</Btn></div></div>
+            <div><Btn onClick={()=>{setShowEditCustomer(p=>{if(!p)setEditC({...app.c,kin:app.c.kin?{...app.c.kin}:{name:'',phone:'',rel:''}});return !p;});}} v="def" sz="sm">{showEditCustomer?'Cancel edit':'Edit customer info'}</Btn>{showEditCustomer&&(<div style={{marginTop:12,display:'flex',flexDirection:'column',gap:10}}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><FF label="Name"><input value={editC.name} onChange={ev=>setEditC(p=>({...p,name:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="ID type"><select value={editC.idType||'nid'} onChange={ev=>setEditC(p=>({...p,idType:ev.target.value}))}><option value="nid">National ID</option><option value="passport">Passport</option></select></FF></div><FF label={editC.idType==='passport'?'Passport number':'National ID'}><input value={editC.nid} onChange={ev=>setEditC(p=>({...p,nid:ev.target.value}))} style={{padding:'6px 10px',width:'100%',fontFamily:'DM Mono,monospace'}}/></FF><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><FF label="Phone"><input value={editC.phone} onChange={ev=>setEditC(p=>({...p,phone:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Occupation"><select value={editC.occ} onChange={ev=>setEditC(p=>({...p,occ:ev.target.value}))}><option value="">Select</option>{OCCS.map(o=><option key={o} value={o}>{o}</option>)}</select></FF></div><FF label="Address"><input value={editC.addr} onChange={ev=>setEditC(p=>({...p,addr:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Monthly income (RWF)"><input type="number" value={editC.income} onChange={ev=>setEditC(p=>({...p,income:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><div style={{fontSize:11,fontWeight:600,color:'var(--textLight)',marginTop:8}}>Next of kin</div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}><FF label="Name"><input value={editC.kin.name} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,name:ev.target.value}}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Phone"><input value={editC.kin.phone} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,phone:ev.target.value}}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Relationship"><select value={editC.kin.rel} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,rel:ev.target.value}}))}><option value="">Select</option>{RELS.map(r=><option key={r} value={r}>{r}</option>)}</select></FF></div><Btn onClick={saveCustomer} v="ok" sz="sm" style={{marginTop:10}}>Save customer</Btn></div>)}</div>
+            {devices&&devices.length>0&&<div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Change device</label><select value={app.dev?.id} onChange={ev=>{const dev=(devices||[]).find(d=>d.id===ev.target.value);if(dev){onUpdate(app.id,{dev,tlEntry:{by:user.name,txt:`Device changed to ${dev.brand} ${dev.model} (superuser)`}});addToast('ok','Device updated','');}}} style={{padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid var(--border)',minWidth:200}}>{(devices||[]).map(d=> <option key={d.id} value={d.id}>{d.brand} {d.model} — {d.sku}</option>)}</select></div>}
+            <div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Add timeline entry</label><div style={{display:'flex',gap:8,alignItems:'center'}}><input value={newTlTxt} onChange={ev=>setNewTlTxt(ev.target.value)} placeholder="e.g. Data correction applied" style={{flex:1,padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid var(--border)'}}/><Btn onClick={addTlEntry} v="def" sz="sm" disabled={!newTlTxt.trim()}>Add</Btn></div></div>
+          </div>
+        </Card>
+      )}
+      {app.notes&&!isUnderwriter&&!isSuperuser&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Underwriter notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
+      {app.notes&&isSuperuser&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
       <Card sx={{padding:'16px 18px'}}>
         <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Activity timeline</div>
         {(app.tl||[]).map((t,i)=>(
@@ -1052,7 +1075,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setApps
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)} devices={user.superuser?devices:undefined}/></div></div></div>;
   }
 
   const filtered=apps.filter(a=>{const ms=!q||a.c.name.toLowerCase().includes(q.toLowerCase())||a.id.toLowerCase().includes(q.toLowerCase());const mst=!fst||a.status===fst;return ms&&mst;});
