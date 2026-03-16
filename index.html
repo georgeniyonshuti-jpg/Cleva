@@ -236,6 +236,18 @@ const calcDealFromDevice=(device,cfg)=>{
   return {deviceModel:device.model,manufacturer:device.brand,RAM:device.ram,ROM:device.rom,dealId:device.id,dealName:device.model,dealType:'PAYG',termOption:12,upfrontPayment:deposit,recurrentPayment:monthly,totalCost,cogs:cashPrice,markupRate,depositPct};
 };
 
+// ── TERM PRICING: apply discount for shorter terms ─────────────
+// 3 months → 30% off total; 6 months → 20% off total; 12 months → standard
+const calcTermPricing=(dev,term)=>{
+  const disc=term===3?0.30:term===6?0.20:0;
+  const baseTotal=dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12||0;
+  const total=Math.round(baseTotal*(1-disc));
+  const depositPct=dev.depositPct||0.20;
+  const dep=Math.round(total*depositPct);
+  const monthly=Math.round((total-dep)/term);
+  return {total,dep,monthly,disc,savings:baseTotal-total,term};
+};
+
 // ── IMEI: 15 digits + Luhn check ───────────────────────────────
 const luhnCheck=(digits)=>{
   let sum=0;const n=digits.length;
@@ -470,40 +482,85 @@ const Login=({onLogin,users})=>{
 };
 
 // ── PRICE LIST ────────────────────────────────────────────────
-const PriceList=({devices})=>(
-  <div className="fadeUp" style={{padding:'28px 32px'}}>
-    <div style={{marginBottom:22}}>
-      <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Device price list</h1>
-      <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>12-month PAYGO contracts · All amounts in RWF</p>
-    </div>
-    <div className="price-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(230px,1fr))',gap:12}}>
-      {(devices||[]).map(d=>{
-        const cashPrice=d.retail||d.cogs||d.cash||0;
-        const totalCost=d.totalCost||(d.dep+(d.weekly||0)*12);
-        const markup=cashPrice>0?(((totalCost-cashPrice)/cashPrice)*100).toFixed(0):0;
-        const specs=d.specs||[d.RAM||d.ram,d.ROM||d.rom].filter(Boolean).join(' / ');
-        return(
-          <Card key={d.id} sx={{overflow:'hidden'}}>
-            <div style={{height:3,background:'linear-gradient(90deg,var(--brand),var(--brand3))'}}/>
-            <div style={{padding:'15px 16px'}}>
-              <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{d.brand||d.manufacturer}</div>
-              <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{d.model||d.deviceModel}</div>
-              <div style={{fontSize:10,color:'var(--textLight)',marginBottom:13,lineHeight:1.6}}>{specs}</div>
-              {[['Cash price',fmtRWF(cashPrice)],['Total price',fmtRWF(totalCost)],['Deposit',fmtRWF(d.dep||d.upfrontPayment||0)],['Monthly × 12',fmtRWF(d.weekly||d.recurrentPayment||0)]].map(([k,v])=>(
-                <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:5}}>
-                  <span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span>
-                </div>
-              ))}
-              <div style={{display:'flex',justifyContent:'flex-end',marginTop:8,paddingTop:8,borderTop:'1px dashed rgba(0,0,0,0.07)'}}>
-                <span style={{background:'var(--warnBg)',color:'var(--warn)',fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:99}}>+{markup}% markup</span>
-              </div>
+const TERM_OPTIONS=[{t:3,label:'3 months',badge:'30% off',disc:0.30},{t:6,label:'6 months',badge:'20% off',disc:0.20},{t:12,label:'12 months',badge:'Standard',disc:0}];
+const PriceList=({devices,onStartApp})=>{
+  const [selId,setSelId]=useState(null);
+  const [term,setTerm]=useState(12);
+  const selDev=(devices||[]).find(d=>d.id===selId);
+  const pricing=selDev?calcTermPricing(selDev,term):null;
+  const selectDevice=(id)=>{setSelId(id);setTerm(12);};
+  return(
+    <div className="fadeUp" style={{padding:'28px 32px'}}>
+      <div style={{marginBottom:18}}>
+        <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Device price list</h1>
+        <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>Select a device · choose payment duration · All amounts in RWF</p>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:10,marginBottom:selDev?20:0}}>
+        {(devices||[]).map(d=>{
+          const cashPrice=d.retail||d.cogs||d.cash||0;
+          const specs=d.specs||[d.RAM||d.ram,d.ROM||d.rom].filter(Boolean).join(' / ');
+          const isSel=d.id===selId;
+          return(
+            <div key={d.id} onClick={()=>selectDevice(d.id)} style={{border:`${isSel?2:1.5}px solid ${isSel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'13px 14px',cursor:'pointer',background:isSel?'var(--brandPale)':'white',transition:'all .13s',position:'relative',overflow:'hidden'}}>
+              <div style={{height:3,background:isSel?'linear-gradient(90deg,var(--brand),var(--brand3))':'var(--border)',margin:'-13px -14px 11px'}}/>
+              {isSel&&<div style={{position:'absolute',top:12,right:12,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
+              <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:3,paddingRight:isSel?20:0}}>{d.model}</div>
+              <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{specs}</div>
+              <div style={{fontSize:11,color:'var(--textMid)'}}>Cash: <span style={{fontWeight:700,color:'var(--text)',fontFamily:'DM Mono,monospace'}}>{fmtRWF(cashPrice)}</span></div>
             </div>
-          </Card>
-        );
-      })}
+          );
+        })}
+      </div>
+      {selDev&&pricing&&(
+        <Card sx={{padding:22}} className="slideRight">
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12,marginBottom:18,paddingBottom:16,borderBottom:'1.5px solid var(--border)'}}>
+            <div>
+              <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:2}}>{selDev.brand}</div>
+              <div style={{fontWeight:800,fontSize:18,marginBottom:2}}>{selDev.model}</div>
+              <div style={{fontSize:11,color:'var(--textLight)'}}>{selDev.specs||[selDev.RAM||selDev.ram,selDev.ROM||selDev.rom].filter(Boolean).join(' / ')}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:10,color:'var(--textLight)',marginBottom:2}}>Cash price</div>
+              <div style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:16}}>{fmtRWF(selDev.retail||selDev.cogs||0)}</div>
+            </div>
+          </div>
+          <div style={{marginBottom:18}}>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:10}}>Payment duration</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              {TERM_OPTIONS.map(({t,label,badge,disc})=>{
+                const active=term===t;
+                return(
+                  <button key={t} type="button" onClick={()=>setTerm(t)} style={{flex:'1 1 90px',padding:'11px 10px',border:`${active?2:1.5}px solid ${active?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',background:active?'var(--brandPale)':'white',cursor:'pointer',textAlign:'center',transition:'all .13s'}}>
+                    <div style={{fontWeight:700,fontSize:14,color:active?'var(--brand)':'var(--text)',marginBottom:4}}>{label}</div>
+                    <div style={{fontSize:10,fontWeight:700,color:disc>0?'var(--ok)':'var(--textLight)',background:disc>0?'var(--okBg)':'var(--bg)',padding:'2px 8px',borderRadius:99,display:'inline-block'}}>{badge}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{background:'var(--bg)',borderRadius:'var(--r)',padding:'16px 18px',marginBottom:18}}>
+            {pricing.disc>0&&(
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,padding:'9px 13px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)'}}>
+                <span style={{fontSize:12,fontWeight:700,color:'var(--ok)'}}>You save ({Math.round(pricing.disc*100)}% discount)</span>
+                <span style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:14,color:'var(--ok)'}}>− {fmtRWF(pricing.savings)}</span>
+              </div>
+            )}
+            {[['Total price',fmtRWF(pricing.total)],['Deposit (upfront)',fmtRWF(pricing.dep)],[`Monthly × ${term}`,fmtRWF(pricing.monthly)]].map(([k,v])=>(
+              <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:10}}>
+                <span style={{fontSize:13,color:'var(--textMid)'}}>{k}</span>
+                <span style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:16}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          {onStartApp&&(
+            <Btn v="primary" full icon="→" onClick={()=>onStartApp(selDev.id,term)}>Start application with this device</Btn>
+          )}
+        </Card>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // ── EDIT & RESUBMIT (after changes requested) ───────────────────
 const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
@@ -566,13 +623,13 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
         <div style={{borderTop:'1.5px solid var(--border)',paddingTop:18,marginTop:14}}>
           <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
           <div className="device-select-grid" style={{...highlight('device_id'),display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
-            {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.totalCost||(d.dep+(d.weekly||0)*12);return(
+            {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.totalCost||(d.dep+(d.weekly||0)*(d.wks||12));return(
               <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative'}}>
                 {sel&&<div style={{position:'absolute',top:9,right:9,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
                 <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
                 <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>{d.model}</div>
                 <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs||[d.ram,d.rom].filter(Boolean).join(' / ')}</div>
-                {[['Deposit',fmtRWF(d.dep)],['Monthly × 12',fmtRWF(d.weekly)],['Total price',fmtRWF(tot)]].map(([k,v])=>(
+                {[['Deposit',fmtRWF(d.dep)],[`Monthly × ${d.wks||12}`,fmtRWF(d.weekly)],['Total price',fmtRWF(tot)]].map(([k,v])=>(
                   <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:4}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
                 ))}
               </div>
@@ -590,10 +647,10 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
 };
 
 // ── NEW APPLICATION ───────────────────────────────────────────
-const NewApp=({onSubmit,onBack,devices})=>{
+const NewApp=({onSubmit,onBack,devices,preSelDevId=null,preSelTerm=12})=>{
   const {user}=useContext(Ctx);
   const [step,setStep]=useState(1);
-  const [f,setF]=useState({name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:'',customerPhoto:null,idPhoto:null,incomeProof:null});
+  const [f,setF]=useState({name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:preSelDevId||'',term:preSelTerm,customerPhoto:null,idPhoto:null,incomeProof:null});
   const [e,setE]=useState({});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const handleFile=(k,file)=>{if(!file)return;readFileAsDataURL(file).then(url=>s(k,url)).catch(()=>{});};
@@ -666,38 +723,62 @@ const NewApp=({onSubmit,onBack,devices})=>{
         )}
         {step===2&&(
           <div>
-            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Choose device</div>
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Payment duration</div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
+                {TERM_OPTIONS.map(({t,label,badge,disc})=>{
+                  const active=f.term===t;
+                  return(
+                    <button key={t} type="button" onClick={()=>s('term',t)} style={{flex:'1 1 90px',padding:'10px 10px',border:`${active?2:1.5}px solid ${active?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',background:active?'var(--brandPale)':'white',cursor:'pointer',textAlign:'center',transition:'all .13s'}}>
+                      <div style={{fontWeight:700,fontSize:13,color:active?'var(--brand)':'var(--text)',marginBottom:3}}>{label}</div>
+                      <div style={{fontSize:10,fontWeight:700,color:disc>0?'var(--ok)':'var(--textLight)',background:disc>0?'var(--okBg)':'var(--bg)',padding:'2px 7px',borderRadius:99,display:'inline-block'}}>{badge}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Choose device</div>
             {e.did&&<div style={{padding:'9px 13px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',marginBottom:12}}>{e.did}</div>}
             <div className="device-select-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
-              {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.totalCost||(d.dep+(d.weekly||0)*12);return(
-                <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative'}}>
-                  {sel&&<div style={{position:'absolute',top:9,right:9,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
-                  <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
-                  <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>{d.model}</div>
-                  <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs||[d.ram,d.rom].filter(Boolean).join(' / ')}</div>
-                  {[['Deposit',fmtRWF(d.dep)],['Monthly × 12',fmtRWF(d.weekly)],['Total price',fmtRWF(tot)]].map(([k,v])=>(
-                    <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:4}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
-                  ))}
-                </div>
-              );})}
+              {(devices||[]).map(d=>{
+                const sel=f.did===d.id;
+                const tp=calcTermPricing(d,f.term);
+                return(
+                  <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative',overflow:'hidden'}}>
+                    <div style={{height:2,background:sel?'linear-gradient(90deg,var(--brand),var(--brand3))':'var(--border)',margin:'-12px -13px 10px'}}/>
+                    {sel&&<div style={{position:'absolute',top:12,right:11,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
+                    <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
+                    <div style={{fontWeight:700,fontSize:13,marginBottom:2,paddingRight:sel?20:0}}>{d.model}</div>
+                    <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs||[d.ram,d.rom].filter(Boolean).join(' / ')}</div>
+                    {tp.disc>0&&<div style={{fontSize:10,fontWeight:700,color:'var(--ok)',marginBottom:6}}>Save {fmtRWF(tp.savings)}</div>}
+                    {[['Deposit',fmtRWF(tp.dep)],[`Monthly × ${f.term}`,fmtRWF(tp.monthly)],['Total price',fmtRWF(tp.total)]].map(([k,v])=>(
+                      <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:4}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
-        {step===3&&dev&&(
-          <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:22}}>
-            <div>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Customer</div>
-              {[['Full name',f.name],[f.idType==='nid'?'National ID':'Passport',f.nid],['Phone',f.phone],['Address',f.addr],['Occupation',f.occ],['Monthly income',fmtRWF(+f.income)],['Next of kin',`${f.kn} (${f.kr})`],['Kin phone',f.kp],['Documents','Customer photo ✓ · ID ✓ · Income proof ✓']].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+        {step===3&&dev&&(()=>{
+          const tp=calcTermPricing(dev,f.term);
+          return(
+            <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:22}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Customer</div>
+                {[['Full name',f.name],[f.idType==='nid'?'National ID':'Passport',f.nid],['Phone',f.phone],['Address',f.addr],['Occupation',f.occ],['Monthly income',fmtRWF(+f.income)],['Next of kin',`${f.kn} (${f.kr})`],['Kin phone',f.kp],['Documents','Customer photo ✓ · ID ✓ · Income proof ✓']].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+              </div>
+              <div>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Selected device & deal</div>
+                <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{dev.brand} {dev.model}</div>
+                <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{dev.specs||[dev.ram,dev.rom].filter(Boolean).join(' / ')}</div>
+                {tp.disc>0&&<div style={{padding:'7px 11px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)',fontSize:11,fontWeight:700,color:'var(--ok)',marginBottom:10}}>{Math.round(tp.disc*100)}% discount applied · you save {fmtRWF(tp.savings)}</div>}
+                {[['Payment term',`${f.term} months`],['Deposit (upfront)',fmtRWF(tp.dep)],[`Monthly × ${f.term}`,fmtRWF(tp.monthly)],['Total price',fmtRWF(tp.total)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+                <div style={{marginTop:12,padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6}}>Confirm all details are correct. The application enters the review queue immediately on submission.</div>
+              </div>
             </div>
-            <div>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Selected device</div>
-              <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{dev.brand} {dev.model}</div>
-              <div style={{fontSize:11,color:'var(--textLight)',marginBottom:14}}>{dev.specs}</div>
-              {[['Deposit',fmtRWF(dev.dep)],['Monthly × 12',fmtRWF(dev.weekly)],['Total price',fmtRWF(dev.totalCost||(dev.dep+(dev.weekly||0)*12))]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
-              <div style={{marginTop:12,padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6}}>Confirm all details are correct. The application enters the review queue immediately on submission.</div>
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </Card>
       </div>
       <footer style={{flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,padding:'16px 24px 24px',paddingBottom:'max(24px, env(safe-area-inset-bottom))',borderTop:'1.5px solid var(--border)',background:'var(--bg)',margin:'0 -24px'}}>
@@ -833,7 +914,8 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
     addToast('info','Archived','');setLd(null);onBack();
   };
 
-  const c=app.c,d=app.dev,tot=d.totalCost||(d.dep+(d.weekly||0)*12);
+  const c=app.c,d=app.dev,tot=d.totalCost||(d.dep+(d.weekly||0)*(d.wks||12));
+  const termMonths=d.wks||12;
   const ratio=c.income>0?(d.weekly/c.income*100):0;
   const affordOk=c.income>0&&ratio<30;
   const isUnderwriter=user.role==='underwriter';
@@ -891,8 +973,8 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
             {!(isUnderwriter&&reviewable)&&<div style={{fontWeight:700,fontSize:15,marginBottom:1}}>{d.brand} {d.model}</div>}
             {!(isUnderwriter&&reviewable)&&<div style={{fontSize:11,color:'var(--textLight)',marginBottom:13}}>{d.specs}</div>}
             {(isUnderwriter&&reviewable?[
-              ['device_id','Device',`${d.brand} ${d.model}`],['dep','Deposit',fmtRWF(d.dep)],['weekly','Monthly × 12',fmtRWF(d.weekly)],['tot','Total price',fmtRWF(tot)]
-            ]:[['Deposit',fmtRWF(d.dep)],['Monthly × 12',fmtRWF(d.weekly)],['Total price',fmtRWF(tot)]]).map((arr)=>{
+              ['device_id','Device',`${d.brand} ${d.model}`],['dep','Deposit',fmtRWF(d.dep)],['weekly',`Monthly × ${termMonths}`,fmtRWF(d.weekly)],['tot','Total price',fmtRWF(tot)]
+            ]:[['Deposit',fmtRWF(d.dep)],[`Monthly × ${termMonths}`,fmtRWF(d.weekly)],['Total price',fmtRWF(tot)]]).map((arr)=>{
               if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
               return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
             })}
@@ -969,6 +1051,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
+  const [preselDev,setPreselDev]=useState(null);
   const cfg=pricingConfig||defaultPricingConfig;
   const devicesWithPricing=React.useMemo(()=>(devices||[]).map(d=>{const deal=calcDealFromDevice(d,cfg);return{...d,...deal,dep:deal.upfrontPayment,weekly:deal.recurrentPayment,wks:deal.termOption,retail:deal.cogs};}),[devices,cfg]);
   const mine=apps.filter(a=>a.repId===user.id&&(!user.merchantCode||a.merchantCode===user.merchantCode));
@@ -1028,13 +1111,15 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
             {grps.other.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.other.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title="No completed applications" sub="Applications you've closed or that need changes"/>}
           </div>
         )}
-        {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devicesWithPricing} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
-          const deal=dev.dealId?dev:{dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,RAM:dev.RAM,ROM:dev.ROM,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12,cogs:dev.retail||dev.cogs,markupRate:cfg.markupRate,depositPct:cfg.depositPct};
+        {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devicesWithPricing} preSelDevId={preselDev?.id||null} preSelTerm={preselDev?.term||12} onBack={()=>{setPg('dash');setPreselDev(null);}} onSubmit={(f,dev)=>{
+          const term=f.term||12;
+          const tp=calcTermPricing(dev,term);
+          const deal={dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc};
           const freeCashflow=Math.max(0,(+f.income||0)-0);
           const newContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',status:ST.PENDING_APPROVAL,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:freeCashflow,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof},deal,dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for approval'}]};
-          onUpdate(null,null,newContract);addToast('ok','Application submitted','Sent for approval');setPg('dash');
+          onUpdate(null,null,newContract);addToast('ok','Application submitted','Sent for approval');setPg('dash');setPreselDev(null);
         }}/></div>}
-        {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devicesWithPricing}/></div>}
+        {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devicesWithPricing} onStartApp={(did,term)=>{setPreselDev({id:did,term});setPg('new');}}/></div>}
       </div>
     </div>
   );
