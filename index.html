@@ -269,6 +269,18 @@ const Btn=({children,onClick,v='def',sz='md',disabled=false,loading=false,icon,f
 
 const Card=({children,sx={}})=><div style={{background:'var(--surface)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',boxShadow:'var(--sh)',...sx}}>{children}</div>;
 const Fld=({label,val,mono=false})=><div style={{paddingBottom:8,marginBottom:8,borderBottom:'1px solid rgba(0,0,0,0.05)'}}><div style={{fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:2}}>{label}</div><div style={{fontSize:13,fontFamily:mono?'DM Mono,monospace':undefined,color:val?'var(--text)':'var(--textLight)'}}>{val||'—'}</div></div>;
+const FldWithRequest=({label,val,fieldKey,requestedFields,onToggle,mono=false})=>{
+  const requested=requestedFields.includes(fieldKey);
+  return (
+    <div style={{paddingBottom:8,marginBottom:8,borderBottom:'1px solid rgba(0,0,0,0.05)',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,background:requested?'var(--warnBg)':undefined,padding:requested?'8px 10px':undefined,margin:requested?'0 -10px 8px -10px':undefined,borderRadius:requested?'var(--r2)':undefined,borderLeft:requested?'3px solid var(--warn)':undefined}}>
+      <div style={{minWidth:0}}>
+        <div style={{fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:2}}>{label}</div>
+        <div style={{fontSize:13,fontFamily:mono?'DM Mono,monospace':undefined,color:val?'var(--text)':'var(--textLight)'}}>{val||'—'}</div>
+      </div>
+      <button type="button" onClick={()=>onToggle(fieldKey)} style={{flexShrink:0,padding:'4px 8px',fontSize:10,fontWeight:600,background:requested?'var(--warn)':'var(--bg)',color:requested?'white':'var(--textMid)',border:'1px solid '+(requested?'var(--warn)':'var(--border)'),borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}} title={requested?'Unmark':"Mark for change"}>{requested?'✓ Requested':'Request change'}</button>
+    </div>
+  );
+};
 const FF=({label,err,children,req=false})=><div style={{display:'flex',flexDirection:'column',gap:3}}>{label&&<label style={{fontSize:11,fontWeight:600,color:'var(--textMid)'}}>{label}{req&&<span style={{color:'var(--err)',marginLeft:2}}>*</span>}</label>}{children}{err&&<span style={{fontSize:11,color:'var(--err)'}}>{err}</span>}</div>;
 const Empty=({ico='📋',title,sub})=><div style={{textAlign:'center',padding:'56px 24px',color:'var(--textMid)'}}><div style={{fontSize:36,marginBottom:12}}>{ico}</div><div style={{fontWeight:600,fontSize:15,color:'var(--text)',marginBottom:4}}>{title}</div>{sub&&<div style={{fontSize:12,color:'var(--textLight)'}}>{sub}</div>}</div>;
 
@@ -433,6 +445,85 @@ const PriceList=({devices})=>(
     </div>
   </div>
 );
+
+// ── EDIT & RESUBMIT (after changes requested) ───────────────────
+const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
+  const {user}=useContext(Ctx);
+  const requested=app.requestedChangeFields||[];
+  const highlight=(key)=>requested.includes(key)?{borderLeft:'3px solid var(--warn)',background:'var(--warnBg)',padding:'8px 10px',margin:'0 -10px 8px -10px',borderRadius:'var(--r2)'}:{};
+  const [f,setF]=useState({name:app.c.name,nid:app.c.nid,phone:app.c.phone,addr:app.c.addr,occ:app.c.occ,income:String(app.c.income||''),kn:app.c.kin.name,kp:app.c.kin.phone,kr:app.c.kin.rel,did:app.dev.id});
+  const [e,setE]=useState({});
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const validate=()=>{
+    const er={};
+    if(!f.name.trim())er.name='Required';if(f.nid.replace(/\D/g,'').length<16)er.nid='Must be 16 digits';if(!f.phone.trim())er.phone='Required';if(!f.addr.trim())er.addr='Required';if(!f.occ)er.occ='Required';if(!f.income||isNaN(f.income)||+f.income<1)er.income='Enter a valid amount';if(!f.kn.trim())er.kn='Required';if(!f.kp.trim())er.kp='Required';if(!f.kr)er.kr='Required';if(!f.did)er.did='Select a device';
+    setE(er);return!Object.keys(er).length;
+  };
+  const submit=()=>{
+    if(!validate())return;
+    const dev=(devices||[]).find(d=>d.id===f.did);if(!dev){addToast('err','Device required','');return;}
+    const c={name:f.name.trim(),nid:f.nid,phone:f.phone.trim(),addr:f.addr.trim(),occ:f.occ,income:+f.income,kin:{name:f.kn.trim(),phone:f.kp.trim(),rel:f.kr}};
+    onUpdate(app.id,{c,dev,status:ST.SUBMITTED,requestedChangeFields:[],notes:'',tlEntry:{by:user.name,txt:'Resubmitted after changes — returned to reviewer'}});
+    addToast('ok','Application resubmitted','Sent back to the reviewer');onBack();
+  };
+  return(
+    <div className="fadeUp" style={{padding:'28px 32px',maxWidth:820}}>
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22}}>
+        <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
+        <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Edit & resubmit</h1><p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>{app.id} · Underwriter requested changes</p></div>
+      </div>
+      {app.notes&&(
+        <Card sx={{padding:14,marginBottom:18,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}>
+          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:6}}>Underwriter note</div>
+          <div style={{fontSize:13,color:'var(--text)'}}>{app.notes}</div>
+          {requested.length>0&&<div style={{fontSize:11,color:'var(--textMid)',marginTop:8}}>Fields to review: <strong>{requested.join(', ')}</strong></div>}
+        </Card>
+      )}
+      <Card sx={{padding:22}}>
+        <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Customer information</div>
+        <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <div style={highlight('name')}><FF label="Full name" req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder="As on national ID" className={e.name?'err':''}/></FF></div>
+          <div style={highlight('nid')}><FF label="National ID number" req err={e.nid}><input value={f.nid} onChange={ev=>s('nid',ev.target.value.replace(/\D/g,'').slice(0,16))} placeholder="16 digits" className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/></FF></div>
+        </div>
+        <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <div style={highlight('phone')}><FF label="Phone number" req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF></div>
+          <div style={highlight('occ')}><FF label="Occupation" req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">Select...</option>{OCCS.map(o=><option key={o}>{o}</option>)}</select></FF></div>
+        </div>
+        <div style={highlight('addr')}><FF label="Address / location" req err={e.addr}><input value={f.addr} onChange={ev=>s('addr',ev.target.value)} placeholder="Sector, district" className={e.addr?'err':''}/></FF></div>
+        <div style={highlight('income')}><FF label="Monthly income (RWF)" req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder="e.g. 150000" className={e.income?'err':''}/></FF></div>
+        <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Next of kin</div>
+          <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 160px',gap:12}}>
+            <div style={highlight('kin_name')}><FF label="Full name" req err={e.kn}><input value={f.kn} onChange={ev=>s('kn',ev.target.value)} placeholder="Next of kin name" className={e.kn?'err':''}/></FF></div>
+            <div style={highlight('kin_phone')}><FF label="Phone" req err={e.kp}><input value={f.kp} onChange={ev=>s('kp',ev.target.value)} placeholder="07XXXXXXXX" className={e.kp?'err':''}/></FF></div>
+            <div style={highlight('kin_rel')}><FF label="Relationship" req err={e.kr}><select value={f.kr} onChange={ev=>s('kr',ev.target.value)} className={e.kr?'err':''}><option value="">Select...</option>{RELS.map(r=><option key={r}>{r}</option>)}</select></FF></div>
+          </div>
+        </div>
+        <div style={{borderTop:'1.5px solid var(--border)',paddingTop:18,marginTop:14}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
+          <div className="device-select-grid" style={{...highlight('device_id'),display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
+            {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.dep+d.weekly*d.wks;return(
+              <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative'}}>
+                {sel&&<div style={{position:'absolute',top:9,right:9,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
+                <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>{d.model}</div>
+                <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs}</div>
+                {[['Deposit',fmtRWF(d.dep)],['Weekly',fmtRWF(d.weekly)],['Total',fmtRWF(tot)]].map(([k,v])=>(
+                  <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:4}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
+                ))}
+              </div>
+            );})}
+          </div>
+          {e.did&&<span style={{fontSize:11,color:'var(--err)'}}>{e.did}</span>}
+        </div>
+        <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:22,paddingTop:18,borderTop:'1.5px solid var(--border)'}}>
+          <Btn onClick={onBack} v="def">Cancel</Btn>
+          <Btn onClick={submit} v="primary" icon="✓">Resubmit to reviewer</Btn>
+        </div>
+      </Card>
+    </div>
+  );
+};
 
 // ── NEW APPLICATION ───────────────────────────────────────────
 const NewApp=({onSubmit,onBack,devices})=>{
@@ -615,6 +706,8 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
   const [ld,setLd]=useState(null);
   const [showRej,setShowRej]=useState(false);
   const [rejReason,setRejReason]=useState('');
+  const [requestedFields,setRequestedFields]=useState(()=>app.requestedChangeFields||[]);
+  const toggleRequest=(key)=>{setRequestedFields(p=>p.includes(key)?p.filter(x=>x!==key):[...p,key]);};
 
   const approve=async()=>{
     setLd('ap');await sleep(2200);
@@ -629,11 +722,14 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
     addToast('info','Application rejected','Rep notified');setLd(null);onBack();
   };
   const requestChanges=async()=>{
+    if(!note.trim()){addToast('err','Note required','Explain what changes you need before sending back.');return;}
     setLd('ch');await sleep(700);
-    onUpdate(app.id,{status:ST.CHANGES,notes:note,reviewer:user.name,tlEntry:{by:user.name,txt:'Changes requested — returned to sales rep'}});
+    const fieldsTxt=requestedFields.length?` (${requestedFields.join(', ')})`:'';
+    onUpdate(app.id,{status:ST.CHANGES,notes:note,reviewer:user.name,requestedChangeFields:requestedFields,tlEntry:{by:user.name,txt:`Changes requested${fieldsTxt} — returned to sales rep`}});
     addToast('warn','Changes requested','Application returned to rep');setLd(null);onBack();
   };
   const escalate=async()=>{
+    if(!note.trim()){addToast('err','Note required','Explain why you are escalating before sending to credit committee.');return;}
     setLd('esc');await sleep(700);
     onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,tlEntry:{by:user.name,txt:'Escalated to credit committee'}});
     addToast('info','Escalated','Sent to credit committee');setLd(null);onBack();
@@ -663,18 +759,33 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
       <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
         <Card sx={{padding:'16px 18px'}}>
           <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:13}}>Customer</div>
-          {[['Full name',c.name],['National ID',c.nid],['Phone',c.phone],['Address',c.addr],['Occupation',c.occ],['Monthly income',fmtRWF(c.income)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+          {(isUnderwriter&&reviewable?[
+            ['name','Full name',c.name],['nid','National ID',c.nid],['phone','Phone',c.phone],['addr','Address',c.addr],['occ','Occupation',c.occ],['income','Monthly income',fmtRWF(c.income)]
+          ]:[['Full name',c.name],['National ID',c.nid],['Phone',c.phone],['Address',c.addr],['Occupation',c.occ],['Monthly income',fmtRWF(c.income)]]).map((arr)=>{
+            if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
+            return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
+          })}
           <div style={{borderTop:'1.5px solid var(--border)',paddingTop:11,marginTop:4}}>
             <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Next of kin</div>
-            {[['Name',c.kin.name],['Phone',c.kin.phone],['Relationship',c.kin.rel]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+            {(isUnderwriter&&reviewable?[
+              ['kin_name','Name',c.kin.name],['kin_phone','Phone',c.kin.phone],['kin_rel','Relationship',c.kin.rel]
+            ]:[['Name',c.kin.name],['Phone',c.kin.phone],['Relationship',c.kin.rel]]).map((arr)=>{
+              if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
+              return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
+            })}
           </div>
         </Card>
         <div style={{display:'flex',flexDirection:'column',gap:12}}>
           <Card sx={{padding:'16px 18px'}}>
             <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:1}}>{d.brand} {d.model}</div>
-            <div style={{fontSize:11,color:'var(--textLight)',marginBottom:13}}>{d.specs}</div>
-            {[['SKU',d.sku],['Deposit',fmtRWF(d.dep)],['Weekly × 26',fmtRWF(d.weekly)],['Total contract',fmtRWF(tot)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+            {!(isUnderwriter&&reviewable)&&<div style={{fontWeight:700,fontSize:15,marginBottom:1}}>{d.brand} {d.model}</div>}
+            {!(isUnderwriter&&reviewable)&&<div style={{fontSize:11,color:'var(--textLight)',marginBottom:13}}>{d.specs}</div>}
+            {(isUnderwriter&&reviewable?[
+              ['device_id','Device',`${d.brand} ${d.model}`],['sku','SKU',d.sku],['dep','Deposit',fmtRWF(d.dep)],['weekly','Weekly × 26',fmtRWF(d.weekly)],['tot','Total contract',fmtRWF(tot)]
+            ]:[['SKU',d.sku],['Deposit',fmtRWF(d.dep)],['Weekly × 26',fmtRWF(d.weekly)],['Total contract',fmtRWF(tot)]]).map((arr)=>{
+              if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
+              return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
+            })}
             {app.imei&&<Fld label="IMEI" val={app.imei} mono/>}
             {app.ptId&&<Fld label="PayTrigger ID" val={app.ptId} mono/>}
           </Card>
@@ -694,18 +805,19 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
       {isUnderwriter&&reviewable&&(
         <Card sx={{padding:18,marginBottom:14,border:'2px solid var(--brandPale2)'}}>
           <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Credit decision</div>
-          <FF label="Underwriter notes"><textarea value={note} onChange={ev=>setNote(ev.target.value)} placeholder="Add notes (recommended for all decisions)..." rows={3}/></FF>
+          <div style={{fontSize:11,color:'var(--textMid)',marginBottom:10}}>Use <strong>Request change</strong> on specific fields above to mark what the rep should fix. Then add a note and click Request changes. Note is required for Request changes, Escalate, and Reject.</div>
+          <FF label="Underwriter notes (required for Request changes, Escalate, Reject)"><textarea value={note} onChange={ev=>setNote(ev.target.value)} placeholder="Explain your decision or what changes you need..." rows={3}/></FF>
           <div style={{display:'flex',gap:8,marginTop:13,flexWrap:'wrap'}}>
             <Btn onClick={approve} v="ok" loading={ld==='ap'} icon="✓">Approve</Btn>
-            <Btn onClick={requestChanges} v="warn" loading={ld==='ch'} icon="↩">Request changes</Btn>
-            <Btn onClick={escalate} v="pur" loading={ld==='esc'} icon="↑">Escalate</Btn>
+            {requestedFields.length>0&&<Btn onClick={requestChanges} v="warn" loading={ld==='ch'} icon="↩" disabled={!note.trim()}>Request changes</Btn>}
+            <Btn onClick={escalate} v="pur" loading={ld==='esc'} icon="↑" disabled={!note.trim()}>Escalate</Btn>
             <Btn onClick={()=>setShowRej(p=>!p)} v="err" icon="✕">Reject</Btn>
           </div>
           {showRej&&(
             <div style={{marginTop:13,padding:'13px 15px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)'}}>
               <div style={{fontSize:11,fontWeight:600,color:'var(--err)',marginBottom:7}}>Rejection reason (required)</div>
               <textarea value={rejReason} onChange={ev=>setRejReason(ev.target.value)} placeholder="Explain why the application is being rejected..." rows={2} style={{borderColor:'var(--errBorder)'}}/>
-              <div style={{marginTop:9}}><Btn onClick={reject} v="err" loading={ld==='rej'}>Confirm rejection</Btn></div>
+              <div style={{marginTop:9}}><Btn onClick={reject} v="err" loading={ld==='rej'} disabled={!rejReason.trim()}>Confirm rejection</Btn></div>
             </div>
           )}
         </Card>
@@ -741,6 +853,8 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
     const app=apps.find(a=>a.id===sel);
     if(app&&[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(app.status))
       return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app&&app.status===ST.CHANGES&&app.repId===user.id)
+      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>Edit & resubmit</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><EditAndResubmit app={app} devices={devices} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
     if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
