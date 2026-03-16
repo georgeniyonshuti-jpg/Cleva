@@ -565,12 +565,12 @@ const NewApp=({onSubmit,onBack,devices})=>{
   const dev=(devices||[]).find(d=>d.id===f.did);
   const STEPS=['Customer & documents','Select device','Review & submit'];
   return(
-    <div className="fadeUp" style={{padding:'28px 32px',maxWidth:820}}>
-      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22}}>
+    <div className="fadeUp" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,padding:'28px 32px',width:'100%',maxWidth:960}}>
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22,flexShrink:0}}>
         <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
         <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>New application</h1><p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>Step {step} of 3 — {STEPS[step-1]}</p></div>
       </div>
-      <div className="step-row" style={{display:'flex',alignItems:'center',marginBottom:26}}>
+      <div className="step-row" style={{display:'flex',alignItems:'center',marginBottom:26,flexShrink:0}}>
         {STEPS.map((l,i)=>(
           <React.Fragment key={i}>
             <div style={{display:'flex',alignItems:'center',gap:7}}>
@@ -581,7 +581,7 @@ const NewApp=({onSubmit,onBack,devices})=>{
           </React.Fragment>
         ))}
       </div>
-      <Card sx={{padding:22}}>
+      <Card sx={{padding:22,flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'auto'}}>
         {step===1&&(
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:2}}>Customer information</div>
@@ -601,7 +601,7 @@ const NewApp=({onSubmit,onBack,devices})=>{
             <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Documents</div>
               <FF label="Customer photo" req err={e.customerPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--brand)',color:'white',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📷 Take photo (camera only)<input type="file" accept="image/*" capture="user" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('customerPhoto',file);ev.target.value='';}}/></label>{f.customerPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ Photo taken</span>}</div></FF>
-              <FF label="ID document (photo)" req err={e.idPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📄 Take or upload ID<input type="file" accept="image/*" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('idPhoto',file);ev.target.value='';}}/></label>{f.idPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ ID added</span>}</div></FF>
+              <FF label="ID document (photo)" req err={e.idPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📷 Take picture<input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('idPhoto',file);ev.target.value='';}}/></label><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📤 Upload picture<input type="file" accept="image/*" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('idPhoto',file);ev.target.value='';}}/></label>{f.idPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ ID added</span>}</div></FF>
               <FF label="Proof of income" req err={e.incomeProof}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📎 Upload (image or PDF)<input type="file" accept="image/*,.pdf,application/pdf" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('incomeProof',file);ev.target.value='';}}/></label>{f.incomeProof&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ Document added</span>}</div></FF>
             </div>
             <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
@@ -777,8 +777,8 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
   const isUnderwriter=user.role==='underwriter';
   const reviewable=[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(app.status);
   return(
-    <div className="fadeUp" style={{padding:'28px 32px'}}>
-      <div className="detail-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22,flexWrap:'wrap',gap:12}}>
+    <div className="fadeUp" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,padding:'28px 32px'}}>
+      <div className="detail-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22,flexWrap:'wrap',gap:12,flexShrink:0}}>
         <div style={{display:'flex',alignItems:'center',gap:12,minWidth:0}}>
           <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
           <div style={{minWidth:0}}>
@@ -792,6 +792,7 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
         </div>
         <div style={{textAlign:'right',fontSize:11,color:'var(--textLight)'}}><div>{fmtD(app.createdAt)} {fmtT(app.createdAt)}</div><div style={{marginTop:2}}>{app.rep}</div></div>
       </div>
+      <div style={{flex:1,overflow:'auto',minHeight:0}}>
       <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
         <Card sx={{padding:'16px 18px'}}>
           <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:13}}>Customer</div>
@@ -881,6 +882,7 @@ const AppDetail=({app,onUpdate,addToast,onBack})=>{
           </div>
         ))}
       </Card>
+      </div>
     </div>
   );
 };
@@ -895,20 +897,22 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
   const grps={action:mine.filter(a=>[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(a.status)),review:mine.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW,ST.ESCALATED].includes(a.status)),active:mine.filter(a=>a.status===ST.ACTIVE),other:mine.filter(a=>[ST.REJECTED,ST.CHANGES].includes(a.status))};
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
+  const goHome=()=>{setPg('dash');setSel(null);};
+  const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:'6px 12px',fontSize:12,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}}>Home</button>;
   if(sel){
     const app=apps.find(a=>a.id===sel);
     if(app&&[ST.IMEI_PENDING,ST.IMEI_VERIFIED].includes(app.status))
-      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><IMEIFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
     if(app&&app.status===ST.CHANGES&&app.repId===user.id)
-      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>Edit & resubmit</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><EditAndResubmit app={app} devices={devices} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
-    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>Edit & resubmit</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><EditAndResubmit app={app} devices={devices} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':pg==='new'?'New application':pg==='active'?'Active applications':pg==='completed'?'Completed applications':pg==='prices'?'Price list':APP_NAME}</span></div>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':pg==='new'?'New application':pg==='active'?'Active applications':pg==='completed'?'Completed applications':pg==='prices'?'Price list':APP_NAME}</span></div>
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Welcome, {user.name.split(' ')[0]}</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
@@ -948,7 +952,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices})=>{
             {grps.other.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.other.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title="No completed applications" sub="Applications you've closed or that need changes"/>}
           </div>
         )}
-        {pg==='new'&&<div className="page-content" style={{padding:'28px 32px'}}><NewApp devices={devices} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
+        {pg==='new'&&<div className="page-content" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'auto',padding:'28px 32px'}}><NewApp devices={devices} onBack={()=>setPg('dash')} onSubmit={(f,dev)=>{
           const na={id:gid(),status:ST.SUBMITTED,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),rep:user.name,repId:user.id,c:{name:f.name,idType:f.idType||'nid',nid:f.nid,phone:f.phone,addr:f.addr,occ:f.occ,income:+f.income,kin:{name:f.kn,phone:f.kp,rel:f.kr}},dev,notes:'',reviewer:null,upya:null,imei:null,ptId:null,lockedAt:null,customerPhoto:f.customerPhoto||null,idPhoto:f.idPhoto||null,incomeProof:f.incomeProof||null,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for review'}]};
           onUpdate(null,null,na);addToast('ok','Application submitted','Sent to the review queue');setPg('dash');
         }}/></div>}
@@ -965,10 +969,12 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
   const [q,setQ]=useState('');
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
+  const goHome=()=>{setPg('dash');setSel(null);};
+  const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:'6px 12px',fontSize:12,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}}>Home</button>;
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
 
   const queue=apps.filter(a=>[ST.SUBMITTED,ST.IN_REVIEW].includes(a.status));
@@ -980,7 +986,7 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':pg==='queue'?'Review queue':'All applications'}</span></div>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><HomeBtn/><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':pg==='queue'?'Review queue':'All applications'}</span></div>
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Underwriting</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
