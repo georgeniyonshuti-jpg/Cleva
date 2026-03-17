@@ -314,11 +314,140 @@ const readFileAsDataURL=(file)=>new Promise((res,rej)=>{const r=new FileReader()
 const UNDERWRITING_CHECKS=['identity_kyc','contactability','customer_education','employment_affordability','social_contacts','pledge_video'];
 const elapsedMinutes=(createdAt)=>{const ms=Date.now()-new Date(createdAt).getTime();return Math.floor(ms/60000);};
 
+// ── TRANSLATIONS ──────────────────────────────────────────────
+const TR={
+  en:{
+    app_subtitle:'PAYGO Underwriting Platform',
+    sign_in:'Sign in to your account',email_lbl:'Email address',password_lbl:'Password',
+    show:'Show',hide:'Hide',signing_in:'Signing in…',sign_in_btn:'Sign in',
+    err_creds:'Incorrect email or password',enter_creds:'Enter your email and password',
+    sign_out:'Sign out',home:'Home',price_list:'Price List',hide_menu:'◀ Hide menu',
+    welcome:(n)=>`Welcome, ${n}`,what_to_do:'What would you like to do?',
+    start_new_app:'➕ Start new application',
+    view_applications:'📋 Applications',closed_applications:'✓ Closed applications',
+    imei_needed:(n)=>`✓ ${n} application${n!==1?'s':''} approved — IMEI verification needed`,
+    tap_imei:'Tap to enter IMEI and verify device on Carlcare',
+    changes_needed:(n)=>`↩ ${n} application${n!==1?'s':''} returned — changes requested`,
+    tap_changes:'Tap to view corrections needed and resubmit',
+    drafts_saved:(n)=>`📝 ${n} draft${n!==1?'s':''} saved — not yet submitted`,
+    tap_drafts:'Tap to review and submit for approval',
+    new_application:'New application',step_of:(s,t)=>`Step ${s} of ${t}`,
+    cancel:'Cancel',continue_btn:'Continue',back:'Back',save_draft:'Save draft',submit_app:'Submit application',
+    step_customer:'Customer & documents',step_device:'Select device',step_contract:'Sign contract',step_review:'Review & submit',
+    customer_information:'Customer information',full_name:'Full name',full_name_ph:'As on ID',
+    id_type:'ID type',national_id:'National ID',passport:'Passport',
+    national_id_number:'National ID number (16 digits)',passport_number:'Passport number',
+    id_ph_nid:'16 digits',id_ph_passport:'e.g. AB1234567',
+    phone_number:'Phone number',occupation:'Occupation',select_ph:'Select...',
+    address_loc:'Address / location',address_ph:'e.g. Kimironko, Gasabo',
+    monthly_income:'Monthly income (RWF)',income_ph:'e.g. 150000',
+    documents:'Documents',customer_photo:'Customer photo',id_document:'ID document (photo)',proof_of_income:'Proof of income',
+    take_photo:'📷 Take photo (camera only)',take_picture:'📷 Take picture',
+    upload_picture:'📤 Upload picture',upload_income:'📎 Upload (image or PDF)',
+    photo_taken:'✓ Photo taken',id_added:'✓ ID added',doc_added:'✓ Document added',
+    next_of_kin:'Next of kin',kin_name:'Full name',kin_phone:'Phone',relationship:'Relationship',
+    err_required:'Required',err_nid_16:'National ID must be 16 digits',err_passport:'Passport number required',
+    err_income:'Enter a valid amount',err_customer_photo:'Take customer photo (camera)',
+    err_id_photo:'Add ID document (photo or upload)',err_income_proof:'Add proof of income (upload image or PDF)',
+    err_device:'Please select a device',
+    select_device_title:'Select a device',deposit:'Deposit',monthly_lbl:'Monthly',total_lbl:'Total',
+    sign_contract:'Sign the contract',draw_signature:'Draw your signature below',clear:'Clear',
+    review_title:'Review & submit',review_info:'Customer information',review_device:'Device & pricing',
+    active_apps:'Applications',closed_apps:'Closed applications',rejected_archived:'Rejected or archived applications.',
+    no_active:'No active applications',no_active_sub:'Start a new application from Home',
+    no_closed:'No closed applications',no_closed_sub:'All your applications are active',
+    approved_imei_section:'✓ Approved — IMEI verification needed',
+    changes_requested_section:'↩ Changes requested',
+    drafts_section:'📝 Drafts — not yet submitted',
+    submitted_review:'Submitted — pending review',active_contracts:'Active contracts',
+    enter_imei:'Enter IMEI →',lock_phone_btn:'Lock phone →',fix_resubmit:'Fix & resubmit →',
+    imei_verified_lock:'IMEI verified — lock phone',approved_enter_imei:'Approved — enter IMEI',
+    toast_draft_saved:'Draft saved',toast_draft_msg:'You can continue and submit later',
+    toast_submitted:'Application submitted',toast_submitted_msg:'Sent for approval',
+    price_list_title:'Price list',
+    st_draft:'Draft',st_pending:'Pending approval',st_under_review:'Changes requested',
+    st_approved:'Approved',st_active:'Active',st_completed:'Completed',st_archived:'Archived',
+    st_escalated:'Escalated',st_lock_pending:'Lock pending',st_awaiting:'Awaiting payment',st_offer:'Offer selection',
+    starting_camera:'Starting camera…',capture:'📷 Capture',
+    occ_trader:'Trader / Business owner',occ_teacher:'Teacher',occ_civil:'Civil servant',
+    occ_driver:'Driver / Transport',occ_farmer:'Farmer',occ_health:'Healthcare worker',
+    occ_student:'Student',occ_other:'Other',
+    rel_parent:'Parent',rel_sibling:'Sibling',rel_spouse:'Spouse',rel_child:'Child',rel_friend:'Friend',rel_other:'Other',
+    months_3:'3 months',months_6:'6 months',months_12:'12 months',
+    lang_toggle:'🇷🇼 Kinyarwanda',
+  },
+  rw:{
+    app_subtitle:'Urubuga rw\'isuzuma ry\'inguzanyo',
+    sign_in:'Injira muri konti yawe',email_lbl:'Aderesi imeri',password_lbl:'Ijambo ry\'ibanga',
+    show:'Erekana',hide:'Hisha',signing_in:'Injiramo…',sign_in_btn:'Injira',
+    err_creds:'Imeri cyangwa ijambo ry\'ibanga ntabwo ari byo',enter_creds:'Injiza imeri yawe n\'ijambo ry\'ibanga',
+    sign_out:'Sohoka',home:'Ahabanza',price_list:'Urutonde rw\'ibiciro',hide_menu:'◀ Hisha menu',
+    welcome:(n)=>`Murakaza neza, ${n}`,what_to_do:'Urashaka gukora iki?',
+    start_new_app:'➕ Tangira ubusabe bushya',
+    view_applications:'📋 Ubusabe',closed_applications:'✓ Ubusabe bwakiriwe',
+    imei_needed:(n)=>`✓ Ubusabe ${n} bwemejwe — ugomba kwemeza IMEI`,
+    tap_imei:'Kanda hano winjize IMEI kandi ugenzure telefoni kuri Carlcare',
+    changes_needed:(n)=>`↩ Ubusabe ${n} bwasubijwe — impinduka zirasabwa`,
+    tap_changes:'Kanda hano urebe impinduka zisabwa kandi wohereze ubusabe bushya',
+    drafts_saved:(n)=>`📝 Imbure ${n} zibitswe — ntizaroherejwe`,
+    tap_drafts:'Kanda hano usuzume kandi wohereze',
+    new_application:'Ubusabe bushya',step_of:(s,t)=>`Intambwe ${s} kuri ${t}`,
+    cancel:'Reka',continue_btn:'Komeza',back:'Subira inyuma',save_draft:'Bika imbure',submit_app:'Ohereza ubusabe',
+    step_customer:'Umukiriya & impapuro',step_device:'Hitamo telefoni',step_contract:'Shyira umukono',step_review:'Suzuma & ohereza',
+    customer_information:'Amakuru y\'umukiriya',full_name:'Amazina yose',full_name_ph:'Nk\'uko biri ku ndangamuntu',
+    id_type:'Ubwoko bw\'indangamuntu',national_id:'Indangamuntu',passport:'Pasiporo',
+    national_id_number:'Numero ya indangamuntu (imibare 16)',passport_number:'Numero ya pasiporo',
+    id_ph_nid:'Imibare 16',id_ph_passport:'urugero: AB1234567',
+    phone_number:'Numero ya telefoni',occupation:'Akazi',select_ph:'Hitamo...',
+    address_loc:'Aderesi / ahabana',address_ph:'urugero: Kimironko, Gasabo',
+    monthly_income:'Inyungu za buri kwezi (RWF)',income_ph:'urugero: 150000',
+    documents:'Impapuro',customer_photo:'Ifoto y\'umukiriya',id_document:'Ifoto y\'indangamuntu',proof_of_income:'Icyemezo cy\'inyungu',
+    take_photo:'📷 Fata ifoto (kamera gusa)',take_picture:'📷 Fata ifoto',
+    upload_picture:'📤 Ohereza ifoto',upload_income:'📎 Ohereza (ifoto cyangwa PDF)',
+    photo_taken:'✓ Ifoto yafashwe',id_added:'✓ Indangamuntu yongeweho',doc_added:'✓ Inyandiko yongeweho',
+    next_of_kin:'Inshuti cyangwa uwo mu muryango',kin_name:'Amazina yose',kin_phone:'Telefoni',relationship:'Isano',
+    err_required:'Birasabwa',err_nid_16:'Indangamuntu igomba kugira imibare 16',err_passport:'Numero ya pasiporo irasabwa',
+    err_income:'Injiza amafaranga nyayo',err_customer_photo:'Fata ifoto y\'umukiriya (kamera)',
+    err_id_photo:'Ongeraho ifoto y\'indangamuntu',err_income_proof:'Ongeraho icyemezo cy\'inyungu',
+    err_device:'Hitamo telefoni',
+    select_device_title:'Hitamo telefoni',deposit:'Inguzanyo ya mbere',monthly_lbl:'Buri kwezi',total_lbl:'Igiteranyo',
+    sign_contract:'Shyira umukono ku masezerano',draw_signature:'Sura umukono wawe hano',clear:'Siba',
+    review_title:'Suzuma & ohereza',review_info:'Amakuru y\'umukiriya',review_device:'Telefoni & ibiciro',
+    active_apps:'Ubusabe',closed_apps:'Ubusabe bwakiriwe',rejected_archived:'Ubusabe bwanzwe cyangwa bwashyinguwe.',
+    no_active:'Nta busabe bugufi',no_active_sub:'Tangira ubusabe bushya uhereye Ahabanza',
+    no_closed:'Nta busabe bwakiriwe',no_closed_sub:'Ubusabe bwawe bwose bugufi',
+    approved_imei_section:'✓ Byemejwe — ugomba kwemeza IMEI',
+    changes_requested_section:'↩ Impinduka zirasabwa',
+    drafts_section:'📝 Imbure — ntizaroherejwe',
+    submitted_review:'Yoherejwe — irindirwa isuzuma',active_contracts:'Amasezerano agufi',
+    enter_imei:'Injiza IMEI →',lock_phone_btn:'Funga telefoni →',fix_resubmit:'Hindura & ohereza →',
+    imei_verified_lock:'IMEI yemejwe — funga telefoni',approved_enter_imei:'Byemejwe — injiza IMEI',
+    toast_draft_saved:'Imbure yabitswe',toast_draft_msg:'Ushobora gukomeza kandi uohereze nyuma',
+    toast_submitted:'Ubusabe bwoherejwe',toast_submitted_msg:'Bwoherejwe kugirango busuzumwe',
+    price_list_title:'Urutonde rw\'ibiciro',
+    st_draft:'Imbure',st_pending:'Irindirwa isuzuma',st_under_review:'Impinduka zirasabwa',
+    st_approved:'Yemejwe',st_active:'Igufi',st_completed:'Byarangiye',st_archived:'Yashyinguwe',
+    st_escalated:'Yoherejwe hejuru',st_lock_pending:'Ifungurwa irindirwa',st_awaiting:'Irindirwa kwishyura',st_offer:'Gutoranya igisubizo',
+    starting_camera:'Gutangira kamera…',capture:'📷 Fata',
+    occ_trader:'Umucuruzi / Nyir\'ubucuruzi',occ_teacher:'Umwarimu',occ_civil:'Umukozi wa leta',
+    occ_driver:'Umushoferi / Gutwara',occ_farmer:'Umuhinzi',occ_health:'Umukozi w\'ubuzima',
+    occ_student:'Umunyeshuri',occ_other:'Ibindi',
+    rel_parent:'Umubyeyi',rel_sibling:'Umuvandimwe',rel_spouse:'Uwo bashakanye',rel_child:'Umwana',rel_friend:'Inshuti',rel_other:'Ibindi',
+    months_3:'Amezi 3',months_6:'Amezi 6',months_12:'Amezi 12',
+    lang_toggle:'🇬🇧 English',
+  },
+};
 // ── CONTEXT ───────────────────────────────────────────────────
 const Ctx=createContext(null);
+const useT=()=>{const {lang}=useContext(Ctx);return (k,...args)=>{const val=(TR[lang]||TR.en)[k];return typeof val==='function'?val(...args):val??k;};};
 
 // ── UI COMPONENTS ─────────────────────────────────────────────
-const Badge=({st})=>{const m=SM[st]||{label:st,c:'info'};const c=CC[m.c]||CC.info;return <span style={{display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:99,fontSize:11,fontWeight:600,letterSpacing:'0.3px',background:c.bg,color:c.fg,border:`1px solid ${c.bd}`}}>{m.label}</span>;};
+const Badge=({st})=>{
+  const t=useT();
+  const labelMap={draft:t('st_draft'),pending_approval:t('st_pending'),under_review:t('st_under_review'),approved:t('st_approved'),active:t('st_active'),completed:t('st_completed'),archived:t('st_archived'),escalated:t('st_escalated'),lock_pending:t('st_lock_pending'),awaiting_payment:t('st_awaiting'),offer_selection:t('st_offer')};
+  const m=SM[st]||{label:st,c:'info'};const c=CC[m.c]||CC.info;
+  return <span style={{display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:99,fontSize:11,fontWeight:600,letterSpacing:'0.3px',background:c.bg,color:c.fg,border:`1px solid ${c.bd}`}}>{labelMap[st]||m.label}</span>;
+};
 const Spin=({size=14,dark=false})=><span className="spin" style={{display:'inline-block',width:size,height:size,border:`2px solid ${dark?'rgba(11,61,46,0.15)':'rgba(255,255,255,0.3)'}`,borderTopColor:dark?'var(--brand2)':'white',borderRadius:'50%',verticalAlign:'middle'}}/>;
 
 const Btn=({children,onClick,v='def',sz='md',disabled=false,loading=false,icon,full=false,style={}})=>{
@@ -331,6 +460,7 @@ const Btn=({children,onClick,v='def',sz='md',disabled=false,loading=false,icon,f
 const Card=({children,sx={},className=''})=><div className={className} style={{background:'var(--surface)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',boxShadow:'var(--sh)',...sx}}>{children}</div>;
 
 const CameraModal=({onCapture,onClose,facing='user'})=>{
+  const t=useT();
   const videoRef=React.useRef(null);
   const streamRef=React.useRef(null);
   const [ready,setReady]=React.useState(false);
@@ -352,10 +482,10 @@ const CameraModal=({onCapture,onClose,facing='user'})=>{
       {err?<div style={{color:'#fff',fontSize:14,textAlign:'center',maxWidth:320}}>{err}<br/><button onClick={onClose} style={{marginTop:16,padding:'8px 20px',borderRadius:8,border:'none',background:'#fff',cursor:'pointer',fontWeight:600}}>Close</button></div>:(
         <>
           <video ref={videoRef} playsInline muted style={{width:'100%',maxWidth:480,maxHeight:'60vh',borderRadius:12,background:'#000',objectFit:'cover'}}/>
-          {!ready&&<div style={{color:'#fff',fontSize:13}}>Starting camera…</div>}
+          {!ready&&<div style={{color:'#fff',fontSize:13}}>{t('starting_camera')}</div>}
           <div style={{display:'flex',gap:12}}>
-            <button onClick={onClose} style={{padding:'10px 24px',borderRadius:8,border:'2px solid rgba(255,255,255,0.4)',background:'transparent',color:'#fff',cursor:'pointer',fontWeight:600,fontSize:14}}>Cancel</button>
-            <button onClick={capture} disabled={!ready} style={{padding:'10px 28px',borderRadius:8,border:'none',background:ready?'var(--brand)':'#555',color:'#fff',cursor:ready?'pointer':'not-allowed',fontWeight:700,fontSize:14}}>📷 Capture</button>
+            <button onClick={onClose} style={{padding:'10px 24px',borderRadius:8,border:'2px solid rgba(255,255,255,0.4)',background:'transparent',color:'#fff',cursor:'pointer',fontWeight:600,fontSize:14}}>{t('cancel')}</button>
+            <button onClick={capture} disabled={!ready} style={{padding:'10px 28px',borderRadius:8,border:'none',background:ready?'var(--brand)':'#555',color:'#fff',cursor:ready?'pointer':'not-allowed',fontWeight:700,fontSize:14}}>{t('capture')}</button>
           </div>
         </>
       )}
@@ -400,13 +530,15 @@ const Toast=({toasts})=>(
 
 // ── TOP BAR (always-visible header for Sales & Underwriter) ───
 const TopBar=({onMenu,homeBtn,title})=>{
-  const {logout}=useContext(Ctx);
+  const {logout,user,toggleLang}=useContext(Ctx);
+  const t=useT();
   return(
     <div className="top-bar">
       <button type="button" className="hamburger" onClick={onMenu} aria-label="Open menu">☰</button>
       {homeBtn}
       <span style={{flex:1,fontWeight:600,fontSize:15,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'var(--text)'}}>{title}</span>
-      <button type="button" onClick={logout} style={{padding:'7px 13px',fontSize:12,fontWeight:600,color:'var(--textMid)',background:'var(--bg)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0,lineHeight:1.2}}>Sign out</button>
+      {user?.role==='rep'&&<button type="button" onClick={toggleLang} style={{padding:'5px 11px',fontSize:11,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:99,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>{t('lang_toggle')}</button>}
+      <button type="button" onClick={logout} style={{padding:'7px 13px',fontSize:12,fontWeight:600,color:'var(--textMid)',background:'var(--bg)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0,lineHeight:1.2}}>{t('sign_out')}</button>
     </div>
   );
 };
@@ -414,9 +546,10 @@ const TopBar=({onMenu,homeBtn,title})=>{
 // ── SIDEBAR ───────────────────────────────────────────────────
 const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
   const {user,logout}=useContext(Ctx);
+  const t=useT();
   const pending=(user.role==='underwriter'?apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)).length:0);
   const navItems={
-    rep:[{k:'dash',l:'Home',badge:0},{k:'prices',l:'Price List'}],
+    rep:[{k:'dash',l:t('home'),badge:0},{k:'prices',l:t('price_list')}],
     underwriter:[{k:'dash',l:'Home',badge:pending},{k:'queue',l:'Review Queue',badge:pending},{k:'all',l:'All Applications'}],
     support:[{k:'dash',l:'Home'},{k:'all',l:'All Applications'}],
     ops:[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},...(user.superuser?[{k:'admin',l:'Admin'}]:[])],
@@ -430,10 +563,10 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
         <button type="button" className="hamburger-desk" onClick={onOpen} aria-label="Open menu">☰</button>
       </div>
       <div className={'sidebar-drawer'+(open?' mobile-open':'')}>
-        <button type="button" className="sidebar-collapse-btn" onClick={onClose} aria-label="Close menu">◀ Hide menu</button>
+        <button type="button" className="sidebar-collapse-btn" onClick={onClose} aria-label="Close menu">{t('hide_menu')}</button>
         <div style={{padding:'16px 18px 12px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <div style={{fontSize:20,fontWeight:800,color:'white',letterSpacing:'-0.5px'}}>{APP_NAME}</div>
-          <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:2,textTransform:'uppercase',letterSpacing:'1.5px'}}>PAYGO Underwriting</div>
+          <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:2,textTransform:'uppercase',letterSpacing:'1.5px'}}>{t('app_subtitle')}</div>
         </div>
         <div style={{padding:'13px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
           <div style={{width:34,height:34,borderRadius:17,background:'rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'white',flexShrink:0}}>{initials}</div>
@@ -454,7 +587,7 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
           })}
         </nav>
         <div style={{padding:'0 10px 18px',flexShrink:0}}>
-          <button onClick={()=>{logout(); onClose&&onClose();}} style={{width:'100%',padding:'12px 11px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'var(--r2)',color:'rgba(255,255,255,0.5)',cursor:'pointer',fontSize:11,textAlign:'center',minHeight:44}}>Sign out</button>
+          <button onClick={()=>{logout(); onClose&&onClose();}} style={{width:'100%',padding:'12px 11px',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'var(--r2)',color:'rgba(255,255,255,0.5)',cursor:'pointer',fontSize:11,textAlign:'center',minHeight:44}}>{t('sign_out')}</button>
         </div>
       </div>
     </div>
@@ -463,6 +596,8 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
 
 // ── LOGIN ─────────────────────────────────────────────────────
 const Login=({onLogin,users})=>{
+  const t=useT();
+  const {toggleLang}=useContext(Ctx);
   const [email,setEmail]=useState('');
   const [pass,setPass]=useState('');
   const [err,setErr]=useState('');
@@ -471,11 +606,11 @@ const Login=({onLogin,users})=>{
 
   const submit=async()=>{
     setErr('');
-    if(!email.trim()||!pass.trim()){setErr('Enter your email and password');return;}
+    if(!email.trim()||!pass.trim()){setErr(t('enter_creds'));return;}
     setLoading(true);
     await sleep(600);
     const user=(users||[]).find(u=>u.email.toLowerCase()===email.toLowerCase().trim()&&u.password===pass);
-    if(!user){setErr('Incorrect email or password');setLoading(false);return;}
+    if(!user){setErr(t('err_creds'));setLoading(false);return;}
     onLogin(user);
   };
 
@@ -483,28 +618,29 @@ const Login=({onLogin,users})=>{
     <div className="login-wrap" style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(145deg,var(--brand) 0%,#1D6B4C 60%,#155239 100%)',padding:24,position:'relative',overflow:'hidden'}}>
       <div style={{position:'absolute',top:-80,right:-80,width:320,height:320,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.05)'}}/>
       <div style={{position:'absolute',bottom:-100,left:-100,width:400,height:400,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.04)'}}/>
+      <button onClick={toggleLang} style={{position:'absolute',top:16,right:16,padding:'6px 14px',background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:99,color:'white',cursor:'pointer',fontSize:12,fontWeight:600}}>{t('lang_toggle')}</button>
       <div style={{width:'100%',maxWidth:380,position:'relative',padding:'0 8px'}}>
         <div style={{textAlign:'center',marginBottom:40}}>
           <div style={{fontSize:42,fontWeight:900,color:'white',letterSpacing:'-1.5px',marginBottom:6}}>{APP_NAME}</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'3px'}}>PAYGO Underwriting Platform</div>
+          <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'3px'}}>{t('app_subtitle')}</div>
         </div>
         <div className="login-card" style={{background:'rgba(255,255,255,0.06)',backdropFilter:'blur(12px)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'var(--r)',padding:'28px 26px'}}>
-          <div style={{fontSize:15,fontWeight:600,color:'white',marginBottom:20}}>Sign in to your account</div>
+          <div style={{fontSize:15,fontWeight:600,color:'white',marginBottom:20}}>{t('sign_in')}</div>
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div>
-              <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.55)',display:'block',marginBottom:5}}>Email address</label>
+              <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.55)',display:'block',marginBottom:5}}>{t('email_lbl')}</label>
               <input type="email" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="you@company.com" style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.15)',color:'white',borderRadius:'var(--r2)'}} className={err?'err':''}/>
             </div>
             <div>
-              <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.55)',display:'block',marginBottom:5}}>Password</label>
+              <label style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.55)',display:'block',marginBottom:5}}>{t('password_lbl')}</label>
               <div style={{position:'relative'}}>
                 <input type={showPass?'text':'password'} value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="••••••••" style={{background:'rgba(255,255,255,0.10)',border:'1.5px solid rgba(255,255,255,0.15)',color:'white',borderRadius:'var(--r2)',paddingRight:44}} className={err?'err':''}/>
-                <button onClick={()=>setShowPass(p=>!p)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'rgba(255,255,255,0.45)',cursor:'pointer',fontSize:12,padding:4}}>{showPass?'Hide':'Show'}</button>
+                <button onClick={()=>setShowPass(p=>!p)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'rgba(255,255,255,0.45)',cursor:'pointer',fontSize:12,padding:4}}>{showPass?t('hide'):t('show')}</button>
               </div>
             </div>
             {err&&<div style={{padding:'9px 12px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',fontWeight:500}}>{err}</div>}
             <button onClick={submit} disabled={loading} style={{padding:'11px 0',background:loading?'rgba(255,255,255,0.15)':'white',border:'none',borderRadius:'var(--r2)',color:loading?'rgba(255,255,255,0.5)':'var(--brand)',fontWeight:700,fontSize:14,cursor:loading?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,transition:'all .15s',marginTop:4}}>
-              {loading?<><Spin size={14}/> Signing in…</>:'Sign in'}
+              {loading?<><Spin size={14}/> {t('signing_in')}</>:t('sign_in_btn')}
             </button>
           </div>
           <div style={{marginTop:20,padding:'12px 14px',background:'rgba(255,255,255,0.06)',borderRadius:'var(--r2)',border:'1px solid rgba(255,255,255,0.08)'}}>
@@ -949,6 +1085,7 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
 // ── NEW APPLICATION ───────────────────────────────────────────
 const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=12})=>{
   const {user,companyInfo}=useContext(Ctx);
+  const t=useT();
   const [step,setStep]=useState(1);
   const [f,setF]=useState({name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:preSelDevId||'',term:preSelTerm,sig:null,customerPhoto:null,idPhoto:null,incomeProof:null});
   const [e,setE]=useState({});
@@ -960,26 +1097,26 @@ const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=1
   const onCamCapture=(file)=>{if(cam)handleFile(cam.field,file);};
   const v1=()=>{
     const er={};
-    if(!f.name.trim())er.name='Required';
-    if(f.idType==='nid'){if(f.nid.replace(/\D/g,'').length!==16)er.nid='National ID must be 16 digits';}
-    else{if(!f.nid.trim())er.nid='Passport number required';}
-    if(!f.phone.trim())er.phone='Required';if(!f.addr.trim())er.addr='Required';if(!f.occ)er.occ='Required';if(!f.income||isNaN(f.income)||+f.income<1)er.income='Enter a valid amount';if(!f.kn.trim())er.kn='Required';if(!f.kp.trim())er.kp='Required';if(!f.kr)er.kr='Required';
-    if(!f.customerPhoto)er.customerPhoto='Take customer photo (camera)';if(!f.idPhoto)er.idPhoto='Add ID document (photo or upload)';if(!f.incomeProof)er.incomeProof='Add proof of income (upload image or PDF)';
+    if(!f.name.trim())er.name=t('err_required');
+    if(f.idType==='nid'){if(f.nid.replace(/\D/g,'').length!==16)er.nid=t('err_nid_16');}
+    else{if(!f.nid.trim())er.nid=t('err_passport');}
+    if(!f.phone.trim())er.phone=t('err_required');if(!f.addr.trim())er.addr=t('err_required');if(!f.occ)er.occ=t('err_required');if(!f.income||isNaN(f.income)||+f.income<1)er.income=t('err_income');if(!f.kn.trim())er.kn=t('err_required');if(!f.kp.trim())er.kp=t('err_required');if(!f.kr)er.kr=t('err_required');
+    if(!f.customerPhoto)er.customerPhoto=t('err_customer_photo');if(!f.idPhoto)er.idPhoto=t('err_id_photo');if(!f.incomeProof)er.incomeProof=t('err_income_proof');
     setE(er);return!Object.keys(er).length;
   };
-  const v2=()=>{const er={};if(!f.did)er.did='Please select a device';setE(er);return!Object.keys(er).length;};
+  const v2=()=>{const er={};if(!f.did)er.did=t('err_device');setE(er);return!Object.keys(er).length;};
   const v3=()=>{const er={};if(!f.sig)er.sig='Please sign the contract to continue';setE(er);return!Object.keys(er).length;};
   const next=()=>{if(step===1&&v1())setStep(2);else if(step===2&&v2())setStep(3);else if(step===3&&v3())setStep(4);};
   const dev=(devices||[]).find(d=>d.id===f.did);
-  const STEPS=['Customer & documents','Select device','Sign contract','Review & submit'];
+  const STEPS=[t('step_customer'),t('step_device'),t('step_contract'),t('step_review')];
   const goStep=(s)=>{if(s<step)setStep(s);else if(s===step){}else if(s===2&&v1())setStep(2);else if(s===3&&v1()&&v2())setStep(3);else if(s===4&&v1()&&v2()&&v3())setStep(4);};
   return(
     <div className="fadeUp new-app-form" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,width:'100%',padding:'0 24px'}}>
       {cam&&<CameraModal facing={cam.facing} onCapture={onCamCapture} onClose={closeCam}/>}
       <header style={{flexShrink:0,padding:'20px 0 16px',borderBottom:'1.5px solid var(--border)'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
-          <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Cancel</Btn>
-          <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>New application</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Step {step} of 4 — {STEPS[step-1]}</p></div>
+          <Btn onClick={onBack} v="ghost" icon="←" sz="sm">{t('cancel')}</Btn>
+          <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>{t('new_application')}</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{t('step_of',step,4)} — {STEPS[step-1]}</p></div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:0}}>
           {STEPS.map((l,i)=>(
@@ -997,32 +1134,32 @@ const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=1
       <div style={{padding:22,minHeight:'min-content'}}>
         {step===1&&(
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:2}}>Customer information</div>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:2}}>{t('customer_information')}</div>
             <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <FF label="Full name" req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder="As on ID" className={e.name?'err':''}/></FF>
-              <FF label="ID type" req><select value={f.idType} onChange={ev=>{s('idType',ev.target.value);if(ev.target.value==='nid')s('nid',f.nid.replace(/\D/g,'').slice(0,16));}}><option value="nid">National ID</option><option value="passport">Passport</option></select></FF>
+              <FF label={t('full_name')} req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder={t('full_name_ph')} className={e.name?'err':''}/></FF>
+              <FF label={t('id_type')} req><select value={f.idType} onChange={ev=>{s('idType',ev.target.value);if(ev.target.value==='nid')s('nid',f.nid.replace(/\D/g,'').slice(0,16));}}><option value="nid">{t('national_id')}</option><option value="passport">{t('passport')}</option></select></FF>
             </div>
-            <FF label={f.idType==='nid'?'National ID number (16 digits)':'Passport number'} req err={e.nid}>
-              <input value={f.nid} onChange={ev=>s('nid',f.idType==='nid'?ev.target.value.replace(/\D/g,'').slice(0,16):ev.target.value)} placeholder={f.idType==='nid'?'16 digits':'e.g. AB1234567'} className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/>
+            <FF label={f.idType==='nid'?t('national_id_number'):t('passport_number')} req err={e.nid}>
+              <input value={f.nid} onChange={ev=>s('nid',f.idType==='nid'?ev.target.value.replace(/\D/g,'').slice(0,16):ev.target.value)} placeholder={f.idType==='nid'?t('id_ph_nid'):t('id_ph_passport')} className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/>
             </FF>
             <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <FF label="Phone number" req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF>
-              <FF label="Occupation" req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">Select...</option>{OCCS.map(o=><option key={o}>{o}</option>)}</select></FF>
+              <FF label={t('phone_number')} req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF>
+              <FF label={t('occupation')} req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">{t('select_ph')}</option>{[[t('occ_trader'),'Trader / Business owner'],[t('occ_teacher'),'Teacher'],[t('occ_civil'),'Civil servant'],[t('occ_driver'),'Driver / Transport'],[t('occ_farmer'),'Farmer'],[t('occ_health'),'Healthcare worker'],[t('occ_student'),'Student'],[t('occ_other'),'Other']].map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}</select></FF>
             </div>
-            <FF label="Address / location" req err={e.addr}><input value={f.addr} onChange={ev=>s('addr',ev.target.value)} placeholder="Sector, district — e.g. Kimironko, Gasabo" className={e.addr?'err':''}/></FF>
-            <FF label="Monthly income (RWF)" req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder="e.g. 150000" className={e.income?'err':''}/></FF>
+            <FF label={t('address_loc')} req err={e.addr}><input value={f.addr} onChange={ev=>s('addr',ev.target.value)} placeholder={t('address_ph')} className={e.addr?'err':''}/></FF>
+            <FF label={t('monthly_income')} req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder={t('income_ph')} className={e.income?'err':''}/></FF>
             <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Documents</div>
-              <FF label="Customer photo" req err={e.customerPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><button type="button" onClick={()=>openCam('customerPhoto','user')} style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--brand)',color:'white',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500,border:'none'}}>📷 Take photo (camera only)</button>{f.customerPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ Photo taken</span>}</div></FF>
-              <FF label="ID document (photo)" req err={e.idPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><button type="button" onClick={()=>openCam('idPhoto','environment')} style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📷 Take picture</button><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📤 Upload picture<input type="file" accept="image/*" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('idPhoto',file);ev.target.value='';}}/></label>{f.idPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ ID added</span>}</div></FF>
-              <FF label="Proof of income" req err={e.incomeProof}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📎 Upload (image or PDF)<input type="file" accept="image/*,.pdf,application/pdf" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('incomeProof',file);ev.target.value='';}}/></label>{f.incomeProof&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ Document added</span>}</div></FF>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>{t('documents')}</div>
+              <FF label={t('customer_photo')} req err={e.customerPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><button type="button" onClick={()=>openCam('customerPhoto','user')} style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--brand)',color:'white',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500,border:'none'}}>{t('take_photo')}</button>{f.customerPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>{t('photo_taken')}</span>}</div></FF>
+              <FF label={t('id_document')} req err={e.idPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><button type="button" onClick={()=>openCam('idPhoto','environment')} style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>{t('take_picture')}</button><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>{t('upload_picture')}<input type="file" accept="image/*" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('idPhoto',file);ev.target.value='';}}/></label>{f.idPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>{t('id_added')}</span>}</div></FF>
+              <FF label={t('proof_of_income')} req err={e.incomeProof}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>{t('upload_income')}<input type="file" accept="image/*,.pdf,application/pdf" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('incomeProof',file);ev.target.value='';}}/></label>{f.incomeProof&&<span style={{fontSize:12,color:'var(--ok)'}}>{t('doc_added')}</span>}</div></FF>
             </div>
             <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Next of kin</div>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>{t('next_of_kin')}</div>
               <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 160px',gap:12}}>
-                <FF label="Full name" req err={e.kn}><input value={f.kn} onChange={ev=>s('kn',ev.target.value)} placeholder="Next of kin name" className={e.kn?'err':''}/></FF>
-                <FF label="Phone" req err={e.kp}><input value={f.kp} onChange={ev=>s('kp',ev.target.value)} placeholder="07XXXXXXXX" className={e.kp?'err':''}/></FF>
-                <FF label="Relationship" req err={e.kr}><select value={f.kr} onChange={ev=>s('kr',ev.target.value)} className={e.kr?'err':''}><option value="">Select...</option>{RELS.map(r=><option key={r}>{r}</option>)}</select></FF>
+                <FF label={t('kin_name')} req err={e.kn}><input value={f.kn} onChange={ev=>s('kn',ev.target.value)} placeholder={t('kin_name')} className={e.kn?'err':''}/></FF>
+                <FF label={t('kin_phone')} req err={e.kp}><input value={f.kp} onChange={ev=>s('kp',ev.target.value)} placeholder="07XXXXXXXX" className={e.kp?'err':''}/></FF>
+                <FF label={t('relationship')} req err={e.kr}><select value={f.kr} onChange={ev=>s('kr',ev.target.value)} className={e.kr?'err':''}><option value="">{t('select_ph')}</option>{[[t('rel_parent'),'Parent'],[t('rel_sibling'),'Sibling'],[t('rel_spouse'),'Spouse'],[t('rel_child'),'Child'],[t('rel_friend'),'Friend'],[t('rel_other'),'Other']].map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}</select></FF>
               </div>
             </div>
           </div>
@@ -1152,10 +1289,10 @@ const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=1
       </div>
       </div>
       <footer style={{flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'16px 24px 24px',paddingBottom:'max(24px, env(safe-area-inset-bottom))',borderTop:'1.5px solid var(--border)',background:'var(--bg)',margin:'0 -24px',flexWrap:'wrap'}}>
-        {step>1?<Btn onClick={()=>setStep(p=>p-1)} v="def" icon="←">Back</Btn>:<div/>}
+        {step>1?<Btn onClick={()=>setStep(p=>p-1)} v="def" icon="←">{t('back')}</Btn>:<div/>}
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          {onSaveDraft&&step>=1&&f.name.trim()&&<Btn onClick={()=>onSaveDraft(f,dev)} v="ghost" sz="sm" icon="💾">Save draft</Btn>}
-          {step<4?<Btn onClick={next} v="primary" icon="→">Continue</Btn>:<Btn onClick={()=>onSubmit(f,dev)} v="primary" icon="✓">Submit for review</Btn>}
+          {onSaveDraft&&step>=1&&f.name.trim()&&<Btn onClick={()=>onSaveDraft(f,dev)} v="ghost" sz="sm" icon="💾">{t('save_draft')}</Btn>}
+          {step<4?<Btn onClick={next} v="primary" icon="→">{t('continue_btn')}</Btn>:<Btn onClick={()=>onSubmit(f,dev)} v="primary" icon="✓">{t('submit_app')}</Btn>}
         </div>
       </footer>
     </div>
@@ -1861,9 +1998,10 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
 // ── SALES REP VIEW ────────────────────────────────────────────
 const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const {user}=useContext(Ctx);
+  const t=useT();
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
-  const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const [preselDev,setPreselDev]=useState(null);
   const cfg=pricingConfig||defaultPricingConfig;
   const devicesWithPricing=React.useMemo(()=>(devices||[]).map(d=>{const deal=calcDealFromDevice(d,cfg);return{...d,...deal,dep:deal.upfrontPayment,weekly:deal.recurrentPayment,wks:deal.termOption,retail:deal.cogs};}),[devices,cfg]);
@@ -1879,7 +2017,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
   const goHome=()=>{setPg('dash');setSel(null);};
-  const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:'6px 12px',fontSize:12,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}}>Home</button>;
+  const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:'6px 12px',fontSize:12,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}}>{t('home')}</button>;
   if(sel){
     const app=apps.find(a=>a.id===sel);
     if(app&&app.status===ST.UNDER_REVIEW&&(app.application?.fieldCorrectionRequests||[]).some(r=>!r.resolvedAt)&&app.repId===user.id)
@@ -1891,47 +2029,47 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:pg==='new'?'hidden':'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={pg==='dash'?'Home':pg==='new'?'New application':pg==='active'?'Active applications':pg==='completed'?'Completed applications':pg==='prices'?'Price list':APP_NAME}/>
+        <TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={pg==='dash'?t('home'):pg==='new'?t('new_application'):pg==='active'?t('active_apps'):pg==='completed'?t('closed_apps'):pg==='prices'?t('price_list'):APP_NAME}/>
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Welcome, {user.name.split(' ')[0]}</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
+            <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>{t('welcome',user.name.split(' ')[0])}</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>{t('what_to_do')}</p></div>
             {grps.imei.length>0&&(
               <div style={{marginBottom:12,padding:'14px 18px',background:'var(--okBg)',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
-                <div style={{fontWeight:700,fontSize:14,color:'var(--ok)',marginBottom:3}}>✓ {grps.imei.length} application{grps.imei.length!==1?'s':''} approved — IMEI verification needed</div>
-                <div style={{fontSize:12,color:'var(--textMid)'}}>Tap to enter IMEI and verify device on Carlcare</div>
+                <div style={{fontWeight:700,fontSize:14,color:'var(--ok)',marginBottom:3}}>{t('imei_needed',grps.imei.length)}</div>
+                <div style={{fontSize:12,color:'var(--textMid)'}}>{t('tap_imei')}</div>
               </div>
             )}
             {grps.changes.length>0&&(
               <div style={{marginBottom:12,padding:'14px 18px',background:'var(--warnBg)',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
-                <div style={{fontWeight:700,fontSize:14,color:'var(--warn)',marginBottom:3}}>↩ {grps.changes.length} application{grps.changes.length!==1?'s':''} returned — changes requested</div>
-                <div style={{fontSize:12,color:'var(--textMid)'}}>Tap to view corrections needed and resubmit</div>
+                <div style={{fontWeight:700,fontSize:14,color:'var(--warn)',marginBottom:3}}>{t('changes_needed',grps.changes.length)}</div>
+                <div style={{fontSize:12,color:'var(--textMid)'}}>{t('tap_changes')}</div>
               </div>
             )}
             {grps.drafts.length>0&&(
               <div style={{marginBottom:12,padding:'14px 18px',background:'var(--infoBg)',border:'2px solid var(--infoBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
-                <div style={{fontWeight:700,fontSize:14,color:'var(--info)',marginBottom:3}}>📝 {grps.drafts.length} draft{grps.drafts.length!==1?'s':''} saved — not yet submitted</div>
-                <div style={{fontSize:12,color:'var(--textMid)'}}>Tap to review and submit for approval</div>
+                <div style={{fontWeight:700,fontSize:14,color:'var(--info)',marginBottom:3}}>{t('drafts_saved',grps.drafts.length)}</div>
+                <div style={{fontSize:12,color:'var(--textMid)'}}>{t('tap_drafts')}</div>
               </div>
             )}
             <div className="home-actions">
-              <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>setPg('new')}>➕ Start new application</button>
-              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('active')}>📋 Applications {(grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.active.length)>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.active.length}</span>}</button>
-              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('completed')}>✓ Closed applications {grps.closed.length>0&&<span style={{background:'var(--bg)',color:'var(--textMid)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.closed.length}</span>}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>setPg('new')}>{t('start_new_app')}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('active')}>{t('view_applications')} {(grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.active.length)>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.active.length}</span>}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('completed')}>{t('closed_applications')} {grps.closed.length>0&&<span style={{background:'var(--bg)',color:'var(--textMid)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.closed.length}</span>}</button>
             </div>
-            <div style={{marginTop:20,textAlign:'center'}}><button type="button" className="home-action-btn" style={{background:'transparent',color:'var(--textMid)',borderColor:'var(--border)',maxWidth:280,margin:'0 auto'}} onClick={()=>setPg('prices')}>📄 Price list</button></div>
+            <div style={{marginTop:20,textAlign:'center'}}><button type="button" className="home-action-btn" style={{background:'transparent',color:'var(--textMid)',borderColor:'var(--border)',maxWidth:280,margin:'0 auto'}} onClick={()=>setPg('prices')}>📄 {t('price_list')}</button></div>
           </div>
         )}
         {pg==='active'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>Applications</h1></div>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">{t('back')}</Btn><h1 style={{fontSize:20,fontWeight:800}}>{t('active_apps')}</h1></div>
             {grps.imei.length>0&&(
               <div style={{marginBottom:22}}>
-                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--ok)',marginBottom:10}}>✓ Approved — IMEI verification needed <span style={{background:'var(--okBg)',color:'var(--ok)',padding:'1px 7px',borderRadius:99}}>{grps.imei.length}</span></div>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--ok)',marginBottom:10}}>{t('approved_imei_section')} <span style={{background:'var(--okBg)',color:'var(--ok)',padding:'1px 7px',borderRadius:99}}>{grps.imei.length}</span></div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
                   {grps.imei.map(a=>(
                     <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <div><div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · {a.status===ST.LOCK_PENDING?'IMEI verified — lock phone':'Approved — enter IMEI'}</div></div>
-                      <Btn v="ok" sz="sm">{a.status===ST.LOCK_PENDING?'Lock phone →':'Enter IMEI →'}</Btn>
+                      <div><div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · {a.status===ST.LOCK_PENDING?t('imei_verified_lock'):t('approved_enter_imei')}</div></div>
+                      <Btn v="ok" sz="sm">{a.status===ST.LOCK_PENDING?t('lock_phone_btn'):t('enter_imei')}</Btn>
                     </div>
                   ))}
                 </div>
@@ -1939,28 +2077,28 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
             )}
             {grps.changes.length>0&&(
               <div style={{marginBottom:22}}>
-                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--warn)',marginBottom:10}}>↩ Changes requested <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.changes.length}</span></div>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--warn)',marginBottom:10}}>{t('changes_requested_section')} <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.changes.length}</span></div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
                   {grps.changes.map(a=>(
                     <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                       <div><div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div><div style={{fontSize:11,color:'var(--warn)',marginTop:2}}>{(a.application?.fieldCorrectionRequests||[]).filter(r=>!r.resolvedAt).map(r=>r.fieldName).join(', ')}</div></div>
-                      <Btn v="warn" sz="sm">Fix &amp; resubmit →</Btn>
+                      <Btn v="warn" sz="sm">{t('fix_resubmit')}</Btn>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-            {grps.drafts.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--info)',marginBottom:10}}>📝 Drafts — not yet submitted <span style={{background:'var(--infoBg)',color:'var(--info)',padding:'1px 7px',borderRadius:99}}>{grps.drafts.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.drafts.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
-            {grps.review.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Submitted — pending review <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.review.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.review.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
-            {grps.active.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Active contracts</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.active.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
-            {grps.imei.length===0&&grps.changes.length===0&&grps.drafts.length===0&&grps.review.length===0&&grps.active.length===0&&<Empty ico="📋" title="No active applications" sub="Start a new application from Home"/>}
+            {grps.drafts.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--info)',marginBottom:10}}>{t('drafts_section')} <span style={{background:'var(--infoBg)',color:'var(--info)',padding:'1px 7px',borderRadius:99}}>{grps.drafts.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.drafts.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.review.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>{t('submitted_review')} <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.review.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.review.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.active.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>{t('active_contracts')}</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.active.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.imei.length===0&&grps.changes.length===0&&grps.drafts.length===0&&grps.review.length===0&&grps.active.length===0&&<Empty ico="📋" title={t('no_active')} sub={t('no_active_sub')}/>}
           </div>
         )}
         {pg==='completed'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>Closed applications</h1></div>
-            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:16}}>Rejected or archived applications.</p>
-            {grps.closed.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.closed.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title="No closed applications" sub="All your applications are active"/>}
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">{t('back')}</Btn><h1 style={{fontSize:20,fontWeight:800}}>{t('closed_apps')}</h1></div>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:16}}>{t('rejected_archived')}</p>
+            {grps.closed.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.closed.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title={t('no_closed')} sub={t('no_closed_sub')}/>}
           </div>
         )}
         {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devicesWithPricing} preSelDevId={preselDev?.id||null} preSelTerm={preselDev?.term||12} onBack={()=>{setPg('dash');setPreselDev(null);}} onSaveDraft={(f,dev)=>{
@@ -1968,14 +2106,14 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
           const tp=dev?calcTermPricing(dev,term):{dep:0,monthly:0,total:0,disc:0};
           const deal=dev?{dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc}:null;
           const draftContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',status:ST.DRAFT,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:0,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,idType:f.idType},deal:deal||{},dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Saved as draft'}]};
-          onUpdate(null,null,draftContract);addToast('info','Draft saved','You can continue and submit later');setPg('dash');setPreselDev(null);
+          onUpdate(null,null,draftContract);addToast('info',t('toast_draft_saved'),t('toast_draft_msg'));setPg('dash');setPreselDev(null);
         }} onSubmit={(f,dev)=>{
           const term=f.term||12;
           const tp=calcTermPricing(dev,term);
           const deal={dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc};
           const freeCashflow=Math.max(0,(+f.income||0)-0);
           const newContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',status:ST.PENDING_APPROVAL,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:freeCashflow,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,digitalSignatureConfirmed:!!f.sig,idType:f.idType},deal,dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for approval'}]};
-          onUpdate(null,null,newContract);addToast('ok','Application submitted','Sent for approval');setPg('dash');setPreselDev(null);
+          onUpdate(null,null,newContract);addToast('ok',t('toast_submitted'),t('toast_submitted_msg'));setPg('dash');setPreselDev(null);
         }}/></div>}
         {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devicesWithPricing} onStartApp={(did,term)=>{setPreselDev({id:did,term});setPg('new');}}/></div>}
       </div>
@@ -1989,7 +2127,7 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
-  const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
   const goHome=()=>{setPg('dash');setSel(null);};
   const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:'6px 12px',fontSize:12,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}}>Home</button>;
@@ -2079,7 +2217,7 @@ const SupportView=({apps,onUpdate,addToast})=>{
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
-  const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const {user}=useContext(Ctx);
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
   if(sel){
@@ -2120,7 +2258,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [fst,setFst]=useState('');
-  const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const {user}=useContext(Ctx);
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
@@ -2662,7 +2800,9 @@ const App=()=>{
     }));
   },[]);
 
-  const ctx={user,logout:()=>setUser(null),companyInfo,setCompanyInfo};
+  const [lang,setLang]=useState(()=>readLS('cleva_lang_v1','en'));
+  const toggleLang=useCallback(()=>setLang(l=>{const nl=l==='en'?'rw':'en';writeLS('cleva_lang_v1',nl);return nl;}),[]);
+  const ctx={user,logout:()=>setUser(null),companyInfo,setCompanyInfo,lang,toggleLang};
 
   if(!user) return(
     <Ctx.Provider value={ctx}>
