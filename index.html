@@ -948,7 +948,6 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
 // ── LOGIN ─────────────────────────────────────────────────────
 const Login=({onLogin,users})=>{
   const t=useT();
-  const {toggleLang}=useContext(Ctx);
   const [email,setEmail]=useState('');
   const [pass,setPass]=useState('');
   const [err,setErr]=useState('');
@@ -970,7 +969,6 @@ const Login=({onLogin,users})=>{
       <div style={{position:'absolute',top:-100,right:-100,width:400,height:400,borderRadius:'50%',background:'rgba(255,255,255,0.04)'}}/>
       <div style={{position:'absolute',bottom:-120,left:-80,width:450,height:450,borderRadius:'50%',background:'rgba(255,255,255,0.03)'}}/>
       <div style={{position:'absolute',top:'20%',right:'15%',width:180,height:180,borderRadius:'50%',border:'1px solid rgba(245,158,11,0.20)'}}/>
-      <button onClick={toggleLang} style={{position:'absolute',top:16,right:16,padding:'6px 14px',background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:99,color:'white',cursor:'pointer',fontSize:12,fontWeight:600}}>{t('lang_toggle')}</button>
       <div style={{width:'100%',maxWidth:380,position:'relative',padding:'0 8px'}}>
         <div style={{textAlign:'center',marginBottom:44}}>
           <LogoBrand iconSize={180} textSize={42} layout="column" bold style={{alignItems:'center',margin:'0 auto 20px'}}/>
