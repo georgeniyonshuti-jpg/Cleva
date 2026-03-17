@@ -9,6 +9,7 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -193,12 +194,85 @@ const {useState,useCallback,useContext,createContext,useEffect}=React;
 // ── APP CONFIG ────────────────────────────────────────────────
 const APP_NAME='Cleva';
 const EMAIL_DOMAIN='leout.rw';
-const LS={MERCHANTS:'cleva_merchants_v1',SHOPS:'cleva_shops_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1',COMPANY:'cleva_company_v1'};
+const LS={MERCHANTS:'cleva_merchants_v1',SHOPS:'cleva_shops_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1',COMPANY:'cleva_company_v1',EMAIL_TPL:'cleva_email_tpl_v1'};
 const defaultCompanyInfo={name:'Cleva Financial Services Ltd',tagline:'Smart PAYGO Solutions — Empowering Access',address:'KG 15 Avenue, Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevapaygo.rw',website:'www.clevapaygo.rw',regNo:'RDB/2024/CL001',logo:null,signatoryName:'',signatoryTitle:'Authorised Signatory',signatorySig:null,imeiProxyUrl:''};
 const readLS=(k,fallback)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):fallback;}catch{return fallback;}};
 const writeLS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 const normEmail=s=>(s||'').trim().toLowerCase();
 const randPwd=()=>Math.random().toString(36).slice(2,6)+Math.random().toString(36).slice(2,6);
+
+// ── EMAIL CONFIG (EmailJS) ────────────────────────────────────
+// 1. Sign up free at https://emailjs.com
+// 2. Add Zoho SMTP service (smtp.zoho.com, port 465, SSL)
+// 3. Create ONE generic template with To={{to_email}}, Subject={{subject}}, Body={{message}}
+// 4. Paste the template ID into EMAIL_CFG.templateId below
+// Templates are editable live in the app: Admin → Email templates
+const EMAIL_CFG={
+  publicKey:'y_JAXxc3Ge2P4v9Bi',
+  serviceId:'service_ox9fg2c',
+  templateId:'template_puh4i31',
+};
+const EMAIL_TPL_KEYS=['welcome','tempPwd','submitted','approved','rejected','changes','escalated'];
+const DEFAULT_EMAIL_TPLS={
+  welcome:{
+    label:'New user welcome',
+    vars:'{{to_name}}, {{to_email}}, {{temp_password}}, {{role}}, {{must_change}}, {{login_url}}',
+    subject:'Welcome to Cleva — Your login details',
+    body:`Hi {{to_name}},\n\nYour Cleva account has been created.\n\nRole: {{role}}\nLogin: {{to_email}}\nPassword: {{temp_password}}\n{{must_change}}\n\nLog in here: {{login_url}}\n\n— Cleva Financial Services`,
+  },
+  tempPwd:{
+    label:'Password reset',
+    vars:'{{to_name}}, {{to_email}}, {{temp_password}}, {{login_url}}',
+    subject:'Cleva — Your temporary password',
+    body:`Hi {{to_name}},\n\nYour password was reset by an administrator.\n\nNew temporary password: {{temp_password}}\n\nPlease log in and change it immediately.\n\nLog in here: {{login_url}}\n\n— Cleva Financial Services`,
+  },
+  submitted:{
+    label:'Application submitted',
+    vars:'{{to_name}}, {{rep_name}}, {{customer_name}}, {{app_id}}',
+    subject:'New application pending review — {{customer_name}}',
+    body:`Hi {{to_name}},\n\nA new application is waiting for your review.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nSubmitted by: {{rep_name}}\n\nPlease log in to review it.\n\n— Cleva Financial Services`,
+  },
+  approved:{
+    label:'Application approved',
+    vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{reviewer_name}}',
+    subject:'Application approved — {{customer_name}}',
+    body:`Hi {{to_name}},\n\nGood news — the following application has been approved.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nReviewed by: {{reviewer_name}}\n\nPlease proceed with IMEI verification.\n\n— Cleva Financial Services`,
+  },
+  rejected:{
+    label:'Application rejected',
+    vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{rejection_reason}}',
+    subject:'Application rejected — {{customer_name}}',
+    body:`Hi {{to_name}},\n\nThe following application has been rejected.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nReason: {{rejection_reason}}\n\n— Cleva Financial Services`,
+  },
+  changes:{
+    label:'Changes requested',
+    vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{fields}}, {{note}}',
+    subject:'Changes requested — {{customer_name}}',
+    body:`Hi {{to_name}},\n\nChanges have been requested on an application.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nFields to update: {{fields}}\nNote: {{note}}\n\nPlease log in, make the corrections, and resubmit.\n\n— Cleva Financial Services`,
+  },
+  escalated:{
+    label:'Escalated to ops',
+    vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{escalated_by}}, {{note}}',
+    subject:'Application escalated — {{customer_name}}',
+    body:`Hi {{to_name}},\n\nAn application has been escalated and requires your attention.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nEscalated by: {{escalated_by}}\nReason: {{note}}\n\n— Cleva Financial Services`,
+  },
+};
+const fillTpl=(str,params)=>str.replace(/\{\{(\w+)\}\}/g,(_,k)=>params[k]!=null?String(params[k]):'');
+let _ejsReady=false;
+const sendEmail=(tplKey,params)=>{
+  if(!EMAIL_CFG.publicKey||!EMAIL_CFG.templateId||EMAIL_CFG.templateId==='YOUR_TEMPLATE_ID')return;
+  if(!_ejsReady){if(typeof emailjs==='undefined')return;emailjs.init({publicKey:EMAIL_CFG.publicKey});_ejsReady=true;}
+  const stored=readLS(LS.EMAIL_TPL,DEFAULT_EMAIL_TPLS);
+  const tpl=stored[tplKey]||DEFAULT_EMAIL_TPLS[tplKey];
+  if(!tpl)return;
+  emailjs.send(EMAIL_CFG.serviceId,EMAIL_CFG.templateId,{
+    to_email:params.to_email||'',
+    to_name:params.to_name||'',
+    subject:fillTpl(tpl.subject,params),
+    message:fillTpl(tpl.body,params),
+    from_name:'Cleva Financial Services',
+  }).catch(e=>console.warn('[Email send failed]',e));
+};
 
 // ── CONTRACT STATE MACHINE ────────────────────────────────────
 const ST={DRAFT:'draft',PENDING_APPROVAL:'pending_approval',UNDER_REVIEW:'under_review',OFFER_SELECTION:'offer_selection',APPROVED:'approved',LOCK_PENDING:'lock_pending',AWAITING_PAYMENT:'awaiting_payment',ACTIVE:'active',COMPLETED:'completed',ARCHIVED:'archived',ESCALATED:'escalated'};
@@ -1987,7 +2061,7 @@ const FlagBtn=({fieldKey,requestedFields,onToggle,label=''})=>{
   );
 };
 const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
-  const {user}=useContext(Ctx);
+  const {user,users}=useContext(Ctx);
   const [step,setStep]=useState(1);
   const [requestedFields,setRequestedFields]=useState(()=>app.requestedChangeFields||[]);
   const [note,setNote]=useState(app.notes||'');
@@ -2009,10 +2083,12 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
     if(lock&&lock.by===user.id)return;
     onUpdate(app.id,{reviewLock:{by:user.id,byName:user.name,at:new Date().toISOString()},tlEntry:{by:user.name,txt:'Review started'}});
   },[app.id]);// eslint-disable-line
-  const approve=async()=>{setLd('ap');await sleep(1200);onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:'Approved — sales rep to enter IMEI and verify device'}});addToast('ok','Application approved','Sales rep notified to proceed with IMEI verification');setLd(null);onBack();};
-  const reject=async()=>{if(!rejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}setLd('rej');await sleep(700);onUpdate(app.id,{status:ST.ARCHIVED,mboDecision:'REJECTED',mboRejectionReason:rejReason,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});addToast('info','Application rejected','Application is now closed');setLd(null);onBack();};
-  const requestChanges=async()=>{if(requestedFields.length===0){addToast('err','Select fields','Flag at least one field using the Flag buttons');return;}if(!note.trim()){addToast('err','Note required','Explain what the rep needs to fix');return;}setLd('ch');await sleep(700);const ap=app.application||{};const reqs=ap.fieldCorrectionRequests||[];const added=requestedFields.filter(f=>!reqs.some(r=>r.fieldName===f&&!r.resolvedAt));const newReqs=[...reqs,...added.map(fieldName=>({fieldName,reason:note,resolvedAt:null}))];onUpdate(app.id,{status:ST.UNDER_REVIEW,notes:note,application:{...ap,fieldCorrectionRequests:newReqs},reviewLock:null,tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});addToast('warn','Changes requested','Application returned to rep for correction');setLd(null);onBack();};
-  const escalate=async()=>{if(!note.trim()){addToast('err','Note required','Explain why you are escalating.');return;}setLd('esc');await sleep(700);onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Escalated to ops: ${note}`}});addToast('warn','Escalated to ops','Awaiting action from operations team');setLd(null);onBack();};
+  const _repEmail=()=>{const r=(users||[]).find(u=>u.id===app.repId);return r?.email||'';};
+  const _repName=()=>app.repName||(users||[]).find(u=>u.id===app.repId)?.name||'Sales Rep';
+  const approve=async()=>{setLd('ap');await sleep(1200);onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:'Approved — sales rep to enter IMEI and verify device'}});sendEmail('approved',{to_email:_repEmail(),to_name:_repName(),customer_name:app.application?.fullName||app.id,app_id:app.id,reviewer_name:user.name});addToast('ok','Application approved','Sales rep notified to proceed with IMEI verification');setLd(null);onBack();};
+  const reject=async()=>{if(!rejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}setLd('rej');await sleep(700);onUpdate(app.id,{status:ST.ARCHIVED,mboDecision:'REJECTED',mboRejectionReason:rejReason,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});sendEmail('rejected',{to_email:_repEmail(),to_name:_repName(),customer_name:app.application?.fullName||app.id,app_id:app.id,rejection_reason:rejReason});addToast('info','Application rejected','Application is now closed');setLd(null);onBack();};
+  const requestChanges=async()=>{if(requestedFields.length===0){addToast('err','Select fields','Flag at least one field using the Flag buttons');return;}if(!note.trim()){addToast('err','Note required','Explain what the rep needs to fix');return;}setLd('ch');await sleep(700);const ap=app.application||{};const reqs=ap.fieldCorrectionRequests||[];const added=requestedFields.filter(f=>!reqs.some(r=>r.fieldName===f&&!r.resolvedAt));const newReqs=[...reqs,...added.map(fieldName=>({fieldName,reason:note,resolvedAt:null}))];onUpdate(app.id,{status:ST.UNDER_REVIEW,notes:note,application:{...ap,fieldCorrectionRequests:newReqs},reviewLock:null,tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});sendEmail('changes',{to_email:_repEmail(),to_name:_repName(),customer_name:ap.fullName||app.id,app_id:app.id,fields:requestedFields.join(', '),note});addToast('warn','Changes requested','Application returned to rep for correction');setLd(null);onBack();};
+  const escalate=async()=>{if(!note.trim()){addToast('err','Note required','Explain why you are escalating.');return;}setLd('esc');await sleep(700);onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Escalated to ops: ${note}`}});const opsEmails=(users||[]).filter(u=>u.role==='ops').map(u=>u.email).join(',');sendEmail('escalated',{to_email:opsEmails||'',to_name:'Operations Team',customer_name:app.application?.fullName||app.id,app_id:app.id,escalated_by:user.name,note});addToast('warn','Escalated to ops','Awaiting action from operations team');setLd(null);onBack();};
   const STEPS=['Customer','Documents','Device & Deal','Decision'];
   const StepRow=()=>(
     <div style={{display:'flex',alignItems:'center',gap:0}}>
@@ -2222,7 +2298,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
 
 // ── APP DETAIL ────────────────────────────────────────────────
 const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
-  const {user,companyInfo}=useContext(Ctx);
+  const {user,companyInfo,users}=useContext(Ctx);
   const t=useT();
   const [note,setNote]=useState(app.notes||'');
   const [ld,setLd]=useState(null);
@@ -2245,15 +2321,19 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const addTlEntry=()=>{if(!newTlTxt.trim())return;onUpdate(app.id,{tlEntry:{by:user.name,txt:newTlTxt.trim()}});addToast('ok','Timeline entry added','');setNewTlTxt('');};
   useEffect(()=>{setEditNotes(app.notes||'');},[app.id,app.notes]);
 
+  const _adRepEmail=()=>{const r=(users||[]).find(u=>u.id===app.repId);return r?.email||'';};
+  const _adRepName=()=>app.repName||(users||[]).find(u=>u.id===app.repId)?.name||'Sales Rep';
   const approve=async()=>{
     setLd('ap');await sleep(1200);
     onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:'Approved — sales rep to enter IMEI and verify device'}});
+    sendEmail('approved',{to_email:_adRepEmail(),to_name:_adRepName(),customer_name:app.application?.fullName||app.id,app_id:app.id,reviewer_name:user.name});
     addToast('ok','Application approved','Sales rep notified to proceed with IMEI verification');setLd(null);onBack();
   };
   const reject=async()=>{
     if(!rejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}
     setLd('rej');await sleep(700);
     onUpdate(app.id,{status:ST.ARCHIVED,mboDecision:'REJECTED',mboRejectionReason:rejReason,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});
+    sendEmail('rejected',{to_email:_adRepEmail(),to_name:_adRepName(),customer_name:app.application?.fullName||app.id,app_id:app.id,rejection_reason:rejReason});
     addToast('info','Application rejected','Application is now closed');setLd(null);onBack();
   };
   const requestChanges=async()=>{
@@ -2265,30 +2345,37 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
     const added=requestedFields.filter(f=>!reqs.some(r=>r.fieldName===f&&!r.resolvedAt));
     const newReqs=[...reqs,...added.map(fieldName=>({fieldName,reason:note,resolvedAt:null}))];
     onUpdate(app.id,{status:ST.UNDER_REVIEW,notes:note,application:{...ap,fieldCorrectionRequests:newReqs},reviewLock:null,tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});
+    sendEmail('changes',{to_email:_adRepEmail(),to_name:_adRepName(),customer_name:ap.fullName||app.id,app_id:app.id,fields:requestedFields.join(', '),note});
     addToast('warn','Changes requested','Application returned to rep for correction');setLd(null);onBack();
   };
   const escalate=async()=>{
     if(!note.trim()){addToast('err','Note required','Explain why you are escalating.');return;}
     setLd('esc');await sleep(700);
     onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Escalated to ops: ${note}`}});
+    const opsEmails=(users||[]).filter(u=>u.role==='ops').map(u=>u.email).join(',');
+    sendEmail('escalated',{to_email:opsEmails||'',to_name:'Operations Team',customer_name:app.application?.fullName||app.id,app_id:app.id,escalated_by:user.name,note});
     addToast('warn','Escalated to ops','Awaiting action from operations team');setLd(null);onBack();
   };
 
   const opsApprove=async()=>{
     setOpsLd('ap');await sleep(900);
     onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:opsNote||app.notes,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:`Escalation resolved — Approved by ops (${user.name})`}});
+    sendEmail('approved',{to_email:_adRepEmail(),to_name:_adRepName(),customer_name:app.application?.fullName||app.id,app_id:app.id,reviewer_name:user.name});
     addToast('ok','Approved','Sales rep can now proceed with IMEI verification');setOpsLd(null);onBack();
   };
   const opsReturn=async()=>{
     if(!opsNote.trim()){addToast('err','Note required','Explain what the underwriter should do');return;}
     setOpsLd('ret');await sleep(700);
     onUpdate(app.id,{status:ST.PENDING_APPROVAL,notes:opsNote,reviewLock:null,tlEntry:{by:user.name,txt:`Returned to underwriter queue by ops: ${opsNote}`}});
+    const uwEmails=(users||[]).filter(u=>u.role==='underwriter').map(u=>u.email).join(',');
+    sendEmail('submitted',{to_email:uwEmails||'',to_name:'Underwriter Team',rep_name:user.name,customer_name:app.application?.fullName||app.id,app_id:app.id});
     addToast('info','Returned to queue','Underwriter will review again');setOpsLd(null);onBack();
   };
   const opsReject=async()=>{
     if(!opsRejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}
     setOpsLd('rej');await sleep(700);
     onUpdate(app.id,{status:ST.ARCHIVED,mboDecision:'REJECTED',mboRejectionReason:opsRejReason,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:`Rejected by ops: ${opsRejReason}`}});
+    sendEmail('rejected',{to_email:_adRepEmail(),to_name:_adRepName(),customer_name:app.application?.fullName||app.id,app_id:app.id,rejection_reason:opsRejReason});
     addToast('info','Rejected','Application is now closed');setOpsLd(null);onBack();
   };
 
@@ -2580,7 +2667,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
 
 // ── SALES REP VIEW ────────────────────────────────────────────
 const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
-  const {user}=useContext(Ctx);
+  const {user,users}=useContext(Ctx);
   const t=useT();
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
@@ -2639,7 +2726,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
                 onBack={()=>setSel(null)}
                 onAutoSave={(f,dev)=>{const term=f.term||12;const {application,deal}=buildAppData(f,dev,term);onUpdate(draftId,{application,deal,updatedAt:new Date().toISOString()});}}
                 onSaveDraft={(f,dev)=>{const term=f.term||12;const {application,deal}=buildAppData(f,dev,term);onUpdate(draftId,{application,deal,updatedAt:new Date().toISOString(),tlEntry:{by:user.name,txt:'Draft saved'}});addToast('info',t('toast_draft_saved'),t('toast_draft_msg'));setSel(null);}}
-                onSubmit={(f,dev)=>{const term=f.term||12;const {application,deal}=buildAppData(f,dev,term);onUpdate(draftId,{status:ST.PENDING_APPROVAL,application,deal,dealLocked:false,tlEntry:{by:user.name,txt:'Application submitted for approval'}});addToast('ok',t('toast_submitted'),t('toast_submitted_msg'));setSel(null);}}
+                onSubmit={(f,dev)=>{const term=f.term||12;const {application,deal}=buildAppData(f,dev,term);onUpdate(draftId,{status:ST.PENDING_APPROVAL,application,deal,dealLocked:false,tlEntry:{by:user.name,txt:'Application submitted for approval'}});const uwEmails=(users||[]).filter(u=>u.role==='underwriter').map(u=>u.email).join(',');sendEmail('submitted',{to_email:uwEmails||'',to_name:'Underwriter Team',rep_name:user.name,customer_name:application.fullName,app_id:draftId});addToast('ok',t('toast_submitted'),t('toast_submitted_msg'));setSel(null);}}
               />
             </div>
           </div>
@@ -2748,6 +2835,8 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
             const term=f.term||12;
             const {application,deal}=buildAppData(f,dev,term);
             onUpdate(activeDraftId,{status:ST.PENDING_APPROVAL,application,deal,dealLocked:false,tlEntry:{by:user.name,txt:'Application submitted for approval'}});
+            const uwEmails=(users||[]).filter(u=>u.role==='underwriter').map(u=>u.email).join(',');
+            sendEmail('submitted',{to_email:uwEmails||'',to_name:'Underwriter Team',rep_name:user.name,customer_name:application.fullName,app_id:activeDraftId});
             addToast('ok',t('toast_submitted'),t('toast_submitted_msg'));setActiveDraftId(null);setPg('dash');setPreselDev(null);
           }}/></div>}
         {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devicesWithPricing} onStartApp={(did,term)=>startNewApp({id:did,term})}/></div>}
@@ -2907,6 +2996,53 @@ const SupportView=({apps,onUpdate,addToast})=>{
 };
 
 // ── OPS VIEW ──────────────────────────────────────────────────
+// ── EMAIL TEMPLATE EDITOR ─────────────────────────────────────
+const EmailTplEditor=({addToast})=>{
+  const [tpls,setTpls]=useState(()=>readLS(LS.EMAIL_TPL,DEFAULT_EMAIL_TPLS));
+  const [sel,setSel]=useState('welcome');
+  const [draft,setDraft]=useState(()=>({...( readLS(LS.EMAIL_TPL,DEFAULT_EMAIL_TPLS)['welcome'])}));
+  const choose=(k)=>{const t=tpls[k]||DEFAULT_EMAIL_TPLS[k];setSel(k);setDraft({...t});};
+  const saveTpl=()=>{const next={...tpls,[sel]:{...tpls[sel],...draft}};setTpls(next);writeLS(LS.EMAIL_TPL,next);addToast('ok','Template saved','Changes will apply to future emails');};
+  const resetTpl=()=>{setDraft({...DEFAULT_EMAIL_TPLS[sel]});addToast('info','Reset to default','Not saved yet — click Save to apply');};
+  const cur=tpls[sel]||DEFAULT_EMAIL_TPLS[sel];
+  const changed=draft.subject!==cur.subject||draft.body!==cur.body;
+  return(
+    <div style={{display:'flex',gap:16,flexWrap:'wrap',alignItems:'flex-start'}}>
+      <div style={{display:'flex',flexDirection:'column',gap:4,minWidth:190}}>
+        {EMAIL_TPL_KEYS.map(k=>{
+          const t=tpls[k]||DEFAULT_EMAIL_TPLS[k];
+          const isDefault=t.subject===DEFAULT_EMAIL_TPLS[k].subject&&t.body===DEFAULT_EMAIL_TPLS[k].body;
+          return(
+            <button key={k} type="button" onClick={()=>choose(k)} style={{textAlign:'left',padding:'9px 12px',borderRadius:'var(--r2)',border:'1.5px solid',borderColor:sel===k?'var(--brand)':'var(--border)',background:sel===k?'var(--brandPale)':'var(--surface)',cursor:'pointer',fontSize:13,fontWeight:sel===k?700:400,color:sel===k?'var(--brand)':'var(--text)'}}>
+              <div>{DEFAULT_EMAIL_TPLS[k].label}</div>
+              {!isDefault&&<div style={{fontSize:10,color:'var(--brand3)',marginTop:2}}>● customised</div>}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{flex:1,minWidth:300}}>
+        <Card sx={{padding:'16px 18px'}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:4}}>{DEFAULT_EMAIL_TPLS[sel]?.label}</div>
+          <div style={{fontSize:11,color:'var(--textMid)',marginBottom:14,lineHeight:1.8}}>
+            Available variables:{' '}
+            {(DEFAULT_EMAIL_TPLS[sel]?.vars||'').split(', ').map(v=>(
+              <span key={v} style={{display:'inline-block',fontFamily:'DM Mono,monospace',fontSize:10,background:'var(--bg)',border:'1px solid var(--border)',padding:'1px 5px',borderRadius:4,marginRight:4,marginBottom:2}}>{v}</span>
+            ))}
+          </div>
+          <FF label="Subject"><input value={draft.subject||''} onChange={e=>setDraft(p=>({...p,subject:e.target.value}))}/></FF>
+          <FF label="Body" sx={{marginTop:10}}>
+            <textarea value={draft.body||''} onChange={e=>setDraft(p=>({...p,body:e.target.value}))} rows={13} style={{resize:'vertical',fontFamily:'DM Mono,monospace',fontSize:12,lineHeight:1.7,width:'100%'}}/>
+          </FF>
+          <div style={{display:'flex',gap:8,marginTop:12}}>
+            <Btn v="primary" icon="✓" onClick={saveTpl} disabled={!changed}>Save template</Btn>
+            <Btn v="def" onClick={resetTpl}>Reset to default</Btn>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
 const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,setShops,setContracts,pricingConfig,setPricingConfig})=>{
   const [pg,setPg]=useState('overview');
   const [sel,setSel]=useState(null);
@@ -3086,7 +3222,8 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
       const u=(users||[]).find(x=>x.id===id);
       if(!u) return;
       upUser(id,{password:tmp,mustChangePassword:true});
-      addToast('info','Temporary password set',`Email to ${u.email}: temp password ${tmp}`);
+      sendEmail('tempPwd',{to_name:u.name,to_email:u.email,temp_password:tmp,login_url:window.location.href});
+      addToast('info','Temporary password set',`Temp password emailed to ${u.email}`);
     };
     const addUser=()=>{
       const name=newUser.name.trim();
@@ -3100,9 +3237,10 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
       const mustChangePassword=!customPwd;
       const u={id,name,email,password,role:newUser.role,roleLabel:roleLabelFor(newUser.role),superuser:!!newUser.superuser,mustChangePassword,...(newUser.role==='rep'&&newUser.shopId?{shopId:newUser.shopId}:{})};
       setUsers([...(users||[]),u]);
+      sendEmail('welcome',{to_name:name,to_email:email,temp_password:password,role:roleLabelFor(newUser.role),login_url:window.location.href,must_change:mustChangePassword?'Please change your password after your first login.':''});
       setNewUser({name:'',email:'',password:'',role:'rep',shopId:'',superuser:false});
       setShowAddUser(false);
-      addToast('ok','User added',customPwd?'User can sign in with the password you set.':`Login: ${email} · temp password ${password}`);
+      addToast('ok','User added',`Welcome email sent to ${email}`);
     };
 
     return(
@@ -3117,6 +3255,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
           <Btn v={tab==='users'?'primary':'def'} onClick={()=>setTab('users')}>Users</Btn>
           {user.superuser&&<Btn v={tab==='shops'?'primary':'def'} onClick={()=>setTab('shops')}>Shops</Btn>}
           {user.superuser&&<Btn v={tab==='company'?'primary':'def'} onClick={()=>setTab('company')}>Company info</Btn>}
+          {user.superuser&&<Btn v={tab==='emailtpl'?'primary':'def'} onClick={()=>setTab('emailtpl')}>Email templates</Btn>}
         </div>
 
         {tab==='pricing'&&(
@@ -3455,6 +3594,8 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
             <Btn v="primary" icon="✓" onClick={saveCompany}>Save company settings</Btn>
           </div>
         )}
+
+        {tab==='emailtpl'&&user.superuser&&<EmailTplEditor addToast={addToast}/>}
       </div>
     );
   };
@@ -3600,7 +3741,7 @@ const App=()=>{
 
   const [lang,setLang]=useState(()=>readLS('cleva_lang_v1','en'));
   const toggleLang=useCallback(()=>setLang(l=>{const nl=l==='en'?'rw':'en';writeLS('cleva_lang_v1',nl);return nl;}),[]);
-  const ctx={user,logout:()=>setUser(null),companyInfo,setCompanyInfo,lang,toggleLang,shops,setShops};
+  const ctx={user,logout:()=>setUser(null),companyInfo,setCompanyInfo,lang,toggleLang,shops,setShops,users};
 
   if(!user) return(
     <Ctx.Provider value={ctx}>
