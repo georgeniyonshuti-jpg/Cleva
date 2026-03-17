@@ -13,29 +13,37 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --brand:#0B3D2E;--brand2:#146344;--brand3:#1D8A5E;--brandPale:#E6F3EE;--brandPale2:#D0E9DE;
-  --accent:#D4700A;
-  --bg:#F2F0EB;--surface:#FFFFFF;
-  --border:rgba(11,61,46,0.11);--borderMed:rgba(11,61,46,0.2);
-  --text:#111B15;--textMid:#4A5E52;--textLight:#8FA898;
-  --ok:#1E6B3A;--okBg:#E8F5EE;--okBorder:#A8D8BC;
-  --warn:#A05800;--warnBg:#FEF3E2;--warnBorder:#F0C882;
-  --err:#B01C1C;--errBg:#FEE8E8;--errBorder:#F0AAAA;
-  --info:#1549A0;--infoBg:#E8EFFE;--infoBorder:#A8BCEC;
-  --pur:#5B21B6;--purBg:#EEE9FD;--purBorder:#C4AFEF;
+  /* 60% Deep Navy */
+  --brand:#061120;--brand2:#0D2137;--brand3:#CBA135;--brandPale:#112240;--brandPale2:#1A3050;
+  /* 10% Pale Gold accent */
+  --accent:#CBA135;
+  /* Backgrounds */
+  --bg:#0A192F;--surface:#112240;
+  /* Borders */
+  --border:rgba(100,140,200,0.14);--borderMed:rgba(100,140,200,0.26);
+  /* Text */
+  --text:#CCD6F6;--textMid:#8892A4;--textLight:#3D5070;
+  /* Status — bright on dark */
+  --ok:#4ADE80;--okBg:#031A0D;--okBorder:#0D4A1F;
+  --warn:#FBBF24;--warnBg:#1A1200;--warnBorder:#7A4D00;
+  --err:#FF6B6B;--errBg:#1A0404;--errBorder:#7A0F0F;
+  --info:#60A5FA;--infoBg:#030F1A;--infoBorder:#0D2F5A;
+  --pur:#A78BFA;--purBg:#0A0314;--purBorder:#3A1A7A;
   --r:10px;--r2:6px;
-  --sh:0 1px 3px rgba(0,0,0,0.07),0 1px 2px rgba(0,0,0,0.04);
-  --sh2:0 4px 16px rgba(0,0,0,0.10),0 1px 4px rgba(0,0,0,0.06);
+  --sh:0 1px 4px rgba(0,0,0,0.35),0 1px 2px rgba(0,0,0,0.25);
+  --sh2:0 4px 24px rgba(0,0,0,0.5),0 1px 8px rgba(0,0,0,0.3);
 }
-body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:15px;-webkit-font-smoothing:antialiased;line-height:1.5}
+body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:15px;-webkit-font-smoothing:antialiased;line-height:1.5;color-scheme:dark}
 input,select,textarea,button{font-family:'DM Sans',sans-serif;font-size:14px}
-input,select,textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r2);background:white;color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s}
-input:focus,select:focus,textarea:focus{border-color:var(--brand2);box-shadow:0 0 0 3px rgba(20,99,68,0.10)}
+input,select,textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r2);background:var(--brandPale);color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(203,161,53,0.14)}
 input.err,select.err{border-color:var(--err)}
 textarea{resize:vertical;min-height:80px;line-height:1.5}
+select option{background:var(--surface);color:var(--text)}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.13);border-radius:3px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.10);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(203,161,53,0.35)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideRight{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -715,10 +723,10 @@ const Badge=({st})=>{
 const Spin=({size=14,dark=false})=><span className="spin" style={{display:'inline-block',width:size,height:size,border:`2px solid ${dark?'rgba(11,61,46,0.15)':'rgba(255,255,255,0.3)'}`,borderTopColor:dark?'var(--brand2)':'white',borderRadius:'50%',verticalAlign:'middle'}}/>;
 
 const Btn=({children,onClick,v='def',sz='md',disabled=false,loading=false,icon,full=false,style={}})=>{
-  const vs={primary:{bg:'var(--brand)',fg:'white',bd:'var(--brand)',hov:'var(--brand2)'},ok:{bg:'var(--okBg)',fg:'var(--ok)',bd:'var(--okBorder)',hov:'#C0E8D0'},warn:{bg:'var(--warnBg)',fg:'var(--warn)',bd:'var(--warnBorder)',hov:'#F5DFA8'},err:{bg:'var(--errBg)',fg:'var(--err)',bd:'var(--errBorder)',hov:'#F5C0C0'},info:{bg:'var(--infoBg)',fg:'var(--info)',bd:'var(--infoBorder)',hov:'#C0D0F5'},pur:{bg:'var(--purBg)',fg:'var(--pur)',bd:'var(--purBorder)',hov:'#D8CCF8'},def:{bg:'white',fg:'var(--text)',bd:'var(--border)',hov:'var(--bg)'},ghost:{bg:'transparent',fg:'var(--textMid)',bd:'transparent',hov:'rgba(0,0,0,0.05)'}};
+  const vs={primary:{bg:'var(--accent)',fg:'#0A192F',bd:'var(--accent)',hov:'#D4AE45'},ok:{bg:'var(--okBg)',fg:'var(--ok)',bd:'var(--okBorder)',hov:'#062A18'},warn:{bg:'var(--warnBg)',fg:'var(--warn)',bd:'var(--warnBorder)',hov:'#261C00'},err:{bg:'var(--errBg)',fg:'var(--err)',bd:'var(--errBorder)',hov:'#280606'},info:{bg:'var(--infoBg)',fg:'var(--info)',bd:'var(--infoBorder)',hov:'#041828'},pur:{bg:'var(--purBg)',fg:'var(--pur)',bd:'var(--purBorder)',hov:'#140522'},def:{bg:'var(--surface)',fg:'var(--text)',bd:'var(--border)',hov:'var(--brandPale2)'},ghost:{bg:'transparent',fg:'var(--textMid)',bd:'transparent',hov:'rgba(255,255,255,0.05)'}};
   const vv=vs[v]||vs.def;const pads={sm:'5px 11px',md:'9px 16px',lg:'12px 22px'};const fss={sm:12,md:14,lg:15};
   const [h,setH]=useState(false);
-  return <button onClick={disabled||loading?undefined:onClick} disabled={disabled||loading} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{display:'inline-flex',alignItems:'center',gap:6,padding:pads[sz],fontSize:fss[sz],fontWeight:500,borderRadius:'var(--r2)',cursor:disabled||loading?'not-allowed':'pointer',border:`1.5px solid ${disabled?'var(--border)':vv.bd}`,background:disabled?'var(--bg)':h?vv.hov:vv.bg,color:disabled?'var(--textLight)':vv.fg,width:full?'100%':'auto',justifyContent:full?'center':'flex-start',transition:'all .13s',userSelect:'none',whiteSpace:'nowrap',...style}}>{loading?<Spin dark={v==='def'||v==='ghost'} size={13}/>:icon&&<span style={{fontSize:13,lineHeight:1}}>{icon}</span>}{children}</button>;
+  return <button onClick={disabled||loading?undefined:onClick} disabled={disabled||loading} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{display:'inline-flex',alignItems:'center',gap:6,padding:pads[sz],fontSize:fss[sz],fontWeight:500,borderRadius:'var(--r2)',cursor:disabled||loading?'not-allowed':'pointer',border:`1.5px solid ${disabled?'var(--border)':vv.bd}`,background:disabled?'var(--brandPale)':h?vv.hov:vv.bg,color:disabled?'var(--textLight)':vv.fg,opacity:disabled?0.55:1,width:full?'100%':'auto',justifyContent:full?'center':'flex-start',transition:'all .13s',userSelect:'none',whiteSpace:'nowrap',...style}}>{loading?<Spin dark={v==='def'||v==='ghost'} size={13}/>:icon&&<span style={{fontSize:13,lineHeight:1}}>{icon}</span>}{children}</button>;
 };
 
 const Card=({children,sx={},className=''})=><div className={className} style={{background:'var(--surface)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',boxShadow:'var(--sh)',...sx}}>{children}</div>;
@@ -899,11 +907,11 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
         <nav className="sidebar-nav">
           {navItems.map(item=>{
             const active=page===item.k;
-            return <button key={item.k} onClick={()=>go(item.k)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'12px 14px',marginBottom:2,background:active?'rgba(255,255,255,0.13)':'transparent',color:active?'white':'rgba(255,255,255,0.58)',border:'none',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:active?600:400,textAlign:'left',transition:'all .13s',minHeight:44}}
+            return <button key={item.k} onClick={()=>go(item.k)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'12px 14px',marginBottom:2,background:active?'rgba(203,161,53,0.13)':'transparent',color:active?'#CBA135':'rgba(255,255,255,0.50)',border:'none',borderLeft:active?'2px solid #CBA135':'2px solid transparent',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:active?600:400,textAlign:'left',transition:'all .13s',minHeight:44}}
               onMouseEnter={e=>{if(!active)e.currentTarget.style.background='rgba(255,255,255,0.07)'}}
               onMouseLeave={e=>{if(!active)e.currentTarget.style.background='transparent'}}>
               <span>{item.l}</span>
-              {item.badge>0&&<span style={{background:'var(--accent)',color:'white',fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:99}}>{item.badge}</span>}
+              {item.badge>0&&<span style={{background:'var(--accent)',color:'#0A192F',fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:99}}>{item.badge}</span>}
             </button>;
           })}
         </nav>
@@ -936,9 +944,10 @@ const Login=({onLogin,users})=>{
   };
 
   return(
-    <div className="login-wrap" style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(145deg,var(--brand) 0%,#1D6B4C 60%,#155239 100%)',padding:24,position:'relative',overflow:'hidden'}}>
-      <div style={{position:'absolute',top:-80,right:-80,width:320,height:320,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.05)'}}/>
-      <div style={{position:'absolute',bottom:-100,left:-100,width:400,height:400,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.04)'}}/>
+    <div className="login-wrap" style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(145deg,#061120 0%,#0A192F 55%,#0D2137 100%)',padding:24,position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',top:-80,right:-80,width:320,height:320,borderRadius:'50%',border:'1px solid rgba(203,161,53,0.08)'}}/>
+      <div style={{position:'absolute',bottom:-100,left:-100,width:400,height:400,borderRadius:'50%',border:'1px solid rgba(203,161,53,0.05)'}}/>
+      <div style={{position:'absolute',top:'30%',left:-60,width:200,height:200,borderRadius:'50%',border:'1px solid rgba(96,165,250,0.06)'}}/>
       <button onClick={toggleLang} style={{position:'absolute',top:16,right:16,padding:'6px 14px',background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:99,color:'white',cursor:'pointer',fontSize:12,fontWeight:600}}>{t('lang_toggle')}</button>
       <div style={{width:'100%',maxWidth:380,position:'relative',padding:'0 8px'}}>
         <div style={{textAlign:'center',marginBottom:40}}>
@@ -960,7 +969,7 @@ const Login=({onLogin,users})=>{
               </div>
             </div>
             {err&&<div style={{padding:'9px 12px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',fontWeight:500}}>{err}</div>}
-            <button onClick={submit} disabled={loading} style={{padding:'11px 0',background:loading?'rgba(255,255,255,0.15)':'white',border:'none',borderRadius:'var(--r2)',color:loading?'rgba(255,255,255,0.5)':'var(--brand)',fontWeight:700,fontSize:14,cursor:loading?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,transition:'all .15s',marginTop:4}}>
+            <button onClick={submit} disabled={loading} style={{padding:'11px 0',background:loading?'rgba(203,161,53,0.3)':'var(--accent)',border:'none',borderRadius:'var(--r2)',color:loading?'rgba(255,255,255,0.5)':'#061120',fontWeight:700,fontSize:14,cursor:loading?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,transition:'all .15s',marginTop:4}}>
               {loading?<><Spin size={14}/> {t('signing_in')}</>:t('sign_in_btn')}
             </button>
           </div>
