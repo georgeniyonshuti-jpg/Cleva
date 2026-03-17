@@ -127,6 +127,8 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 /* On mobile, new-app-fullpage is a true full-screen overlay (no nested-tab look) */
 @media (max-width:768px){
   .new-app-fullpage{position:fixed;inset:0;z-index:200;background:var(--bg);overflow:hidden;padding-top:env(safe-area-inset-top);height:100dvh!important;}
+  .new-app-form{padding:0!important;}
+  .new-app-scroll-body{padding:0!important;-webkit-overflow-scrolling:touch;}
 }
 
 /* Stats grids: single column on mobile */
@@ -326,7 +328,7 @@ const Btn=({children,onClick,v='def',sz='md',disabled=false,loading=false,icon,f
   return <button onClick={disabled||loading?undefined:onClick} disabled={disabled||loading} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{display:'inline-flex',alignItems:'center',gap:6,padding:pads[sz],fontSize:fss[sz],fontWeight:500,borderRadius:'var(--r2)',cursor:disabled||loading?'not-allowed':'pointer',border:`1.5px solid ${disabled?'var(--border)':vv.bd}`,background:disabled?'var(--bg)':h?vv.hov:vv.bg,color:disabled?'var(--textLight)':vv.fg,width:full?'100%':'auto',justifyContent:full?'center':'flex-start',transition:'all .13s',userSelect:'none',whiteSpace:'nowrap',...style}}>{loading?<Spin dark={v==='def'||v==='ghost'} size={13}/>:icon&&<span style={{fontSize:13,lineHeight:1}}>{icon}</span>}{children}</button>;
 };
 
-const Card=({children,sx={}})=><div style={{background:'var(--surface)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',boxShadow:'var(--sh)',...sx}}>{children}</div>;
+const Card=({children,sx={},className=''})=><div className={className} style={{background:'var(--surface)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',boxShadow:'var(--sh)',...sx}}>{children}</div>;
 const Fld=({label,val,mono=false})=><div style={{paddingBottom:8,marginBottom:8,borderBottom:'1px solid rgba(0,0,0,0.05)'}}><div style={{fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:2}}>{label}</div><div style={{fontSize:13,fontFamily:mono?'DM Mono,monospace':undefined,color:val?'var(--text)':'var(--textLight)'}}>{val||'—'}</div></div>;
 const FldWithRequest=({label,val,fieldKey,requestedFields,onToggle,mono=false})=>{
   const requested=requestedFields.includes(fieldKey);
@@ -953,8 +955,8 @@ const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=1
           ))}
         </div>
       </header>
-      <div style={{flex:1,minHeight:0,overflow:'auto',overflowX:'hidden',padding:'20px 0',WebkitOverflowScrolling:'touch'}}>
-      <Card sx={{padding:22,minHeight:'min-content'}}>
+      <div style={{flex:1,minHeight:0,overflow:'auto',overflowX:'hidden',padding:'20px 0',WebkitOverflowScrolling:'touch'}} className="new-app-scroll-body">
+      <div style={{padding:22,minHeight:'min-content'}}>
         {step===1&&(
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:2}}>Customer information</div>
@@ -1109,7 +1111,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=1
             </div>
           );
         })()}
-      </Card>
+      </div>
       </div>
       <footer style={{flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'16px 24px 24px',paddingBottom:'max(24px, env(safe-area-inset-bottom))',borderTop:'1.5px solid var(--border)',background:'var(--bg)',margin:'0 -24px',flexWrap:'wrap'}}>
         {step>1?<Btn onClick={()=>setStep(p=>p-1)} v="def" icon="←">Back</Btn>:<div/>}
@@ -1850,7 +1852,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
-      <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
+      <div className="app-main main-scroll" style={{flex:1,overflow:pg==='new'?'hidden':'auto',display:'flex',flexDirection:'column',minHeight:0}}>
         <TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={pg==='dash'?'Home':pg==='new'?'New application':pg==='active'?'Active applications':pg==='completed'?'Completed applications':pg==='prices'?'Price list':APP_NAME}/>
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
