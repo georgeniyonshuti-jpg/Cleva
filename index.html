@@ -912,7 +912,7 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
 };
 
 // ── NEW APPLICATION ───────────────────────────────────────────
-const NewApp=({onSubmit,onBack,devices,preSelDevId=null,preSelTerm=12})=>{
+const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=12})=>{
   const {user,companyInfo}=useContext(Ctx);
   const [step,setStep]=useState(1);
   const [f,setF]=useState({name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:preSelDevId||'',term:preSelTerm,sig:null,customerPhoto:null,idPhoto:null,incomeProof:null});
@@ -1111,9 +1111,12 @@ const NewApp=({onSubmit,onBack,devices,preSelDevId=null,preSelTerm=12})=>{
         })()}
       </Card>
       </div>
-      <footer style={{flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,padding:'16px 24px 24px',paddingBottom:'max(24px, env(safe-area-inset-bottom))',borderTop:'1.5px solid var(--border)',background:'var(--bg)',margin:'0 -24px'}}>
+      <footer style={{flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,padding:'16px 24px 24px',paddingBottom:'max(24px, env(safe-area-inset-bottom))',borderTop:'1.5px solid var(--border)',background:'var(--bg)',margin:'0 -24px',flexWrap:'wrap'}}>
         {step>1?<Btn onClick={()=>setStep(p=>p-1)} v="def" icon="←">Back</Btn>:<div/>}
-        {step<4?<Btn onClick={next} v="primary" icon="→">Continue</Btn>:<Btn onClick={()=>onSubmit(f,dev)} v="primary" icon="✓">Submit for review</Btn>}
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          {onSaveDraft&&step>=1&&f.name.trim()&&<Btn onClick={()=>onSaveDraft(f,dev)} v="ghost" sz="sm" icon="💾">Save draft</Btn>}
+          {step<4?<Btn onClick={next} v="primary" icon="→">Continue</Btn>:<Btn onClick={()=>onSubmit(f,dev)} v="primary" icon="✓">Submit for review</Btn>}
+        </div>
       </footer>
     </div>
   );
@@ -1122,6 +1125,9 @@ const NewApp=({onSubmit,onBack,devices,preSelDevId=null,preSelTerm=12})=>{
 // ── IMEI FLOW ─────────────────────────────────────────────────
 // Phases: entry | autocheck | valid | mismatch | notfound | checking (manual fallback) | verified
 const CARLCARE_MANUAL_URL='https://www.carlcare.com/rw/warranty-check/';
+// Permanent Cloudflare Worker proxy — admin can override via Company info settings
+const CARLCARE_PROXY_FALLBACK='https://green-breeze-55ec.georgeniyonshuti.workers.dev';
+const DEVICE_BRANDS=['TECNO','INFINIX','itel'];
 
 // Normalise a string for loose comparison
 const ccNorm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -1206,7 +1212,7 @@ const compareSpecs=(dev,cc)=>{
 
 const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
   const {user,companyInfo}=useContext(Ctx);
-  const proxyUrl=(companyInfo?.imeiProxyUrl||'').trim();
+  const proxyUrl=(companyInfo?.imeiProxyUrl||CARLCARE_PROXY_FALLBACK).trim();
   const [imei,setImei]=useState(app.imei||'');
   const [phase,setPhase]=useState(app.status===ST.LOCK_PENDING||app.status===ST.ACTIVE?'verified':app.imei&&app.status===ST.APPROVED?'autocheck_resume':'entry');
   const [ld,setLd]=useState(null);
@@ -1285,12 +1291,17 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
   };
 
   const sendBackFromImei=(reason)=>{
-    onUpdate(app.id,{status:ST.PENDING_APPROVAL,notes:reason,imei,tlEntry:{by:user.name,txt:`IMEI check issue — returned to underwriter: ${reason}`}});
+    onUpdate(app.id,{status:ST.PENDING_APPROVAL,notes:reason,imei:null,tlEntry:{by:user.name,txt:`IMEI check issue — returned to underwriter: ${reason}`}});
     addToast('warn','Returned to underwriter','Underwriter will be notified');onBack();
   };
   const escalateFromImei=(reason)=>{
-    onUpdate(app.id,{status:ST.ESCALATED,notes:reason,imei,tlEntry:{by:user.name,txt:`IMEI check issue escalated: ${reason}`}});
+    onUpdate(app.id,{status:ST.ESCALATED,notes:reason,imei:null,tlEntry:{by:user.name,txt:`IMEI check issue escalated: ${reason}`}});
     addToast('info','Escalated to ops','Issue logged');onBack();
+  };
+  const retryImei=()=>{
+    // Clear the failed IMEI so auto-check doesn't replay it, stay in APPROVED
+    onUpdate(app.id,{imei:null,tlEntry:{by:user.name,txt:'IMEI retry — clearing previous failed IMEI'}});
+    setImei('');setCcResult(null);setPhase('entry');
   };
   const confirmLocked=async()=>{
     setLd('lock');await sleep(2000);
@@ -1366,25 +1377,29 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         )}
 
         {/* ── Phase: valid (auto-verified, all good) ── */}
-        {phase==='valid'&&ccResult&&(
+        {phase==='valid'&&(
           <div>
             <div style={{padding:'16px 18px',background:'var(--okBg)',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',marginBottom:20}}>
               <div style={{fontWeight:800,fontSize:15,color:'var(--ok)',marginBottom:8}}>✓ Warranty valid — all specs match</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8,marginBottom:10}}>
-                {[['Brand',ccResult.brand],['Model',ccResult.model],['RAM',ccResult.ram],['Storage',ccResult.rom]].map(([k,v])=>(
-                  <div key={k} style={{background:'white',borderRadius:'var(--r2)',padding:'8px 10px',border:'1px solid var(--okBorder)'}}>
-                    <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',color:'var(--textLight)',marginBottom:2}}>{k}</div>
-                    <div style={{fontWeight:700,fontSize:13,color:'var(--ok)'}}>{v||'—'}</div>
+              {ccResult&&(
+                <>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8,marginBottom:10}}>
+                    {[['Brand',ccResult.brand],['Model',ccResult.model],['RAM',`${ccResult.ram}GB`],['Storage',`${ccResult.rom}GB`]].map(([k,v])=>(
+                      <div key={k} style={{background:'white',borderRadius:'var(--r2)',padding:'8px 10px',border:'1px solid var(--okBorder)'}}>
+                        <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',color:'var(--textLight)',marginBottom:2}}>{k}</div>
+                        <div style={{fontWeight:700,fontSize:13,color:'var(--ok)'}}>{v||'—'}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              {ccResult.expiry&&<div style={{fontSize:11,color:'var(--ok)',fontWeight:600}}>Warranty valid until: {ccResult.expiry}{ccResult.warrantyClass&&` · ${ccResult.warrantyClass}`}</div>}
+                  {ccResult.expiry&&<div style={{fontSize:11,color:'var(--ok)',fontWeight:600}}>Warranty valid until: {ccResult.expiry}{ccResult.warrantyClass&&` · ${ccResult.warrantyClass}`}</div>}
+                </>
+              )}
             </div>
             <Btn onClick={()=>confirmValid(true)} v="ok" sz="lg" full loading={ld==='pt'} icon="→">
               {ld==='pt'?'Registering in PayTrigger…':'Confirm & proceed to PayTrigger'}
             </Btn>
             <div style={{marginTop:10,textAlign:'center'}}>
-              <Btn v="ghost" sz="sm" onClick={()=>setPhase('entry')} icon="←">Re-enter IMEI</Btn>
+              <Btn v="ghost" sz="sm" onClick={()=>{setCcResult(null);setPhase('entry');}} icon="←">Re-enter IMEI</Btn>
             </div>
           </div>
         )}
@@ -1399,20 +1414,30 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:18}}>
               <div style={{padding:'12px 14px',background:'var(--bg)',borderRadius:'var(--r)',border:'1px solid var(--border)'}}>
                 <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--textLight)',marginBottom:8}}>Application says</div>
-                {[['Brand',d.brand],['Model',d.model],['RAM',d.ram||d.RAM||'—'],['Storage',d.rom||d.ROM||'—']].map(([k,v])=><div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:5}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontWeight:600}}>{v}</span></div>)}
+                {[['Brand',d.brand||'—'],['Model',d.model||'—'],['RAM',(d.ram||d.RAM)||'—'],['Storage',(d.rom||d.ROM)||'—']].map(([k,v])=>(
+                  <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:5}}>
+                    <span style={{color:'var(--textMid)'}}>{k}</span>
+                    <span style={{fontWeight:600}}>{v}</span>
+                  </div>
+                ))}
               </div>
               <div style={{padding:'12px 14px',background:'var(--warnBg)',borderRadius:'var(--r)',border:'1.5px solid var(--warnBorder)'}}>
-                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--warn)',marginBottom:8}}>Carlcare shows{ccResult?' (auto-detected)':' (enter actual)'}</div>
+                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--warn)',marginBottom:8}}>
+                  Carlcare shows {ccResult?<span style={{fontWeight:400,textTransform:'none',fontSize:10}}>(auto-detected — read only)</span>:<span style={{fontWeight:400,textTransform:'none',fontSize:10}}>(enter manually)</span>}
+                </div>
                 {[['Brand','brand'],['Model','model'],['RAM','ram'],['Storage','rom']].map(([label,key])=>(
-                  <input key={key} value={actualSpecs[key]} onChange={e=>setActualSpecs(p=>({...p,[key]:e.target.value}))} placeholder={label} style={{marginBottom:6,fontSize:12}}/>
+                  ccResult
+                    ? <div key={key} style={{marginBottom:6,padding:'6px 10px',background:'white',borderRadius:'var(--r2)',border:'1px solid var(--warnBorder)',fontSize:12,fontWeight:600}}>{actualSpecs[key]||'—'}</div>
+                    : <input key={key} value={actualSpecs[key]} onChange={e=>setActualSpecs(p=>({...p,[key]:e.target.value}))} placeholder={label} style={{marginBottom:6,fontSize:12}}/>
                 ))}
               </div>
             </div>
             <FF label="Note — describe the mismatch"><textarea value={mismatchNote} onChange={e=>setMismatchNote(e.target.value)} rows={2} placeholder="e.g. Carlcare shows 8GB RAM but application states 4GB RAM" style={{resize:'vertical'}}/></FF>
             <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:14}}>
+              <Btn v="ok" full icon="←" onClick={retryImei}>Try a different IMEI</Btn>
+              <div style={{height:1,background:'var(--border)',margin:'2px 0'}}/>
               <Btn v="warn" full icon="↩" onClick={()=>sendBackFromImei(`Specs mismatch at IMEI check. ${mismatchNote||''} Carlcare shows: ${Object.entries(actualSpecs).map(([k,v])=>v?`${k}=${v}`:'').filter(Boolean).join(', ')}.`)}>Send back to underwriter for review</Btn>
               <Btn v="def" full icon="⬆" onClick={()=>escalateFromImei(`Specs mismatch — escalated. ${mismatchNote||''} IMEI: ${imei}. Carlcare: ${Object.entries(actualSpecs).map(([k,v])=>v?`${k}=${v}`:'').filter(Boolean).join(', ')}.`)}>Escalate to ops</Btn>
-              <Btn v="ghost" sz="sm" onClick={()=>setPhase('entry')}>← Re-enter IMEI</Btn>
             </div>
           </div>
         )}
@@ -1428,9 +1453,10 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
               <strong>What to check:</strong> Confirm the IMEI was entered correctly (dial *#06# again). Try the second IMEI if dual-SIM. If still not found or expired, send back to underwriter.
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
-              <Btn v="def" full icon="←" onClick={()=>setPhase('entry')}>Re-enter IMEI</Btn>
+              <Btn v="ok" full icon="←" onClick={retryImei}>Try a different IMEI</Btn>
               <div style={{height:1,background:'var(--border)',margin:'4px 0'}}/>
-              <FF label="Note for underwriter"><textarea value={mismatchNote} onChange={e=>setMismatchNote(e.target.value)} rows={2} placeholder="Describe what was tried…" style={{resize:'vertical'}}/></FF>
+              <div style={{fontSize:11,color:'var(--textMid)',marginBottom:2}}>If the issue can't be resolved by retrying, send back to underwriter or escalate:</div>
+              <FF label="Note for underwriter / ops"><textarea value={mismatchNote} onChange={e=>setMismatchNote(e.target.value)} rows={2} placeholder="Describe what was tried…" style={{resize:'vertical'}}/></FF>
               <Btn v="warn" full icon="↩" onClick={()=>sendBackFromImei(`IMEI ${imei} — ${ccResult&&!ccResult.warrantyValid?'warranty expired/invalid':'not found on Carlcare'}. ${mismatchNote||''}`)}>Send back to underwriter</Btn>
               <Btn v="def" full icon="⬆" onClick={()=>escalateFromImei(`IMEI ${imei} — ${ccResult&&!ccResult.warrantyValid?'warranty issue':'unverifiable'}. ${mismatchNote||''} — escalated from IMEI check.`)}>Escalate to ops</Btn>
             </div>
@@ -1702,6 +1728,17 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
           </div>
         </Card>
       )}
+      {/* Draft — action for rep */}
+      {isRep&&app.status===ST.DRAFT&&(
+        <Card sx={{padding:'18px',marginBottom:14,background:'var(--infoBg)',border:'2px solid var(--infoBorder)'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--info)',marginBottom:6}}>📝 Draft application</div>
+          <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>This application was saved as a draft. Review the details and submit for underwriter review when ready.</div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <Btn onClick={()=>{onUpdate(app.id,{status:ST.PENDING_APPROVAL,tlEntry:{by:user.name,txt:'Draft submitted for approval'}});addToast('ok','Submitted','Sent to underwriter for review');onBack();}} v="primary" icon="→">Submit for review</Btn>
+            <Btn onClick={()=>{onUpdate(app.id,{status:ST.ARCHIVED,tlEntry:{by:user.name,txt:'Draft deleted'}});addToast('info','Draft deleted','');onBack();}} v="ghost" icon="✕">Delete draft</Btn>
+          </div>
+        </Card>
+      )}
       {/* Rejection notice for rep */}
       {isRep&&app.mboDecision==='REJECTED'&&(
         <Card sx={{padding:'14px 16px',marginBottom:14,background:'var(--errBg)',border:'2px solid var(--errBorder)'}}>
@@ -1722,12 +1759,15 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
           <div style={{marginTop:12,fontSize:11,color:'var(--textMid)'}}>Use <strong>Edit &amp; resubmit</strong> from your application list to make corrections and send back for review.</div>
         </Card>
       )}
-      {/* Approved — IMEI entry action for rep */}
-      {isRep&&app.status===ST.APPROVED&&!app.imei&&(
+      {/* Approved — IMEI entry / retry action for rep */}
+      {isRep&&app.status===ST.APPROVED&&(
         <Card sx={{padding:'18px',marginBottom:14,background:'var(--okBg)',border:'2px solid var(--okBorder)'}}>
           <div style={{fontSize:13,fontWeight:700,color:'var(--ok)',marginBottom:6}}>✓ Application approved — action required</div>
-          <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>The underwriter has approved this application. Enter the device IMEI and verify it on Carlcare to proceed to contract activation.</div>
-          <Btn onClick={()=>setShowImei(true)} v="ok" icon="→">Enter IMEI &amp; verify device</Btn>
+          {app.imei
+            ? <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>Previous IMEI <span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{app.imei}</span> was checked but not fully confirmed. You can retry with the same or a different IMEI.</div>
+            : <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>Enter the device IMEI and verify it on Carlcare to proceed to contract activation.</div>
+          }
+          <Btn onClick={()=>setShowImei(true)} v="ok" icon="→">{app.imei?'Retry IMEI verification':'Enter IMEI & verify device'}</Btn>
         </Card>
       )}
       {/* Lock pending — reminder */}
@@ -1789,11 +1829,12 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const devicesWithPricing=React.useMemo(()=>(devices||[]).map(d=>{const deal=calcDealFromDevice(d,cfg);return{...d,...deal,dep:deal.upfrontPayment,weekly:deal.recurrentPayment,wks:deal.termOption,retail:deal.cogs};}),[devices,cfg]);
   const mine=apps.filter(a=>a.repId===user.id&&(!user.merchantCode||a.merchantCode===user.merchantCode));
   const grps={
-    imei:mine.filter(a=>a.status===ST.APPROVED||(a.status===ST.LOCK_PENDING)),
+    drafts:mine.filter(a=>a.status===ST.DRAFT),
+    imei:mine.filter(a=>a.status===ST.APPROVED||a.status===ST.LOCK_PENDING),
     changes:mine.filter(a=>a.status===ST.UNDER_REVIEW&&(a.application?.fieldCorrectionRequests||[]).some(r=>!r.resolvedAt)),
     review:mine.filter(a=>a.status===ST.PENDING_APPROVAL),
     active:mine.filter(a=>a.status===ST.ACTIVE),
-    closed:mine.filter(a=>a.mboDecision==='REJECTED'||a.status===ST.ARCHIVED),
+    closed:mine.filter(a=>(a.mboDecision==='REJECTED'||a.status===ST.ARCHIVED)&&a.status!==ST.DRAFT),
   };
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
@@ -1815,20 +1856,26 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Welcome, {user.name.split(' ')[0]}</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
             {grps.imei.length>0&&(
-              <div style={{marginBottom:18,padding:'14px 18px',background:'var(--okBg)',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
+              <div style={{marginBottom:12,padding:'14px 18px',background:'var(--okBg)',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
                 <div style={{fontWeight:700,fontSize:14,color:'var(--ok)',marginBottom:3}}>✓ {grps.imei.length} application{grps.imei.length!==1?'s':''} approved — IMEI verification needed</div>
                 <div style={{fontSize:12,color:'var(--textMid)'}}>Tap to enter IMEI and verify device on Carlcare</div>
               </div>
             )}
             {grps.changes.length>0&&(
-              <div style={{marginBottom:18,padding:'14px 18px',background:'var(--warnBg)',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
+              <div style={{marginBottom:12,padding:'14px 18px',background:'var(--warnBg)',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
                 <div style={{fontWeight:700,fontSize:14,color:'var(--warn)',marginBottom:3}}>↩ {grps.changes.length} application{grps.changes.length!==1?'s':''} returned — changes requested</div>
                 <div style={{fontSize:12,color:'var(--textMid)'}}>Tap to view corrections needed and resubmit</div>
               </div>
             )}
+            {grps.drafts.length>0&&(
+              <div style={{marginBottom:12,padding:'14px 18px',background:'var(--infoBg)',border:'2px solid var(--infoBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
+                <div style={{fontWeight:700,fontSize:14,color:'var(--info)',marginBottom:3}}>📝 {grps.drafts.length} draft{grps.drafts.length!==1?'s':''} saved — not yet submitted</div>
+                <div style={{fontSize:12,color:'var(--textMid)'}}>Tap to review and submit for approval</div>
+              </div>
+            )}
             <div className="home-actions">
               <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>setPg('new')}>➕ Start new application</button>
-              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('active')}>📋 Applications {(grps.imei.length+grps.changes.length+grps.review.length+grps.active.length)>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.imei.length+grps.changes.length+grps.review.length+grps.active.length}</span>}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('active')}>📋 Applications {(grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.active.length)>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.active.length}</span>}</button>
               <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('completed')}>✓ Closed applications {grps.closed.length>0&&<span style={{background:'var(--bg)',color:'var(--textMid)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.closed.length}</span>}</button>
             </div>
             <div style={{marginTop:20,textAlign:'center'}}><button type="button" className="home-action-btn" style={{background:'transparent',color:'var(--textMid)',borderColor:'var(--border)',maxWidth:280,margin:'0 auto'}} onClick={()=>setPg('prices')}>📄 Price list</button></div>
@@ -1863,9 +1910,10 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
                 </div>
               </div>
             )}
-            {grps.review.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Pending review <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.review.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.review.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.drafts.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--info)',marginBottom:10}}>📝 Drafts — not yet submitted <span style={{background:'var(--infoBg)',color:'var(--info)',padding:'1px 7px',borderRadius:99}}>{grps.drafts.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.drafts.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.review.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Submitted — pending review <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.review.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.review.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
             {grps.active.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Active contracts</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.active.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
-            {grps.imei.length===0&&grps.changes.length===0&&grps.review.length===0&&grps.active.length===0&&<Empty ico="📋" title="No active applications" sub="Start a new application from Home"/>}
+            {grps.imei.length===0&&grps.changes.length===0&&grps.drafts.length===0&&grps.review.length===0&&grps.active.length===0&&<Empty ico="📋" title="No active applications" sub="Start a new application from Home"/>}
           </div>
         )}
         {pg==='completed'&&(
@@ -1875,7 +1923,13 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
             {grps.closed.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.closed.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title="No closed applications" sub="All your applications are active"/>}
           </div>
         )}
-        {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devicesWithPricing} preSelDevId={preselDev?.id||null} preSelTerm={preselDev?.term||12} onBack={()=>{setPg('dash');setPreselDev(null);}} onSubmit={(f,dev)=>{
+        {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devicesWithPricing} preSelDevId={preselDev?.id||null} preSelTerm={preselDev?.term||12} onBack={()=>{setPg('dash');setPreselDev(null);}} onSaveDraft={(f,dev)=>{
+          const term=f.term||12;
+          const tp=dev?calcTermPricing(dev,term):{dep:0,monthly:0,total:0,disc:0};
+          const deal=dev?{dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc}:null;
+          const draftContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',status:ST.DRAFT,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:0,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,idType:f.idType},deal:deal||{},dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Saved as draft'}]};
+          onUpdate(null,null,draftContract);addToast('info','Draft saved','You can continue and submit later');setPg('dash');setPreselDev(null);
+        }} onSubmit={(f,dev)=>{
           const term=f.term||12;
           const tp=calcTermPricing(dev,term);
           const deal={dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc};
@@ -2284,7 +2338,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:10}}>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                  <FF label="Brand" req><input value={newDev.brand} onChange={e=>setNewDev(p=>({...p,brand:e.target.value}))} placeholder="e.g. Tecno"/></FF>
+                  <FF label="Brand" req><select value={newDev.brand} onChange={e=>setNewDev(p=>({...p,brand:e.target.value}))}><option value="">Select brand…</option>{DEVICE_BRANDS.map(b=><option key={b} value={b}>{b}</option>)}</select></FF>
                   <FF label="Model name" req><input value={newDev.model} onChange={e=>setNewDev(p=>({...p,model:e.target.value}))} placeholder="e.g. Spark 40 Pro+"/></FF>
                   <FF label="RAM"><input value={newDev.ram} onChange={e=>setNewDev(p=>({...p,ram:e.target.value}))} placeholder="e.g. 4GB"/></FF>
                   <FF label="Storage (ROM)"><input value={newDev.rom} onChange={e=>setNewDev(p=>({...p,rom:e.target.value}))} placeholder="e.g. 128GB"/></FF>
@@ -2521,7 +2575,7 @@ function contractToLegacyApp(c){
   return {
     ...app,
     c:{name:ap.fullName||ap.name||'',nid:ap.nationalIdNumber||'',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kin:{name:ap.guarantorName||'',phone:ap.guarantorPhone||'',rel:'Guarantor'},idType:ap.idType||'nid'},
-    dev:{id:deal.dealId,brand:deal.manufacturer,model:deal.deviceModel,sku:deal.dealId,specs:[deal.RAM,deal.ROM].filter(Boolean).join(' '),dep:deal.upfrontPayment||0,weekly:deal.recurrentPayment||0,wks:deal.termOption||12,retail:deal.cogs,totalCost:deal.totalCost},
+    dev:{id:deal.dealId,brand:deal.manufacturer,model:deal.deviceModel,sku:deal.dealId,specs:[deal.RAM,deal.ROM].filter(Boolean).join(' '),ram:deal.RAM||'',rom:deal.ROM||'',dep:deal.upfrontPayment||0,weekly:deal.recurrentPayment||0,wks:deal.termOption||12,retail:deal.cogs,totalCost:deal.totalCost},
     rep:app.repName||'',repId:app.repId,
     notes:app.mboRejectionReason||app.notes||'',reviewer:app.mboReviewedBy||null,upya:app.upya||null,imei:app.imei,ptId:app.ptId,lockedAt:app.lockedAt,
     customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto,incomeProof:ap.incomeProof,
