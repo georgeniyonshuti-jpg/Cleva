@@ -193,7 +193,7 @@ const {useState,useCallback,useContext,createContext,useEffect}=React;
 // ── APP CONFIG ────────────────────────────────────────────────
 const APP_NAME='Cleva';
 const EMAIL_DOMAIN='leout.rw';
-const LS={MERCHANTS:'cleva_merchants_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1',COMPANY:'cleva_company_v1'};
+const LS={MERCHANTS:'cleva_merchants_v1',SHOPS:'cleva_shops_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1',COMPANY:'cleva_company_v1'};
 const defaultCompanyInfo={name:'Cleva Financial Services Ltd',tagline:'Smart PAYGO Solutions — Empowering Access',address:'KG 15 Avenue, Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevapaygo.rw',website:'www.clevapaygo.rw',regNo:'RDB/2024/CL001',logo:null,signatoryName:'',signatoryTitle:'Authorised Signatory',signatorySig:null,imeiProxyUrl:''};
 const readLS=(k,fallback)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):fallback;}catch{return fallback;}};
 const writeLS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
@@ -271,10 +271,14 @@ const isValidImei=(imei)=>{
 // ── SEED (only if key missing) ─────────────────────────────────
 const EMAIL_DOMAIN_SEED=EMAIL_DOMAIN;
 const MERCHANTS_SEED=[{merchantCode:'M01',merchantName:'Kigali Central Store',country:'RW'},{merchantCode:'M02',merchantName:'Gasabo Branch',country:'RW'}];
+const SHOPS_SEED=[
+  {id:'SH-001',name:'Kigali Central Store',location:'KG 15 Ave, Kigali',createdAt:new Date(Date.now()-86400000*30).toISOString()},
+  {id:'SH-002',name:'Gasabo Branch',location:'Gasabo District, Kigali',createdAt:new Date(Date.now()-86400000*20).toISOString()},
+];
 const USERS_SEED=[
-  {id:'SR01',name:'Alice Ndayisaba',email:`alice@${EMAIL_DOMAIN_SEED}`,password:'alice123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG01',merchantCode:'M01',seniority:2,mustChangePassword:false},
-  {id:'SR02',name:'Bob Nzeyimana',email:`bob@${EMAIL_DOMAIN_SEED}`,password:'bob123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG02',merchantCode:'M01',seniority:1,mustChangePassword:false},
-  {id:'SR03',name:'Claire Uwera',email:`claire@${EMAIL_DOMAIN_SEED}`,password:'claire123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG03',merchantCode:'M02',seniority:1,mustChangePassword:false},
+  {id:'SR01',name:'Alice Ndayisaba',email:`alice@${EMAIL_DOMAIN_SEED}`,password:'alice123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG01',shopId:'SH-001',merchantCode:'M01',seniority:2,mustChangePassword:false},
+  {id:'SR02',name:'Bob Nzeyimana',email:`bob@${EMAIL_DOMAIN_SEED}`,password:'bob123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG02',shopId:'SH-001',merchantCode:'M01',seniority:1,mustChangePassword:false},
+  {id:'SR03',name:'Claire Uwera',email:`claire@${EMAIL_DOMAIN_SEED}`,password:'claire123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG03',shopId:'SH-002',merchantCode:'M02',seniority:1,mustChangePassword:false},
   {id:'UW01',name:'Jane Murekatete',email:`jane@${EMAIL_DOMAIN_SEED}`,password:'jane123',role:'underwriter',roleLabel:'Underwriter',merchantCodes:['M01','M02'],mustChangePassword:false},
   {id:'SU01',name:'Support User',email:`support@${EMAIL_DOMAIN_SEED}`,password:'support123',role:'support',roleLabel:'Support User',mustChangePassword:false},
   {id:'OP01',name:'Ops Superuser',email:`ops@${EMAIL_DOMAIN_SEED}`,password:'ops123',role:'ops',roleLabel:'Ops Superuser',superuser:true,mustChangePassword:false},
@@ -287,6 +291,7 @@ const DEVICES_SEED=[
 const PRICING_CONFIG_SEED=defaultPricingConfig;
 function seedIfMissing(){
   if(!readLS(LS.MERCHANTS))writeLS(LS.MERCHANTS,MERCHANTS_SEED);
+  if(!readLS(LS.SHOPS))writeLS(LS.SHOPS,SHOPS_SEED);
   if(!readLS(LS.USERS))writeLS(LS.USERS,USERS_SEED);
   if(!readLS(LS.PRICING_CONFIG))writeLS(LS.PRICING_CONFIG,PRICING_CONFIG_SEED);
   if(!readLS(LS.DEVICES))writeLS(LS.DEVICES,DEVICES_SEED);
@@ -2255,14 +2260,14 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
           const term=f.term||12;
           const tp=dev?calcTermPricing(dev,term):{dep:0,monthly:0,total:0,disc:0};
           const deal=dev?{dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc}:null;
-          const draftContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',status:ST.DRAFT,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:0,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,idType:f.idType},deal:deal||{},dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Saved as draft'}]};
+          const draftContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',shopId:user.shopId||null,status:ST.DRAFT,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:0,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,idType:f.idType},deal:deal||{},dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Saved as draft'}]};
           onUpdate(null,null,draftContract);addToast('info',t('toast_draft_saved'),t('toast_draft_msg'));setPg('dash');setPreselDev(null);
         }} onSubmit={(f,dev)=>{
           const term=f.term||12;
           const tp=calcTermPricing(dev,term);
           const deal={dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc};
           const freeCashflow=Math.max(0,(+f.income||0)-0);
-          const newContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',status:ST.PENDING_APPROVAL,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:freeCashflow,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,digitalSignatureConfirmed:!!f.sig,idType:f.idType},deal,dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for approval'}]};
+          const newContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',shopId:user.shopId||null,status:ST.PENDING_APPROVAL,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:freeCashflow,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,digitalSignatureConfirmed:!!f.sig,idType:f.idType},deal,dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for approval'}]};
           onUpdate(null,null,newContract);addToast('ok',t('toast_submitted'),t('toast_submitted_msg'));setPg('dash');setPreselDev(null);
         }}/></div>}
         {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devicesWithPricing} onStartApp={(did,term)=>{setPreselDev({id:did,term});setPg('new');}}/></div>}
@@ -2403,13 +2408,18 @@ const SupportView=({apps,onUpdate,addToast})=>{
 };
 
 // ── OPS VIEW ──────────────────────────────────────────────────
-const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setContracts,pricingConfig,setPricingConfig})=>{
+const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,setShops,setContracts,pricingConfig,setPricingConfig})=>{
   const [pg,setPg]=useState('overview');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [fst,setFst]=useState('');
+  const [fShop,setFShop]=useState('');
+  const [fRep,setFRep]=useState('');
+  const [fDateFrom,setFDateFrom]=useState('');
+  const [fDateTo,setFDateTo]=useState('');
   const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const {user}=useContext(Ctx);
+  const shopName=(id)=>(shops||[]).find(s=>s.id===id)?.name||id||'—';
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
   if(sel){
@@ -2417,7 +2427,15 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
     if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)} devices={user.superuser?devices:undefined}/></div></div></div>;
   }
 
-  const filtered=apps.filter(a=>{const ms=!q||a.c.name.toLowerCase().includes(q.toLowerCase())||a.id.toLowerCase().includes(q.toLowerCase());const mst=!fst||a.status===fst;return ms&&mst;});
+  const filtered=apps.filter(a=>{
+    if(q&&!a.c.name.toLowerCase().includes(q.toLowerCase())&&!a.id.toLowerCase().includes(q.toLowerCase())&&!(a.rep||'').toLowerCase().includes(q.toLowerCase()))return false;
+    if(fst&&a.status!==fst)return false;
+    if(fShop&&a.shopId!==fShop)return false;
+    if(fRep&&a.repId!==fRep)return false;
+    if(fDateFrom){const d=new Date(a.createdAt);const from=new Date(fDateFrom);from.setHours(0,0,0,0);if(d<from)return false;}
+    if(fDateTo){const d=new Date(a.createdAt);const to=new Date(fDateTo);to.setHours(23,59,59,999);if(d>to)return false;}
+    return true;
+  });
 
   const roleLabelFor=r=>({rep:'Sales Representative',underwriter:'Underwriter',ops:'Ops & Support'}[r]||r);
   const mkUserId=r=>{
@@ -2431,6 +2449,11 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
     const next=(nums.length?Math.max(...nums):0)+1;
     return 'D'+String(next).padStart(2,'0');
   };
+  const mkShopId=()=>{
+    const nums=(shops||[]).map(s=>parseInt(String(s.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));
+    const next=(nums.length?Math.max(...nums):0)+1;
+    return 'SH-'+String(next).padStart(3,'0');
+  };
 
   const Admin=()=>{
     const [tab,setTab]=useState('devices');
@@ -2438,8 +2461,10 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
     const [uu,setUu]=useState('');
     const [showAddDevice,setShowAddDevice]=useState(false);
     const [showAddUser,setShowAddUser]=useState(false);
+    const [showAddShop,setShowAddShop]=useState(false);
     const [newDev,setNewDev]=useState({brand:'',model:'',ram:'',rom:'',cash:''});
-    const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',superuser:false});
+    const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',shopId:'',superuser:false});
+    const [newShop,setNewShop]=useState({name:'',location:''});
     const [cfgDraft,setCfgDraft]=useState({markupRate:Math.round(((pricingConfig||defaultPricingConfig).markupRate||0.60)*100),depositPct:Math.round(((pricingConfig||defaultPricingConfig).depositPct||0.20)*100)});
     // Company info — hooks must be at component top level
     const {companyInfo,setCompanyInfo}=useContext(Ctx);
@@ -2574,9 +2599,9 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
       const customPwd=String(newUser.password||'').trim();
       const password=customPwd||randPwd();
       const mustChangePassword=!customPwd;
-      const u={id,name,email,password,role:newUser.role,roleLabel:roleLabelFor(newUser.role),superuser:!!newUser.superuser,mustChangePassword};
+      const u={id,name,email,password,role:newUser.role,roleLabel:roleLabelFor(newUser.role),superuser:!!newUser.superuser,mustChangePassword,...(newUser.role==='rep'&&newUser.shopId?{shopId:newUser.shopId}:{})};
       setUsers([...(users||[]),u]);
-      setNewUser({name:'',email:'',password:'',role:'rep',superuser:false});
+      setNewUser({name:'',email:'',password:'',role:'rep',shopId:'',superuser:false});
       setShowAddUser(false);
       addToast('ok','User added',customPwd?'User can sign in with the password you set.':`Login: ${email} · temp password ${password}`);
     };
@@ -2591,6 +2616,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
           <Btn v={tab==='pricing'?'primary':'def'} onClick={()=>setTab('pricing')}>Pricing rules</Btn>
           <Btn v={tab==='devices'?'primary':'def'} onClick={()=>setTab('devices')}>Devices</Btn>
           <Btn v={tab==='users'?'primary':'def'} onClick={()=>setTab('users')}>Users</Btn>
+          {user.superuser&&<Btn v={tab==='shops'?'primary':'def'} onClick={()=>setTab('shops')}>Shops</Btn>}
           {user.superuser&&<Btn v={tab==='company'?'primary':'def'} onClick={()=>setTab('company')}>Company info</Btn>}
         </div>
 
@@ -2710,6 +2736,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
                         <Btn v="err" sz="sm" onClick={()=>rmUser(u.id)}>Remove</Btn>
                       </div>
                     </div>
+                    {u.role==='rep'&&u.shopId&&<div style={{fontSize:11,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:99,padding:'2px 10px',display:'inline-block',marginBottom:8}}>🏪 {shopName(u.shopId)}</div>}
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                       <FF label="Name"><input value={u.name} onChange={e=>upUser(u.id,{name:e.target.value})}/></FF>
                       <FF label="Email (any domain)"><input type="email" value={u.email||''} onChange={e=>upUser(u.id,{email:normEmail(e.target.value.trim())})} placeholder="user@domain.com"/></FF>
@@ -2720,6 +2747,14 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
                           <option value="ops">Ops & Support</option>
                         </select>
                       </FF>
+                      {u.role==='rep'&&(
+                        <FF label="Shop">
+                          <select value={u.shopId||''} onChange={e=>upUser(u.id,{shopId:e.target.value})}>
+                            <option value="">No shop assigned</option>
+                            {(shops||[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                        </FF>
+                      )}
                       <FF label="Superuser (ops only)">
                         <select value={u.superuser?'yes':'no'} onChange={e=>upUser(u.id,{superuser:e.target.value==='yes'})} disabled={u.role!=='ops'}>
                           <option value="no">No</option>
@@ -2738,7 +2773,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
             <Card sx={{padding:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
                 <div style={{fontWeight:800}}>Add user</div>
-                <Btn v="def" sz="sm" onClick={()=>{setShowAddUser(false);setNewUser({name:'',email:'',password:'',role:'rep',superuser:false});}}>Cancel</Btn>
+                <Btn v="def" sz="sm" onClick={()=>{setShowAddUser(false);setNewUser({name:'',email:'',password:'',role:'rep',shopId:'',superuser:false});}}>Cancel</Btn>
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:10}}>
                 <FF label="Full name" req><input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="e.g. Grace Mukamana"/></FF>
@@ -2747,12 +2782,20 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
                   <input type="password" value={newUser.password} onChange={e=>setNewUser(p=>({...p,password:e.target.value}))} placeholder="Leave blank to auto-generate temp password"/>
                 </FF>
                 <FF label="Role">
-                  <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value,superuser:false}))}>
+                  <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value,superuser:false,shopId:''}))}>
                     <option value="rep">Sales Representative</option>
                     <option value="underwriter">Underwriter</option>
                     <option value="ops">Ops & Support</option>
                   </select>
                 </FF>
+                {newUser.role==='rep'&&(
+                  <FF label="Shop (required for sales reps)" req>
+                    <select value={newUser.shopId} onChange={e=>setNewUser(p=>({...p,shopId:e.target.value}))}>
+                      <option value="">Select shop…</option>
+                      {(shops||[]).map(s=><option key={s.id} value={s.id}>{s.name}{s.location?` — ${s.location}`:''}</option>)}
+                    </select>
+                  </FF>
+                )}
                 <FF label="Make superuser (ops only)">
                   <select value={newUser.superuser?'yes':'no'} onChange={e=>setNewUser(p=>({...p,superuser:e.target.value==='yes'}))} disabled={newUser.role!=='ops'}>
                     <option value="no">No</option>
@@ -2765,6 +2808,68 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
                 </div>
               </div>
             </Card>
+            )}
+          </div>
+        )}
+        {tab==='shops'&&user.superuser&&(
+          <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:showAddShop?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
+            <Card sx={{padding:16}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+                <div style={{fontWeight:800}}>Shops <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({(shops||[]).length})</span></div>
+                <Btn v="primary" sz="sm" onClick={()=>setShowAddShop(true)} icon="＋">Add shop</Btn>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {(shops||[]).map(s=>{
+                  const repCount=(users||[]).filter(u=>u.shopId===s.id).length;
+                  const appCount=(apps||[]).filter(a=>a.shopId===s.id).length;
+                  return(
+                    <Card key={s.id} sx={{padding:14,boxShadow:'none'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',marginBottom:10}}>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontWeight:800}}>{s.name} <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({s.id})</span></div>
+                          <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{s.location||'—'}</div>
+                          <div style={{display:'flex',gap:10,marginTop:6,fontSize:11,color:'var(--textMid)'}}>
+                            <span>👤 {repCount} rep{repCount!==1?'s':''}</span>
+                            <span>📋 {appCount} application{appCount!==1?'s':''}</span>
+                          </div>
+                        </div>
+                        <Btn v="err" sz="sm" onClick={()=>{
+                          if(repCount>0){addToast('err','Cannot remove shop','Remove or reassign all reps first');return;}
+                          setShops((shops||[]).filter(sh=>sh.id!==s.id));
+                          addToast('ok','Shop removed','');
+                        }}>Remove</Btn>
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                        <FF label="Shop name"><input value={s.name} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,name:e.target.value}:sh))}/></FF>
+                        <FF label="Location"><input value={s.location||''} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,location:e.target.value}:sh))} placeholder="e.g. KG 15 Ave, Kigali"/></FF>
+                      </div>
+                    </Card>
+                  );
+                })}
+                {(shops||[]).length===0&&<Empty ico="🏪" title="No shops yet"/>}
+              </div>
+            </Card>
+            {showAddShop&&(
+              <Card sx={{padding:16}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                  <div style={{fontWeight:800}}>Add shop</div>
+                  <Btn v="def" sz="sm" onClick={()=>{setShowAddShop(false);setNewShop({name:'',location:''});}}>Cancel</Btn>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                  <FF label="Shop name" req><input value={newShop.name} onChange={e=>setNewShop(p=>({...p,name:e.target.value}))} placeholder="e.g. Remera Branch"/></FF>
+                  <FF label="Location"><input value={newShop.location} onChange={e=>setNewShop(p=>({...p,location:e.target.value}))} placeholder="e.g. Remera, Kigali"/></FF>
+                  <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 13px',fontSize:11,color:'var(--textMid)'}}>
+                    Shop ID will be auto-generated (e.g. <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{mkShopId()}</span>)
+                  </div>
+                  <Btn v="primary" full icon="＋" onClick={()=>{
+                    if(!newShop.name.trim()){addToast('err','Shop name required','');return;}
+                    const id=mkShopId();
+                    setShops([...(shops||[]),{id,name:newShop.name.trim(),location:newShop.location.trim(),createdAt:new Date().toISOString()}]);
+                    setNewShop({name:'',location:''});setShowAddShop(false);
+                    addToast('ok','Shop added',`${newShop.name.trim()} (${id})`);
+                  }}>Create shop</Btn>
+                </div>
+              </Card>
             )}
           </div>
         )}
@@ -2879,13 +2984,50 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
         )}
         {pg==='all'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:16}}>All applications</h1>
-            <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap'}}>
-              <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{flex:1,minWidth:0,maxWidth:280}}/>
-              <select value={fst} onChange={ev=>setFst(ev.target.value)} style={{width:180,minWidth:0}}><option value="">All statuses</option>{Object.entries(SM).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,flexWrap:'wrap',gap:10}}>
+              <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',margin:0}}>All applications</h1>
+              <Btn v="def" sz="sm" icon="⬇" onClick={()=>{
+                const rows=[['ID','Date','Status','Customer','Phone','ID No','Rep','Shop','Device','Total (RWF)','Deposit (RWF)','Monthly (RWF)','IMEI']];
+                filtered.forEach(a=>{
+                  rows.push([a.id,a.createdAt?new Date(a.createdAt).toLocaleDateString('en-GB'):'',SM[a.status]?.label||a.status,a.c.name||'',a.c.phone||'',a.c.nid||'',a.rep||'',shopName(a.shopId),(a.dev?.brand?`${a.dev.brand} ${a.dev.model}`:''),a.dev?.totalCost||'',a.dev?.dep||'',a.dev?.weekly||'',a.imei||'']);
+                });
+                const csv=rows.map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+                const el=document.createElement('a');el.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);el.download=`applications_${new Date().toISOString().slice(0,10)}.csv`;el.click();
+              }}>Export CSV</Btn>
             </div>
-            <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{filtered.length} result{filtered.length!==1?'s':''}</div>
-            <div style={{display:'flex',flexDirection:'column',gap:8}}>{filtered.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
+            <Card sx={{padding:'14px 16px',marginBottom:14}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
+                <FF label="Search (name / ID / rep)"><input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search…"/></FF>
+                <FF label="Status">
+                  <select value={fst} onChange={ev=>setFst(ev.target.value)}>
+                    <option value="">All statuses</option>
+                    {Object.entries(SM).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+                  </select>
+                </FF>
+                <FF label="Shop">
+                  <select value={fShop} onChange={ev=>setFShop(ev.target.value)}>
+                    <option value="">All shops</option>
+                    {(shops||[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </FF>
+                <FF label="Sales rep">
+                  <select value={fRep} onChange={ev=>setFRep(ev.target.value)}>
+                    <option value="">All reps</option>
+                    {(users||[]).filter(u=>u.role==='rep').map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </FF>
+                <FF label="Date from"><input type="date" value={fDateFrom} onChange={ev=>setFDateFrom(ev.target.value)}/></FF>
+                <FF label="Date to"><input type="date" value={fDateTo} onChange={ev=>setFDateTo(ev.target.value)}/></FF>
+              </div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:10}}>
+                <span style={{fontSize:11,color:'var(--textLight)'}}>{filtered.length} result{filtered.length!==1?'s':''}</span>
+                {(q||fst||fShop||fRep||fDateFrom||fDateTo)&&<Btn v="ghost" sz="sm" onClick={()=>{setQ('');setFst('');setFShop('');setFRep('');setFDateFrom('');setFDateTo('');}}>Clear filters</Btn>}
+              </div>
+            </Card>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>{filtered.map(a=>{
+              const sn=shopName(a.shopId);
+              return <div key={a.id}><ACard app={a} onClick={()=>setSel(a.id)}/>{(a.shopId||a.rep)&&<div style={{display:'flex',gap:8,paddingLeft:8,marginTop:-4,marginBottom:4,flexWrap:'wrap'}}>{a.shopId&&<span style={{fontSize:10,color:'var(--brand2)',background:'var(--brandPale)',padding:'1px 7px',borderRadius:99,border:'1px solid var(--brandPale2)'}}>🏪 {sn}</span>}{a.rep&&<span style={{fontSize:10,color:'var(--textMid)',background:'var(--bg)',padding:'1px 7px',borderRadius:99,border:'1px solid var(--border)'}}>👤 {a.rep}</span>}</div>}</div>;
+            })}</div>
             {filtered.length===0&&<Empty ico="🔍" title="No results found"/>}
           </div>
         )}
@@ -2904,7 +3046,7 @@ function contractToLegacyApp(c){
     ...app,
     c:{name:ap.fullName||ap.name||'',nid:ap.nationalIdNumber||'',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kin:{name:ap.guarantorName||'',phone:ap.guarantorPhone||'',rel:'Guarantor'},idType:ap.idType||'nid'},
     dev:{id:deal.dealId,brand:deal.manufacturer,model:deal.deviceModel,sku:deal.dealId,specs:[deal.RAM,deal.ROM].filter(Boolean).join(' '),ram:deal.RAM||'',rom:deal.ROM||'',dep:deal.upfrontPayment||0,weekly:deal.recurrentPayment||0,wks:deal.termOption||12,retail:deal.cogs,totalCost:deal.totalCost},
-    rep:app.repName||'',repId:app.repId,
+    rep:app.repName||'',repId:app.repId,shopId:app.shopId||null,
     notes:app.mboRejectionReason||app.notes||'',reviewer:app.mboReviewedBy||null,upya:app.upya||null,imei:app.imei,ptId:app.ptId,lockedAt:app.lockedAt,
     customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto,incomeProof:ap.incomeProof,
     requestedChangeFields:(ap.fieldCorrectionRequests||[]).filter(r=>!r.resolvedAt).map(r=>r.fieldName),
@@ -2919,11 +3061,13 @@ const App=()=>{
   useEffect(()=>{seedIfMissing();const list=readLS(LS.CONTRACTS,[]);const nums=list.map(c=>parseInt(String(c.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));if(nums.length)contractSeq=Math.max(contractSeq,...nums);},[]);
 
   const [users,setUsers]=useState(()=>readLS(LS.USERS,USERS_SEED));
+  const [shops,setShops]=useState(()=>readLS(LS.SHOPS,SHOPS_SEED));
   const [devices,setDevices]=useState(()=>readLS(LS.DEVICES,DEVICES_SEED));
   const [contracts,setContracts]=useState(()=>readLS(LS.CONTRACTS,[]));
   const [pricingConfig,setPricingConfig]=useState(()=>readLS(LS.PRICING_CONFIG,defaultPricingConfig));
   const [companyInfo,setCompanyInfo]=useState(()=>readLS(LS.COMPANY,defaultCompanyInfo)||defaultCompanyInfo);
   useEffect(()=>{writeLS(LS.COMPANY,companyInfo);},[companyInfo]);
+  useEffect(()=>{writeLS(LS.SHOPS,shops);},[shops]);
   const apps=React.useMemo(()=>(contracts||[]).map(contractToLegacyApp),[contracts]);
 
   const addToast=useCallback((c,title,msg='')=>{
@@ -2952,7 +3096,7 @@ const App=()=>{
 
   const [lang,setLang]=useState(()=>readLS('cleva_lang_v1','en'));
   const toggleLang=useCallback(()=>setLang(l=>{const nl=l==='en'?'rw':'en';writeLS('cleva_lang_v1',nl);return nl;}),[]);
-  const ctx={user,logout:()=>setUser(null),companyInfo,setCompanyInfo,lang,toggleLang};
+  const ctx={user,logout:()=>setUser(null),companyInfo,setCompanyInfo,lang,toggleLang,shops,setShops};
 
   if(!user) return(
     <Ctx.Provider value={ctx}>
@@ -2967,7 +3111,7 @@ const App=()=>{
         {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} pricingConfig={pricingConfig} companyInfo={companyInfo}/>}
         {user.role==='underwriter'&&<UnderwriterView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
         {user.role==='support'&&<SupportView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
-        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} setContracts={setContracts} pricingConfig={pricingConfig} setPricingConfig={setPricingConfig}/>}
+        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} shops={shops} setShops={setShops} setContracts={setContracts} pricingConfig={pricingConfig} setPricingConfig={setPricingConfig}/>}
       </div>
       <Toast toasts={toasts}/>
     </Ctx.Provider>
