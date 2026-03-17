@@ -118,7 +118,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 .top-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;padding-left:calc(16px + env(safe-area-inset-left));background:var(--surface);border-bottom:1.5px solid var(--border);flex-shrink:0;position:sticky;top:0;z-index:50;min-height:52px;box-sizing:border-box}
 .top-bar .hamburger{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r2);cursor:pointer;font-size:18px;color:var(--text);-webkit-tap-highlight-color:transparent;flex-shrink:0}
 @media (min-width:769px){.top-bar .hamburger{display:none!important}}
-@media (max-width:768px){.top-bar{min-height:56px}.top-bar .hamburger{width:44px;height:44px}}
+@media (max-width:768px){.top-bar{min-height:56px}.top-bar .hamburger{width:44px;height:44px}.top-bar .lang-toggle-text{display:none}.top-bar .lang-toggle-btn{padding:6px 10px}}
 
 /* Page content padding on mobile */
 @media (max-width:768px){
@@ -878,14 +878,16 @@ const LogoBrand=({iconSize=32,textSize=14,layout='row',bold=false,style={}})=>{
 
 // ── TOP BAR (always-visible header for Sales & Underwriter) ───
 const TopBar=({onMenu,homeBtn,title})=>{
-  const {logout,user,toggleLang}=useContext(Ctx);
+  const {logout,user,toggleLang,lang}=useContext(Ctx);
   const t=useT();
+  const langFlag=lang==='en'?'🇷🇼':'🇬🇧';
+  const langLabel=lang==='en'?' Kinyarwanda':' English';
   return(
     <div className="top-bar">
       <button type="button" className="hamburger" onClick={onMenu} aria-label="Open menu">☰</button>
       {homeBtn}
       <span style={{flex:1,fontWeight:600,fontSize:15,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'var(--text)'}}>{title}</span>
-      {user?.role==='rep'&&<button type="button" onClick={toggleLang} style={{padding:'5px 11px',fontSize:11,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:99,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>{t('lang_toggle')}</button>}
+      {user?.role==='rep'&&<button type="button" className="lang-toggle-btn" onClick={toggleLang} style={{padding:'5px 11px',fontSize:11,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:99,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}} title={t('lang_toggle')} aria-label={t('lang_toggle')}><span>{langFlag}</span><span className="lang-toggle-text">{langLabel}</span></button>}
       <button type="button" onClick={logout} style={{padding:'7px 13px',fontSize:12,fontWeight:600,color:'var(--textMid)',background:'var(--bg)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0,lineHeight:1.2}}>{t('sign_out')}</button>
     </div>
   );
