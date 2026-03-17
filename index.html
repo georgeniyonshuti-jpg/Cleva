@@ -192,7 +192,7 @@ const {useState,useCallback,useContext,createContext,useEffect}=React;
 const APP_NAME='Cleva';
 const EMAIL_DOMAIN='leout.rw';
 const LS={MERCHANTS:'cleva_merchants_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1',COMPANY:'cleva_company_v1'};
-const defaultCompanyInfo={name:'Cleva Financial Services Ltd',tagline:'Smart PAYGO Solutions — Empowering Access',address:'KG 15 Avenue, Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevapaygo.rw',website:'www.clevapaygo.rw',regNo:'RDB/2024/CL001',logo:null,signatoryName:'',signatoryTitle:'Authorised Signatory',signatorySig:null};
+const defaultCompanyInfo={name:'Cleva Financial Services Ltd',tagline:'Smart PAYGO Solutions — Empowering Access',address:'KG 15 Avenue, Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevapaygo.rw',website:'www.clevapaygo.rw',regNo:'RDB/2024/CL001',logo:null,signatoryName:'',signatoryTitle:'Authorised Signatory',signatorySig:null,imeiProxyUrl:''};
 const readLS=(k,fallback)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):fallback;}catch{return fallback;}};
 const writeLS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 const normEmail=s=>(s||'').trim().toLowerCase();
@@ -1120,55 +1120,158 @@ const NewApp=({onSubmit,onBack,devices,preSelDevId=null,preSelTerm=12})=>{
 };
 
 // ── IMEI FLOW ─────────────────────────────────────────────────
-const CARLCARE_URL='https://www.carlcare.com/rw/warranty-check/';
+// Phases: entry | autocheck | valid | mismatch | notfound | checking (manual fallback) | verified
+const CARLCARE_MANUAL_URL='https://www.carlcare.com/rw/warranty-check/';
+
+// Normalise a string for loose comparison
+const ccNorm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+// Extract numeric value (e.g. "4GB" → 4, "128" → 128)
+const ccNum=s=>parseInt(String(s||'').replace(/[^0-9]/g,''))||0;
+
+// Parse the Carlcare imei-policy JSON response into a flat object.
+// We try many possible field names because the API is undocumented.
+const parseCarlcareResp=(raw)=>{
+  const d=raw?.data||raw?.result||raw;
+  if(!d||typeof d!=='object')return null;
+  // If the API returned an error code
+  if(raw?.code!==undefined&&raw.code!==0&&raw.code!==200&&raw.code!=='200')return null;
+
+  const brand=String(d.brandName||d.brand||d.manufacturer||'').trim();
+  const model=String(d.productName||d.productModel||d.model||d.deviceModel||'').trim();
+  const ram=String(d.ram||d.RAM||d.memory||d.memorySize||'').trim();
+  const rom=String(d.rom||d.ROM||d.storage||d.internalStorage||d.storageSize||'').trim();
+
+  // Warranty dates — try multiple field names and date formats
+  const endRaw=d.warrantyEndDate||d.warrantyExpireDate||d.expireDate||d.endDate||
+               d.phoneWarranty?.end||d.warranty?.endDate||'';
+  const startRaw=d.warrantyStartDate||d.startDate||d.phoneWarranty?.start||d.warranty?.startDate||'';
+
+  // Parse dates — Carlcare sometimes uses "DD-MM-YYYY" format
+  const parseDate=s=>{
+    if(!s)return null;
+    // try ISO first
+    const iso=new Date(s);
+    if(!isNaN(iso))return iso;
+    // try DD-MM-YYYY
+    const m=String(s).match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+    if(m)return new Date(+m[3],+m[2]-1,+m[1]);
+    return null;
+  };
+  const expiry=parseDate(endRaw);
+  const warrantyValid=expiry?expiry>new Date():false;
+  const warrantyClass=d.warrantyClass||d.warrantyType||d.warranty?.class||'';
+
+  return{brand,model,ram,rom,warrantyValid,expiry:expiry?expiry.toLocaleDateString('en-GB'):endRaw||'',start:startRaw,warrantyClass,raw:d};
+};
+
+// Compare expected device specs (from application) vs. Carlcare result
+const compareSpecs=(dev,cc)=>{
+  const expBrand=ccNorm(dev.brand);
+  const expModel=ccNorm(dev.model);
+  const expRam=ccNum(dev.ram||dev.RAM);
+  const expRom=ccNum(dev.rom||dev.ROM);
+  const ccBrand=ccNorm(cc.brand);
+  const ccModel=ccNorm(cc.model);
+  const ccRam=ccNum(cc.ram);
+  const ccRom=ccNum(cc.rom);
+  // Brand: partial match (e.g. "tecno" in "tecno mobile")
+  const brandOk=!cc.brand||ccBrand.includes(expBrand)||expBrand.includes(ccBrand);
+  // Model: partial match
+  const modelOk=!cc.model||ccModel.includes(expModel)||expModel.includes(ccModel);
+  // RAM/ROM: numeric, 0 means not reported by Carlcare → skip that check
+  const ramOk=!ccRam||expRam===ccRam;
+  const romOk=!ccRom||expRom===ccRom;
+  return{brandOk,modelOk,ramOk,romOk,allOk:brandOk&&modelOk&&ramOk&&romOk};
+};
+
 const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
-  const {user}=useContext(Ctx);
+  const {user,companyInfo}=useContext(Ctx);
+  const proxyUrl=(companyInfo?.imeiProxyUrl||'').trim();
   const [imei,setImei]=useState(app.imei||'');
-  // phases: entry | checking | valid | mismatch | notfound | verified
-  const [phase,setPhase]=useState(app.status===ST.LOCK_PENDING||app.status===ST.ACTIVE?'verified':app.imei&&app.status===ST.APPROVED?'checking':'entry');
+  const [phase,setPhase]=useState(app.status===ST.LOCK_PENDING||app.status===ST.ACTIVE?'verified':app.imei&&app.status===ST.APPROVED?'autocheck_resume':'entry');
   const [ld,setLd]=useState(null);
   const [copied,setCopied]=useState(false);
   const [mismatchNote,setMismatchNote]=useState('');
   const [actualSpecs,setActualSpecs]=useState({brand:'',model:'',ram:'',rom:''});
+  const [ccResult,setCcResult]=useState(null); // parsed Carlcare result
+  const [autoError,setAutoError]=useState('');  // error message if auto-check fails
   const d=app.dev;
 
   const copyImei=()=>{navigator.clipboard?.writeText(imei).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});};
 
-  const openCarlcare=()=>{window.open(CARLCARE_URL,'_blank','noopener');};
+  // ── Auto-check via proxy ──────────────────────────────────────
+  const runAutoCheck=async(imeiVal)=>{
+    setLd('check');setAutoError('');
+    try{
+      const resp=await fetch(`${proxyUrl}?imei=${imeiVal}`);
+      if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+      const raw=await resp.json();
+      const result=parseCarlcareResp(raw);
+      setCcResult(result);
+
+      if(!result){
+        // API returned but no usable data → not found
+        setPhase('notfound');
+      }else if(!result.warrantyValid){
+        setPhase('notfound');
+      }else{
+        const match=compareSpecs(d,result);
+        if(match.allOk){
+          setPhase('valid');
+        }else{
+          // Pre-fill actual specs from Carlcare
+          setActualSpecs({brand:result.brand,model:result.model,ram:result.ram,rom:result.rom});
+          setPhase('mismatch');
+        }
+      }
+    }catch(err){
+      setAutoError(`Auto-check failed: ${err.message}. Falling back to manual verification.`);
+      setPhase('checking'); // manual fallback
+    }finally{
+      setLd(null);
+    }
+  };
 
   const proceedToCheck=()=>{
     if(imei.length!==15||!/^\d+$/.test(imei)){addToast('err','Invalid IMEI','Must be exactly 15 digits. Dial *#06# on the device.');return;}
-    onUpdate(app.id,{imei,tlEntry:{by:user.name,txt:`IMEI entered: ${imei} — Carlcare warranty check opened`}});
-    setPhase('checking');
+    onUpdate(app.id,{imei,tlEntry:{by:user.name,txt:`IMEI entered: ${imei}`}});
+    if(proxyUrl){
+      setPhase('autocheck');
+      runAutoCheck(imei);
+    }else{
+      setPhase('checking'); // manual
+    }
   };
 
-  const confirmValid=async()=>{
-    setLd('pt');await sleep(1400);
+  // If already has IMEI and approved, try to resume auto-check
+  useEffect(()=>{
+    if(phase==='autocheck_resume'&&app.imei&&proxyUrl){
+      setPhase('autocheck');
+      runAutoCheck(app.imei);
+    }else if(phase==='autocheck_resume'){
+      setPhase(proxyUrl?'entry':'checking');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
+  // ── Confirm valid (auto or manual) ───────────────────────────
+  const confirmValid=async(fromAuto)=>{
+    setLd('pt');await sleep(800);
     const ptId='PT-2026-'+Math.floor(10000+Math.random()*90000);
-    onUpdate(app.id,{imei,ptId,status:ST.LOCK_PENDING,tlEntry:{by:user.name,txt:`IMEI ${imei} — Carlcare warranty confirmed, device specs match. Registered in PayTrigger (${ptId})`}});
-    addToast('ok','IMEI verified','Carlcare: warranty valid & specs match · Registered in PayTrigger');
+    const ccDetail=fromAuto&&ccResult?` Carlcare: ${ccResult.model||''} RAM:${ccResult.ram} Storage:${ccResult.rom} · Warranty expires ${ccResult.expiry}.`:'';
+    onUpdate(app.id,{imei,ptId,status:ST.LOCK_PENDING,carlcareResult:ccResult||null,tlEntry:{by:user.name,txt:`IMEI ${imei} — Carlcare warranty confirmed, specs match.${ccDetail} Registered in PayTrigger (${ptId})`}});
+    addToast('ok','IMEI verified','Carlcare: warranty valid & specs match');
     setPhase('verified');setLd(null);
   };
 
-  const handleMismatch=()=>{
-    setActualSpecs({brand:d.brand||'',model:d.model||'',ram:d.ram||'',rom:d.rom||''});
-    setPhase('mismatch');
-  };
-
-  const handleNotFound=()=>setPhase('notfound');
-
   const sendBackFromImei=(reason)=>{
-    onUpdate(app.id,{status:ST.PENDING_APPROVAL,notes:reason,imei,tlEntry:{by:user.name,txt:`IMEI check issue — returned to underwriter queue: ${reason}`}});
-    addToast('warn','Returned to underwriter','Underwriter will be notified');
-    onBack();
+    onUpdate(app.id,{status:ST.PENDING_APPROVAL,notes:reason,imei,tlEntry:{by:user.name,txt:`IMEI check issue — returned to underwriter: ${reason}`}});
+    addToast('warn','Returned to underwriter','Underwriter will be notified');onBack();
   };
-
   const escalateFromImei=(reason)=>{
-    onUpdate(app.id,{status:ST.ESCALATED,notes:reason,imei,tlEntry:{by:user.name,txt:`IMEI check issue escalated to ops: ${reason}`}});
-    addToast('info','Escalated to ops','Issue logged for ops review');
-    onBack();
+    onUpdate(app.id,{status:ST.ESCALATED,notes:reason,imei,tlEntry:{by:user.name,txt:`IMEI check issue escalated: ${reason}`}});
+    addToast('info','Escalated to ops','Issue logged');onBack();
   };
-
   const confirmLocked=async()=>{
     setLd('lock');await sleep(2000);
     onUpdate(app.id,{status:ST.ACTIVE,lockedAt:new Date().toISOString(),tlEntry:{by:user.name,txt:'Phone locked — contract activated, payments enabled'}});
@@ -1176,13 +1279,17 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
     setLd(null);onBack();
   };
 
-  const STEPS_DEF=[{l:'Enter IMEI',done:phase!=='entry'},{l:'Carlcare warranty check',done:phase==='verified'||phase==='valid'},{l:'Lock & activate',done:phase==='verified'&&app.status===ST.ACTIVE}];
+  const STEPS_DEF=[{l:'Enter IMEI',done:phase!=='entry'},{l:'Carlcare check',done:['valid','mismatch','notfound','verified'].includes(phase)},{l:'Lock & activate',done:phase==='verified'&&app.status===ST.ACTIVE}];
 
   return(
     <div className="fadeUp" style={{padding:'28px 32px',maxWidth:760}}>
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22}}>
         <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
-        <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>IMEI & warranty check</h1><p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>{app.id} · {app.c.name}</p></div>
+        <div>
+          <h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>IMEI & warranty check</h1>
+          <p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>{app.id} · {app.c.name}</p>
+        </div>
+        {proxyUrl&&<span style={{marginLeft:'auto',fontSize:10,fontWeight:600,padding:'3px 9px',borderRadius:99,background:'var(--okBg)',color:'var(--ok)',border:'1px solid var(--okBorder)'}}>⚡ Auto-check</span>}
       </div>
 
       {/* Step indicators */}
@@ -1198,7 +1305,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         ))}
       </div>
 
-      {/* Expected device specs — always visible */}
+      {/* Expected device specs */}
       <Card sx={{padding:'13px 16px',marginBottom:16,background:'var(--brandPale)',border:'1.5px solid var(--brandPale2)'}}>
         <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--brand)',marginBottom:8}}>Expected device (from application)</div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:8}}>
@@ -1213,52 +1320,50 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         {phase==='entry'&&(
           <div>
             <div style={{fontWeight:700,fontSize:15,marginBottom:6}}>Enter device IMEI</div>
-            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:18,lineHeight:1.7}}>Dial <strong>*#06#</strong> on the <strong>{d.brand} {d.model}</strong> to get its IMEI. Enter it below, then verify it on the official Carlcare warranty check page.</p>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:18,lineHeight:1.7}}>
+              Dial <strong>*#06#</strong> on the <strong>{d.brand} {d.model}</strong> to get its IMEI. Enter it below.{' '}
+              {proxyUrl?<span style={{color:'var(--ok)',fontWeight:600}}>Warranty will be checked automatically.</span>:<span>You will verify it manually on the Carlcare website.</span>}
+            </p>
             <div style={{display:'flex',gap:10,alignItems:'flex-end',flexWrap:'wrap',marginBottom:6}}>
               <div style={{flex:1,minWidth:200}}>
                 <label style={{fontSize:11,fontWeight:600,color:'var(--textLight)',display:'block',marginBottom:5}}>15-digit IMEI</label>
                 <input value={imei} onChange={ev=>setImei(ev.target.value.replace(/\D/g,'').slice(0,15))} placeholder="e.g. 352876110123456" style={{fontFamily:'DM Mono,monospace',fontSize:18,letterSpacing:'2px'}} maxLength={15}/>
                 <div style={{fontSize:10,color:'var(--textLight)',marginTop:4}}>{imei.length}/15 digits</div>
               </div>
-              <Btn v="primary" sz="lg" disabled={imei.length!==15} onClick={proceedToCheck} icon="→">Proceed to warranty check</Btn>
+              <Btn v="primary" sz="lg" disabled={imei.length!==15} onClick={proceedToCheck} icon={proxyUrl?'⚡':'→'}>{proxyUrl?'Check warranty automatically':'Proceed to manual check'}</Btn>
             </div>
           </div>
         )}
 
-        {/* ── Phase: checking ── */}
-        {phase==='checking'&&(
+        {/* ── Phase: autocheck (spinner) ── */}
+        {phase==='autocheck'&&(
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'32px 0',gap:18}}>
+            <Spin size={36}/>
+            <div style={{fontWeight:700,fontSize:15}}>Checking with Carlcare…</div>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:18,letterSpacing:'2px',color:'var(--brand)',padding:'10px 20px',background:'var(--brandPale)',borderRadius:'var(--r)'}}>{imei}</div>
+            <div style={{fontSize:11,color:'var(--textMid)'}}>Verifying warranty status and device specs automatically</div>
+          </div>
+        )}
+
+        {/* ── Phase: valid (auto-verified, all good) ── */}
+        {phase==='valid'&&ccResult&&(
           <div>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Check warranty on Carlcare</div>
-            {/* IMEI display + copy */}
-            <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 18px',background:'var(--bg)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',marginBottom:18}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:3}}>Device IMEI to check</div>
-                <div style={{fontFamily:'DM Mono,monospace',fontSize:22,fontWeight:700,letterSpacing:'2.5px',color:'var(--brand)'}}>{imei}</div>
+            <div style={{padding:'16px 18px',background:'var(--okBg)',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',marginBottom:20}}>
+              <div style={{fontWeight:800,fontSize:15,color:'var(--ok)',marginBottom:8}}>✓ Warranty valid — all specs match</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8,marginBottom:10}}>
+                {[['Brand',ccResult.brand],['Model',ccResult.model],['RAM',ccResult.ram],['Storage',ccResult.rom]].map(([k,v])=>(
+                  <div key={k} style={{background:'white',borderRadius:'var(--r2)',padding:'8px 10px',border:'1px solid var(--okBorder)'}}>
+                    <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',color:'var(--textLight)',marginBottom:2}}>{k}</div>
+                    <div style={{fontWeight:700,fontSize:13,color:'var(--ok)'}}>{v||'—'}</div>
+                  </div>
+                ))}
               </div>
-              <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                <Btn v="def" sz="sm" onClick={copyImei} icon={copied?'✓':'⎘'}>{copied?'Copied!':'Copy IMEI'}</Btn>
-                <Btn v="primary" sz="sm" onClick={openCarlcare} icon="↗">Open Carlcare</Btn>
-              </div>
+              {ccResult.expiry&&<div style={{fontSize:11,color:'var(--ok)',fontWeight:600}}>Warranty valid until: {ccResult.expiry}{ccResult.warrantyClass&&` · ${ccResult.warrantyClass}`}</div>}
             </div>
-            <div style={{padding:'10px 14px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--info)',marginBottom:20,lineHeight:1.6}}>
-              <strong>Instructions:</strong> Click "Open Carlcare" above → paste the IMEI → check the result. Confirm that the device brand, model, RAM and storage match what is expected. Then select the outcome below.
-            </div>
-            <div style={{fontSize:12,fontWeight:700,color:'var(--text)',marginBottom:12}}>What did Carlcare show?</div>
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              <button type="button" onClick={confirmValid} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',background:'var(--okBg)',cursor:'pointer',textAlign:'left'}}>
-                <div style={{width:36,height:36,borderRadius:18,background:'var(--ok)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>✓</div>
-                <div><div style={{fontWeight:700,fontSize:13,color:'var(--ok)'}}>Warranty valid — device specs match</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>IMEI found, in warranty, brand/model/RAM/storage all match application</div></div>
-              </button>
-              <button type="button" onClick={handleMismatch} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',background:'var(--warnBg)',cursor:'pointer',textAlign:'left'}}>
-                <div style={{width:36,height:36,borderRadius:18,background:'var(--warn)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>⚠</div>
-                <div><div style={{fontWeight:700,fontSize:13,color:'var(--warn)'}}>Device found but specs don't match</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>IMEI found and in warranty, but RAM, storage or model is different from the application</div></div>
-              </button>
-              <button type="button" onClick={handleNotFound} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',border:'2px solid var(--errBorder)',borderRadius:'var(--r)',background:'var(--errBg)',cursor:'pointer',textAlign:'left'}}>
-                <div style={{width:36,height:36,borderRadius:18,background:'var(--err)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>✕</div>
-                <div><div style={{fontWeight:700,fontSize:13,color:'var(--err)'}}>IMEI not found or out of warranty</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>Carlcare did not recognise this IMEI, or the device warranty has expired</div></div>
-              </button>
-            </div>
-            <div style={{marginTop:14,textAlign:'right'}}>
+            <Btn onClick={()=>confirmValid(true)} v="ok" sz="lg" full loading={ld==='pt'} icon="→">
+              {ld==='pt'?'Registering in PayTrigger…':'Confirm & proceed to PayTrigger'}
+            </Btn>
+            <div style={{marginTop:10,textAlign:'center'}}>
               <Btn v="ghost" sz="sm" onClick={()=>setPhase('entry')} icon="←">Re-enter IMEI</Btn>
             </div>
           </div>
@@ -1269,7 +1374,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
           <div>
             <div style={{padding:'12px 15px',background:'var(--warnBg)',border:'1.5px solid var(--warnBorder)',borderRadius:'var(--r2)',marginBottom:18}}>
               <div style={{fontWeight:700,fontSize:13,color:'var(--warn)',marginBottom:4}}>⚠ Specs mismatch — action required</div>
-              <div style={{fontSize:11,color:'var(--warn)',lineHeight:1.6}}>The device found on Carlcare does not match the application specs. Record the actual specs found and choose how to proceed.</div>
+              <div style={{fontSize:11,color:'var(--warn)',lineHeight:1.6}}>{ccResult?'Carlcare confirmed the IMEI is in warranty, but the device specs do not match the application.':'The device found on Carlcare does not match the application specs.'} Record the actual specs found and choose how to proceed.</div>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:18}}>
               <div style={{padding:'12px 14px',background:'var(--bg)',borderRadius:'var(--r)',border:'1px solid var(--border)'}}>
@@ -1277,7 +1382,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
                 {[['Brand',d.brand],['Model',d.model],['RAM',d.ram||d.RAM||'—'],['Storage',d.rom||d.ROM||'—']].map(([k,v])=><div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:5}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontWeight:600}}>{v}</span></div>)}
               </div>
               <div style={{padding:'12px 14px',background:'var(--warnBg)',borderRadius:'var(--r)',border:'1.5px solid var(--warnBorder)'}}>
-                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--warn)',marginBottom:8}}>Carlcare shows (enter actual)</div>
+                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--warn)',marginBottom:8}}>Carlcare shows{ccResult?' (auto-detected)':' (enter actual)'}</div>
                 {[['Brand','brand'],['Model','model'],['RAM','ram'],['Storage','rom']].map(([label,key])=>(
                   <input key={key} value={actualSpecs[key]} onChange={e=>setActualSpecs(p=>({...p,[key]:e.target.value}))} placeholder={label} style={{marginBottom:6,fontSize:12}}/>
                 ))}
@@ -1285,9 +1390,9 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
             </div>
             <FF label="Note — describe the mismatch"><textarea value={mismatchNote} onChange={e=>setMismatchNote(e.target.value)} rows={2} placeholder="e.g. Carlcare shows 8GB RAM but application states 4GB RAM" style={{resize:'vertical'}}/></FF>
             <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:14}}>
-              <Btn v="warn" full icon="↩" onClick={()=>sendBackFromImei(`Specs mismatch at IMEI check. ${mismatchNote||'Carlcare specs do not match application.'} Actual: ${Object.entries(actualSpecs).map(([k,v])=>v?`${k}=${v}`:'').filter(Boolean).join(', ')}.`)}>Send back to underwriter for review</Btn>
-              <Btn v="def" full icon="⬆" onClick={()=>escalateFromImei(`Specs mismatch — escalated. ${mismatchNote||''} IMEI: ${imei}. Actual specs from Carlcare: ${Object.entries(actualSpecs).map(([k,v])=>v?`${k}=${v}`:'').filter(Boolean).join(', ')}.`)}>Escalate to ops</Btn>
-              <Btn v="ghost" sz="sm" onClick={()=>setPhase('checking')}>← Back to outcome selection</Btn>
+              <Btn v="warn" full icon="↩" onClick={()=>sendBackFromImei(`Specs mismatch at IMEI check. ${mismatchNote||''} Carlcare shows: ${Object.entries(actualSpecs).map(([k,v])=>v?`${k}=${v}`:'').filter(Boolean).join(', ')}.`)}>Send back to underwriter for review</Btn>
+              <Btn v="def" full icon="⬆" onClick={()=>escalateFromImei(`Specs mismatch — escalated. ${mismatchNote||''} IMEI: ${imei}. Carlcare: ${Object.entries(actualSpecs).map(([k,v])=>v?`${k}=${v}`:'').filter(Boolean).join(', ')}.`)}>Escalate to ops</Btn>
+              <Btn v="ghost" sz="sm" onClick={()=>setPhase('entry')}>← Re-enter IMEI</Btn>
             </div>
           </div>
         )}
@@ -1296,30 +1401,68 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         {phase==='notfound'&&(
           <div>
             <div style={{padding:'12px 15px',background:'var(--errBg)',border:'1.5px solid var(--errBorder)',borderRadius:'var(--r2)',marginBottom:18}}>
-              <div style={{fontWeight:700,fontSize:13,color:'var(--err)',marginBottom:4}}>✕ IMEI not found or out of warranty</div>
-              <div style={{fontSize:11,color:'var(--err)',lineHeight:1.6}}>Carlcare could not verify this IMEI. This may mean the device is not genuine, is not a supported brand, or the warranty has expired. Do not proceed with activation.</div>
+              <div style={{fontWeight:700,fontSize:13,color:'var(--err)',marginBottom:4}}>✕ {ccResult&&!ccResult.warrantyValid?'Warranty expired or not valid':'IMEI not found on Carlcare'}</div>
+              <div style={{fontSize:11,color:'var(--err)',lineHeight:1.6}}>{ccResult&&!ccResult.warrantyValid?`The device was found but the warranty is no longer valid (expired: ${ccResult.expiry||'unknown'}). Do not proceed with activation.`:'Carlcare could not find this IMEI. The device may not be genuine, may not be a supported brand (TECNO/itel/Infinix), or the warranty has expired.'}</div>
             </div>
             <div style={{padding:'11px 14px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6,marginBottom:18}}>
-              <strong>What to check:</strong> Confirm the IMEI was entered correctly (dial *#06# again). Check that the device is TECNO, itel or Infinix. Try entering the second IMEI if dual-SIM. If still not found, send back.
+              <strong>What to check:</strong> Confirm the IMEI was entered correctly (dial *#06# again). Try the second IMEI if dual-SIM. If still not found or expired, send back to underwriter.
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
               <Btn v="def" full icon="←" onClick={()=>setPhase('entry')}>Re-enter IMEI</Btn>
               <div style={{height:1,background:'var(--border)',margin:'4px 0'}}/>
-              <FF label="Note for underwriter"><textarea value={mismatchNote} onChange={e=>setMismatchNote(e.target.value)} rows={2} placeholder="Describe what was tried and what Carlcare showed…" style={{resize:'vertical'}}/></FF>
-              <Btn v="warn" full icon="↩" onClick={()=>sendBackFromImei(`IMEI ${imei} not found or out of warranty on Carlcare. ${mismatchNote||'Unable to verify device.'}`)}>Send back to underwriter</Btn>
-              <Btn v="def" full icon="⬆" onClick={()=>escalateFromImei(`IMEI ${imei} unverifiable. ${mismatchNote||''} — escalated from IMEI check.`)}>Escalate to ops</Btn>
+              <FF label="Note for underwriter"><textarea value={mismatchNote} onChange={e=>setMismatchNote(e.target.value)} rows={2} placeholder="Describe what was tried…" style={{resize:'vertical'}}/></FF>
+              <Btn v="warn" full icon="↩" onClick={()=>sendBackFromImei(`IMEI ${imei} — ${ccResult&&!ccResult.warrantyValid?'warranty expired/invalid':'not found on Carlcare'}. ${mismatchNote||''}`)}>Send back to underwriter</Btn>
+              <Btn v="def" full icon="⬆" onClick={()=>escalateFromImei(`IMEI ${imei} — ${ccResult&&!ccResult.warrantyValid?'warranty issue':'unverifiable'}. ${mismatchNote||''} — escalated from IMEI check.`)}>Escalate to ops</Btn>
             </div>
           </div>
         )}
 
-        {/* ── Phase: verified ── */}
+        {/* ── Phase: checking (manual fallback — no proxy configured or auto-check failed) ── */}
+        {phase==='checking'&&(
+          <div>
+            {autoError&&<div style={{padding:'9px 12px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',marginBottom:14}}>{autoError}</div>}
+            <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Check warranty on Carlcare</div>
+            <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 18px',background:'var(--bg)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',marginBottom:18}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:3}}>IMEI to check</div>
+                <div style={{fontFamily:'DM Mono,monospace',fontSize:22,fontWeight:700,letterSpacing:'2.5px',color:'var(--brand)'}}>{imei}</div>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                <Btn v="def" sz="sm" onClick={copyImei} icon={copied?'✓':'⎘'}>{copied?'Copied!':'Copy IMEI'}</Btn>
+                <Btn v="primary" sz="sm" onClick={()=>window.open(CARLCARE_MANUAL_URL,'_blank','noopener')} icon="↗">Open Carlcare</Btn>
+              </div>
+            </div>
+            <div style={{padding:'10px 14px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--info)',marginBottom:20,lineHeight:1.6}}>
+              <strong>Instructions:</strong> Click "Open Carlcare" → paste the IMEI → check the result. Confirm brand, model, RAM and storage match the expected device above. Then select the outcome below.
+            </div>
+            <div style={{fontSize:12,fontWeight:700,color:'var(--text)',marginBottom:12}}>What did Carlcare show?</div>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              <button type="button" onClick={()=>confirmValid(false)} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',background:'var(--okBg)',cursor:'pointer',textAlign:'left'}}>
+                <div style={{width:36,height:36,borderRadius:18,background:'var(--ok)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>✓</div>
+                <div><div style={{fontWeight:700,fontSize:13,color:'var(--ok)'}}>Warranty valid — specs match</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>IMEI found, in warranty, all specs match the application</div></div>
+              </button>
+              <button type="button" onClick={()=>{setActualSpecs({brand:d.brand||'',model:d.model||'',ram:d.ram||'',rom:d.rom||''});setPhase('mismatch');}} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',background:'var(--warnBg)',cursor:'pointer',textAlign:'left'}}>
+                <div style={{width:36,height:36,borderRadius:18,background:'var(--warn)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>⚠</div>
+                <div><div style={{fontWeight:700,fontSize:13,color:'var(--warn)'}}>Device found but specs don't match</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>IMEI found and in warranty, but specs differ from the application</div></div>
+              </button>
+              <button type="button" onClick={()=>setPhase('notfound')} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',border:'2px solid var(--errBorder)',borderRadius:'var(--r)',background:'var(--errBg)',cursor:'pointer',textAlign:'left'}}>
+                <div style={{width:36,height:36,borderRadius:18,background:'var(--err)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>✕</div>
+                <div><div style={{fontWeight:700,fontSize:13,color:'var(--err)'}}>IMEI not found or out of warranty</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>Carlcare did not recognise this IMEI or the warranty has expired</div></div>
+              </button>
+            </div>
+            <div style={{marginTop:14,textAlign:'right'}}>
+              <Btn v="ghost" sz="sm" onClick={()=>setPhase('entry')} icon="←">Re-enter IMEI</Btn>
+            </div>
+          </div>
+        )}
+
+        {/* ── Phase: verified (proceed to PayTrigger lock) ── */}
         {phase==='verified'&&(
           <div>
-            {ld==='pt'&&<div style={{padding:'10px 13px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--info)',display:'flex',alignItems:'center',gap:8,marginBottom:16}}><Spin size={13} dark/><span>Registering in PayTrigger…</span></div>}
-            {!ld&&<div style={{padding:'13px 15px',background:'var(--okBg)',border:'1.5px solid var(--okBorder)',borderRadius:'var(--r2)',marginBottom:20}}>
+            <div style={{padding:'13px 15px',background:'var(--okBg)',border:'1.5px solid var(--okBorder)',borderRadius:'var(--r2)',marginBottom:20}}>
               <div style={{fontWeight:700,fontSize:13,color:'var(--ok)',marginBottom:4}}>✓ Carlcare warranty confirmed — IMEI verified</div>
               <div style={{fontSize:11,color:'var(--ok)',lineHeight:1.6}}>IMEI: <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{app.imei||imei}</span>{app.ptId&&<span> · PayTrigger: <span style={{fontFamily:'DM Mono,monospace'}}>{app.ptId}</span></span>}</div>
-            </div>}
+            </div>
             <div style={{fontWeight:700,fontSize:15,marginBottom:6}}>Lock the phone in PayTrigger</div>
             <p style={{fontSize:12,color:'var(--textMid)',lineHeight:1.7,marginBottom:14}}>Open the PayTrigger portal, find this device by IMEI, and lock it. Once the customer's screen shows the PAYGO lock, confirm below to activate the contract.</p>
             <div style={{padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6,marginBottom:18}}><strong>Only confirm once</strong> the lock screen is visible on the customer's phone.</div>
@@ -2276,6 +2419,16 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,setCont
                   {!coDraft.signatorySig&&<span style={{fontSize:11,color:'var(--textLight)'}}>No signature — a blank line will appear on the contract</span>}
                 </div>
               </FF>
+            </Card>
+
+            <Card sx={{padding:'16px 18px'}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:4}}>Carlcare IMEI auto-check</div>
+              <div style={{fontSize:11,color:'var(--textMid)',marginBottom:12,lineHeight:1.6}}>Deploy the <strong>carlcare-worker.js</strong> file to a free Cloudflare Worker, then paste the worker URL here. Once set, IMEI verification will happen automatically — no manual Carlcare website visit needed.</div>
+              <FF label="Carlcare proxy URL (e.g. https://cleva-imei.YOUR-NAME.workers.dev)">
+                <input value={coDraft.imeiProxyUrl||''} onChange={e=>sco('imeiProxyUrl',e.target.value)} placeholder="https://cleva-imei.your-name.workers.dev" style={{fontFamily:'DM Mono,monospace',fontSize:12}}/>
+              </FF>
+              {coDraft.imeiProxyUrl&&<div style={{fontSize:11,color:'var(--ok)',marginTop:6,fontWeight:600}}>✓ Auto-check enabled — IMEI verification will be automatic</div>}
+              {!coDraft.imeiProxyUrl&&<div style={{fontSize:11,color:'var(--textLight)',marginTop:6}}>Not configured — agents will verify IMEI manually on the Carlcare website</div>}
             </Card>
 
             <Card sx={{padding:'16px 18px',background:'var(--bg)'}}>
