@@ -315,14 +315,20 @@ const OCCS=['Trader / Business owner','Teacher','Civil servant','Driver / Transp
 const EMPLOYMENT_TYPES=['formal','informal','self-employed'];
 const KYC_STATUSES=['pending','passed','failed'];
 const RELS=['Spouse','Parent','Sibling','Child','Colleague','Friend','Other'];
-// Brand metadata — colors + SVG logo mark for the brand picker
+// Brand metadata — accurate brand colors from official logos
 const BRAND_META={
-  Tecno:{bg:'#1a1a2e',fg:'#00d4ff',accent:'#00d4ff',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#1a1a2e"/><text x="20" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="900" letter-spacing="0.5" fill="#00d4ff">TECNO</text></svg>`},
-  Infinix:{bg:'#e8001c',fg:'#fff',accent:'#ffcc00',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#e8001c"/><text x="20" y="19" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="900" fill="white">∞</text><text x="20" y="33" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" font-weight="700" letter-spacing="1" fill="rgba(255,255,255,0.8)">INFINIX</text></svg>`},
-  Samsung:{bg:'#1428a0',fg:'#fff',accent:'#1428a0',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#1428a0"/><text x="20" y="23" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" font-weight="700" letter-spacing="0.3" fill="white">SAMSUNG</text></svg>`},
-  Redmi:{bg:'#ff6900',fg:'#fff',accent:'#ff6900',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#ff6900"/><text x="20" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="900" fill="white">MI</text></svg>`},
-  Oppo:{bg:'#1d6f42',fg:'#fff',accent:'#1d6f42',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#1d6f42"/><text x="20" y="26" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="900" fill="white">OPPO</text></svg>`},
-  itel:{bg:'#0057a8',fg:'#fff',accent:'#0057a8',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#0057a8"/><text x="20" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="900" font-style="italic" fill="white">itel</text></svg>`},
+  Tecno:{bg:'#1388d8',fg:'#fff',accent:'#1388d8',
+    logo:(sz=40)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"><rect width="56" height="56" rx="10" fill="#1388d8"/><text x="28" y="34" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-size="13" font-weight="900" letter-spacing="1.5" fill="white">TECNO</text></svg>`},
+  Infinix:{bg:'#0a0a0a',fg:'#fff',accent:'#444',
+    logo:(sz=40)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"><rect width="56" height="56" rx="10" fill="#0a0a0a"/><text x="28" y="34" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="400" letter-spacing="0.5" fill="white">Infinix</text></svg>`},
+  Samsung:{bg:'#1428a0',fg:'#fff',accent:'#1428a0',
+    logo:(sz=40)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"><rect width="56" height="56" rx="10" fill="#1428a0"/><text x="28" y="34" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="8.5" font-weight="600" letter-spacing="1.2" fill="white">SAMSUNG</text></svg>`},
+  Redmi:{bg:'#e2003a',fg:'#fff',accent:'#e2003a',
+    logo:(sz=40)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"><rect width="56" height="56" rx="10" fill="#e2003a"/><text x="28" y="34" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-size="13" font-weight="900" letter-spacing="1" fill="white">REDMI</text></svg>`},
+  Oppo:{bg:'#1a5c38',fg:'#fff',accent:'#1a5c38',
+    logo:(sz=40)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"><rect width="56" height="56" rx="10" fill="#1a5c38"/><text x="28" y="34" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="400" letter-spacing="2" fill="white">oppo</text></svg>`},
+  itel:{bg:'#ff0000',fg:'#fff',accent:'#ff0000',
+    logo:(sz=40)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"><rect width="56" height="56" rx="10" fill="#ff0000"/><ellipse cx="28" cy="28" rx="21" ry="13" fill="none" stroke="white" stroke-width="1.8"/><text x="28" y="33" text-anchor="middle" font-family="Georgia,serif" font-size="13" font-weight="700" font-style="italic" fill="white">itel</text></svg>`},
 };
 const BRAND_ORDER=['Tecno','Infinix','Samsung','Redmi','Oppo','itel'];
 const BrandLogo=({brand,size=40,selected=false})=>{
@@ -330,18 +336,18 @@ const BrandLogo=({brand,size=40,selected=false})=>{
   const svgStr=m.logo(size);
   return <div style={{borderRadius:10,overflow:'hidden',border:`${selected?3:2}px solid ${selected?m.accent:'transparent'}`,boxShadow:selected?`0 0 0 2px ${m.accent}33`:'none',transition:'all .15s',flexShrink:0}} dangerouslySetInnerHTML={{__html:svgStr}}/>;
 };
-const BrandPicker=({devices,selectedBrand,onSelect})=>{
-  const presentBrands=BRAND_ORDER.filter(b=>(devices||[]).some(d=>d.brand===b));
+const BrandPicker=({devices,selectedBrand,onSelect,allBrands=false,compact=false})=>{
+  const presentBrands=allBrands?BRAND_ORDER:BRAND_ORDER.filter(b=>(devices||[]).some(d=>d.brand===b));
   if(presentBrands.length===0)return null;
   return(
-    <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:24}}>
+    <div style={{display:'flex',gap:compact?8:10,flexWrap:'wrap',marginBottom:compact?0:24}}>
       {presentBrands.map(b=>{
         const m=BRAND_META[b]||{bg:'var(--border)',accent:'var(--brand)',fg:'var(--text)'};
         const sel=selectedBrand===b;
         return(
-          <button key={b} type="button" onClick={()=>onSelect(sel?null:b)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'10px 14px',border:`2px solid ${sel?m.accent:'var(--border)'}`,borderRadius:12,background:sel?m.bg+'11':'var(--surface)',cursor:'pointer',transition:'all .15s',minWidth:72,boxShadow:sel?`0 2px 8px ${m.accent}33`:undefined}}>
-            <BrandLogo brand={b} size={40} selected={sel}/>
-            <span style={{fontSize:10,fontWeight:700,letterSpacing:'0.4px',color:sel?m.accent:'var(--textMid)',textTransform:b==='itel'?'none':'uppercase'}}>{b}</span>
+          <button key={b} type="button" onClick={()=>onSelect(sel&&!allBrands?null:b)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:compact?4:6,padding:compact?'8px 10px':'10px 14px',border:`2px solid ${sel?m.accent:'var(--border)'}`,borderRadius:12,background:sel?m.bg+'18':'var(--surface)',cursor:'pointer',transition:'all .15s',minWidth:compact?60:72,boxShadow:sel?`0 2px 8px ${m.accent}44`:undefined}}>
+            <BrandLogo brand={b} size={compact?32:40} selected={sel}/>
+            <span style={{fontSize:9,fontWeight:700,letterSpacing:'0.4px',color:sel?m.accent:'var(--textMid)',textTransform:b==='itel'?'none':'uppercase'}}>{b}</span>
           </button>
         );
       })}
@@ -3159,7 +3165,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                         <Btn v="err" sz="sm" onClick={()=>rmDev(d.id)}>Remove</Btn>
                       </div>
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-                        <FF label="Brand"><input value={d.brand||''} onChange={e=>upDev(d.id,{brand:e.target.value})}/></FF>
+                        <FF label="Brand"><select value={d.brand||''} onChange={e=>upDev(d.id,{brand:e.target.value})}><option value="">Select…</option>{BRAND_ORDER.map(b=><option key={b} value={b}>{b}</option>)}</select></FF>
                         <FF label="Model"><input value={d.model||''} onChange={e=>upDev(d.id,{model:e.target.value})}/></FF>
                         <FF label="RAM"><input value={d.ram||''} onChange={e=>upDev(d.id,{ram:e.target.value})} placeholder="e.g. 4GB"/></FF>
                         <FF label="Storage"><input value={d.rom||''} onChange={e=>upDev(d.id,{rom:e.target.value})} placeholder="e.g. 128GB"/></FF>
@@ -3184,8 +3190,13 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                 <Btn v="def" sz="sm" onClick={()=>{setShowAddDevice(false);setNewDev({brand:'',model:'',ram:'',rom:'',cash:''});}}>Cancel</Btn>
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                <FF label="Brand" req>
+                  <div style={{marginTop:4}}>
+                    <BrandPicker devices={[]} selectedBrand={newDev.brand} onSelect={b=>setNewDev(p=>({...p,brand:b||''}))} allBrands compact/>
+                    {!newDev.brand&&<div style={{fontSize:11,color:'var(--err)',marginTop:4}}>Select a brand above</div>}
+                  </div>
+                </FF>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                  <FF label="Brand" req><select value={newDev.brand} onChange={e=>setNewDev(p=>({...p,brand:e.target.value}))}><option value="">Select brand…</option>{DEVICE_BRANDS.map(b=><option key={b} value={b}>{b}</option>)}</select></FF>
                   <FF label="Model name" req><input value={newDev.model} onChange={e=>setNewDev(p=>({...p,model:e.target.value}))} placeholder="e.g. Spark 40 Pro+"/></FF>
                   <FF label="RAM"><input value={newDev.ram} onChange={e=>setNewDev(p=>({...p,ram:e.target.value}))} placeholder="e.g. 4GB"/></FF>
                   <FF label="Storage (ROM)"><input value={newDev.rom} onChange={e=>setNewDev(p=>({...p,rom:e.target.value}))} placeholder="e.g. 128GB"/></FF>
