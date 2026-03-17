@@ -297,13 +297,13 @@ const CC={warn:{bg:'var(--warnBg)',fg:'var(--warn)',bd:'var(--warnBorder)'},info
 // Role-based transitions: who can move to what. Sales rep cannot set ACTIVE.
 const ALLOWED_TRANSITIONS={
   rep:{[ST.DRAFT]:[ST.PENDING_APPROVAL],[ST.UNDER_REVIEW]:[ST.PENDING_APPROVAL]},
-  mbo:{[ST.PENDING_APPROVAL]:[ST.APPROVED,ST.UNDER_REVIEW,ST.ARCHIVED,ST.ESCALATED],[ST.UNDER_REVIEW]:[ST.APPROVED,ST.ARCHIVED,ST.ESCALATED]},
+  underwriter:{[ST.PENDING_APPROVAL]:[ST.APPROVED,ST.UNDER_REVIEW,ST.ARCHIVED,ST.ESCALATED],[ST.UNDER_REVIEW]:[ST.APPROVED,ST.ARCHIVED,ST.ESCALATED]},
   support:{},ops_superuser:Object.values(ST),
 };
 const canTransition=(fromSt,toSt,role,isSuperuser)=>{
   if(isSuperuser&&role==='ops')return true;
   if(toSt===ST.ACTIVE)return isSuperuser&&role==='ops';
-  const key=isSuperuser&&role==='ops'?'ops_superuser':role==='rep'?'rep':role==='underwriter'?'mbo':role==='support'?'support':'rep';
+  const key=isSuperuser&&role==='ops'?'ops_superuser':role==='rep'?'rep':role==='underwriter'?'underwriter':role==='support'?'support':'rep';
   const allowed=ALLOWED_TRANSITIONS[key][fromSt];
   return Array.isArray(allowed)&&allowed.includes(toSt);
 };
