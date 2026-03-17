@@ -368,6 +368,7 @@ const USERS_SEED=[
   {id:'SU01',name:'Support User',email:`support@${EMAIL_DOMAIN_SEED}`,password:'support123',role:'support',roleLabel:'Support User',mustChangePassword:false},
   {id:'OP01',name:'Ops Superuser',email:`ops@${EMAIL_DOMAIN_SEED}`,password:'ops123',role:'ops',roleLabel:'Ops Superuser',superuser:true,mustChangePassword:false},
   {id:'MR01',name:'Retail Manager',email:`manager@${EMAIL_DOMAIN_SEED}`,password:'manager123',role:'merchant',roleLabel:'Retail Manager',merchantGroupId:'MG-001',mustChangePassword:false},
+  {id:'GA01',name:'Group Admin',email:`groupadmin@${EMAIL_DOMAIN_SEED}`,password:'groupadmin123',role:'groupadmin',roleLabel:'Group Admin',mustChangePassword:false},
 ];
 const DEVICES_SEED=[
   {id:'D01',brand:'Tecno',model:'Spark 40 Pro+',ram:'4GB',rom:'128GB',cash:179000},
@@ -888,6 +889,7 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
     support:[{k:'dash',l:'Home'},{k:'all',l:'All Applications'}],
     ops:user.superuser?[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},{k:'admin',l:'Admin'}]:[{k:'all',l:'All Applications'}],
     merchant:[{k:'sales',l:'Completed Sales'},{k:'team',l:'My Team'}],
+    groupadmin:[{k:'groups',l:'Retail Groups'},{k:'shops',l:'Shops'},{k:'managers',l:'Managers'}],
   }[user.role]||[];
   const initials=user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const go=(k)=>{ setPage(k); if(window.innerWidth<769) onClose&&onClose(); };
@@ -3011,6 +3013,278 @@ const SupportView=({apps,onUpdate,addToast})=>{
 };
 
 // ── OPS VIEW ──────────────────────────────────────────────────
+// ── GROUP ADMIN VIEW ──────────────────────────────────────────
+const GroupAdminView=({apps,addToast,users,setUsers,shops,setShops,merchantGroups,setMerchantGroups})=>{
+  const {user}=useContext(Ctx);
+  const [pg,setPg]=useState('groups');
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
+  const sidebarProps={page:pg,setPage:p=>setPg(p),apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
+
+  const mgs=merchantGroups||[];
+  const setMgs=setMerchantGroups||(()=>{});
+
+  /* ── Groups tab ───────────────────────────────────────────── */
+  const [showAddGroup,setShowAddGroup]=useState(false);
+  const [groupDraft,setGroupDraft]=useState({name:'',country:'RW',contactEmail:''});
+  const mkGroupId=()=>{const nums=mgs.map(g=>parseInt(String(g.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));return 'MG-'+String(((nums.length?Math.max(...nums):0)+1)).padStart(3,'0');};
+  const addGroup=()=>{
+    if(!groupDraft.name.trim()){addToast('err','Name required','');return;}
+    const id=mkGroupId();
+    setMgs([...mgs,{id,name:groupDraft.name.trim(),country:groupDraft.country,contactEmail:groupDraft.contactEmail,createdAt:new Date().toISOString()}]);
+    setGroupDraft({name:'',country:'RW',contactEmail:''});setShowAddGroup(false);
+    addToast('ok','Group created',groupDraft.name.trim());
+  };
+  const removeGroup=g=>{
+    const groupShops=(shops||[]).filter(s=>s.merchantGroupId===g.id);
+    if(groupShops.length>0){addToast('err','Cannot remove','Reassign all shops first');return;}
+    setMgs(mgs.filter(x=>x.id!==g.id));addToast('ok','Group removed','');
+  };
+  const updateGroup=(id,patch)=>setMgs(mgs.map(x=>x.id===id?{...x,...patch}:x));
+
+  /* ── Shops tab ────────────────────────────────────────────── */
+  const [showAddShop,setShowAddShop]=useState(false);
+  const [shopDraft,setShopDraft]=useState({name:'',location:'',merchantGroupId:''});
+  const mkShopId=()=>{const nums=(shops||[]).map(s=>parseInt(String(s.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));return 'SH-'+String(((nums.length?Math.max(...nums):0)+1)).padStart(3,'0');};
+  const addShop=()=>{
+    if(!shopDraft.name.trim()){addToast('err','Name required','');return;}
+    const id=mkShopId();
+    setShops([...(shops||[]),{id,name:shopDraft.name.trim(),location:shopDraft.location.trim(),merchantGroupId:shopDraft.merchantGroupId||null,createdAt:new Date().toISOString()}]);
+    setShopDraft({name:'',location:'',merchantGroupId:''});setShowAddShop(false);
+    addToast('ok','Shop added',`${shopDraft.name.trim()} (${id})`);
+  };
+
+  /* ── Managers tab ─────────────────────────────────────────── */
+  const [showAddMgr,setShowAddMgr]=useState(false);
+  const [mgrDraft,setMgrDraft]=useState({name:'',email:'',password:'',merchantGroupId:''});
+  const mkMgrId=()=>{const nums=(users||[]).filter(u=>u.id?.startsWith('MR')).map(u=>parseInt(String(u.id).slice(2),10)).filter(n=>!isNaN(n));return 'MR'+String(((nums.length?Math.max(...nums):0)+1)).padStart(2,'0');};
+  const addManager=()=>{
+    const name=mgrDraft.name.trim();const email=normEmail(mgrDraft.email.trim());
+    if(!name||!email){addToast('err','Missing fields','Name and email are required');return;}
+    if(!mgrDraft.merchantGroupId){addToast('err','Select a group','');return;}
+    if((users||[]).some(u=>normEmail(u.email)===email)){addToast('err','Email already exists',email);return;}
+    const id=mkMgrId();const password=mgrDraft.password.trim()||randPwd();
+    const u={id,name,email,password,role:'merchant',roleLabel:'Retail Manager',merchantGroupId:mgrDraft.merchantGroupId,mustChangePassword:!mgrDraft.password.trim()};
+    setUsers([...(users||[]),u]);
+    sendEmail('welcome',{to_name:name,to_email:email,temp_password:password,role:'Retail Manager',login_url:window.location.href,must_change:u.mustChangePassword?'Please change your password after first login.':''});
+    setMgrDraft({name:'',email:'',password:'',merchantGroupId:''});setShowAddMgr(false);
+    addToast('ok','Manager added',`Welcome email sent to ${email}`);
+  };
+
+  const managers=(users||[]).filter(u=>u.role==='merchant');
+  const groupName=id=>mgs.find(g=>g.id===id)?.name||id||'—';
+
+  return(
+    <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
+      <Sidebar {...sidebarProps}/>
+      <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>Group Admin</span></div>
+
+        {/* ── Groups tab ──────────────────────────────────── */}
+        {pg==='groups'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18,flexWrap:'wrap',gap:10}}>
+              <div>
+                <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Retail Groups</h1>
+                <p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{mgs.length} group{mgs.length!==1?'s':''} · {(shops||[]).length} total shops</p>
+              </div>
+              <Btn v="primary" icon="＋" onClick={()=>setShowAddGroup(true)}>New group</Btn>
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:showAddGroup?'1fr 380px':'1fr',gap:16,alignItems:'start'}}>
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {mgs.map(g=>{
+                  const gShops=(shops||[]).filter(s=>s.merchantGroupId===g.id);
+                  const gManagers=(users||[]).filter(u=>u.role==='merchant'&&u.merchantGroupId===g.id);
+                  const gReps=(users||[]).filter(u=>u.role==='rep'&&gShops.map(s=>s.id).includes(u.shopId));
+                  const gApps=apps.filter(a=>gShops.map(s=>s.id).includes(a.shopId));
+                  const gCompleted=gApps.filter(a=>a.status===ST.COMPLETED||a.status===ST.ACTIVE).length;
+                  return(
+                    <Card key={g.id} sx={{padding:16}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,marginBottom:12}}>
+                        <div>
+                          <div style={{fontWeight:800,fontSize:15}}>{g.name}</div>
+                          <div style={{fontSize:11,color:'var(--textLight)',fontFamily:'DM Mono,monospace',marginTop:2}}>{g.id} {g.country&&`· ${g.country}`} {g.contactEmail&&`· ${g.contactEmail}`}</div>
+                        </div>
+                        <Btn v="err" sz="sm" onClick={()=>removeGroup(g)}>Remove</Btn>
+                      </div>
+                      <div style={{display:'flex',gap:16,flexWrap:'wrap',marginBottom:14,fontSize:12}}>
+                        {[['🏪',gShops.length,'shop'],['👤',gReps.length,'rep'],['🧑‍💼',gManagers.length,'manager'],['📋',gApps.length,'app'],['✅',gCompleted,'completed']].map(([ico,n,label])=>(
+                          <div key={label} style={{display:'flex',alignItems:'center',gap:5,background:'var(--bg)',borderRadius:'var(--r2)',padding:'6px 10px'}}>
+                            <span>{ico}</span><span style={{fontWeight:700}}>{n}</span><span style={{color:'var(--textLight)'}}>{label}{n!==1?'s':''}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                        <FF label="Group name"><input value={g.name} onChange={e=>updateGroup(g.id,{name:e.target.value})}/></FF>
+                        <FF label="Contact email"><input type="email" value={g.contactEmail||''} onChange={e=>updateGroup(g.id,{contactEmail:e.target.value})} placeholder="owner@company.com"/></FF>
+                      </div>
+                      {gShops.length>0&&<div style={{marginTop:10,display:'flex',gap:6,flexWrap:'wrap'}}>{gShops.map(s=><span key={s.id} style={{fontSize:11,background:'var(--brandPale)',color:'var(--brand2)',padding:'2px 9px',borderRadius:99}}>{s.name}</span>)}</div>}
+                    </Card>
+                  );
+                })}
+                {mgs.length===0&&<Empty ico="🏢" title="No retail groups yet"/>}
+              </div>
+              {showAddGroup&&(
+                <Card sx={{padding:16}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                    <div style={{fontWeight:700}}>New retail group</div>
+                    <Btn v="def" sz="sm" onClick={()=>setShowAddGroup(false)}>Cancel</Btn>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                    <FF label="Group name" req><input value={groupDraft.name} onChange={e=>setGroupDraft(p=>({...p,name:e.target.value}))} placeholder="e.g. Kigali Retail Ltd"/></FF>
+                    <FF label="Country"><input value={groupDraft.country} onChange={e=>setGroupDraft(p=>({...p,country:e.target.value}))} placeholder="RW"/></FF>
+                    <FF label="Contact email"><input type="email" value={groupDraft.contactEmail} onChange={e=>setGroupDraft(p=>({...p,contactEmail:e.target.value}))} placeholder="owner@company.com"/></FF>
+                    <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 13px',fontSize:11,color:'var(--textMid)'}}>ID: <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{mkGroupId()}</span></div>
+                    <Btn v="primary" full icon="＋" onClick={addGroup}>Create group</Btn>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Shops tab ───────────────────────────────────── */}
+        {pg==='shops'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18,flexWrap:'wrap',gap:10}}>
+              <div>
+                <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Shops</h1>
+                <p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{(shops||[]).length} total · assign shops to retail groups</p>
+              </div>
+              <Btn v="primary" icon="＋" onClick={()=>setShowAddShop(true)}>Add shop</Btn>
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:showAddShop?'1fr 380px':'1fr',gap:16,alignItems:'start'}}>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {(shops||[]).map(s=>{
+                  const repCount=(users||[]).filter(u=>u.shopId===s.id).length;
+                  const appCount=apps.filter(a=>a.shopId===s.id).length;
+                  return(
+                    <Card key={s.id} sx={{padding:14}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,marginBottom:10}}>
+                        <div>
+                          <div style={{fontWeight:700}}>{s.name} <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({s.id})</span></div>
+                          <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{s.location||'—'}</div>
+                          <div style={{display:'flex',gap:10,marginTop:5,fontSize:11,color:'var(--textMid)'}}>
+                            <span>👤 {repCount} rep{repCount!==1?'s':''}</span>
+                            <span>📋 {appCount} app{appCount!==1?'s':''}</span>
+                            {s.merchantGroupId&&<span style={{color:'var(--pur)'}}>🏢 {groupName(s.merchantGroupId)}</span>}
+                          </div>
+                        </div>
+                        <Btn v="err" sz="sm" onClick={()=>{
+                          if(repCount>0){addToast('err','Cannot remove','Remove or reassign all reps first');return;}
+                          setShops((shops||[]).filter(x=>x.id!==s.id));addToast('ok','Shop removed','');
+                        }}>Remove</Btn>
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                        <FF label="Shop name"><input value={s.name} onChange={e=>setShops((shops||[]).map(x=>x.id===s.id?{...x,name:e.target.value}:x))}/></FF>
+                        <FF label="Location"><input value={s.location||''} onChange={e=>setShops((shops||[]).map(x=>x.id===s.id?{...x,location:e.target.value}:x))} placeholder="e.g. KG 15 Ave"/></FF>
+                        <FF label="Retail group" req>
+                          <select value={s.merchantGroupId||''} onChange={e=>setShops((shops||[]).map(x=>x.id===s.id?{...x,merchantGroupId:e.target.value||null}:x))}>
+                            <option value="">— Unassigned —</option>
+                            {mgs.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                          </select>
+                        </FF>
+                      </div>
+                    </Card>
+                  );
+                })}
+                {(shops||[]).length===0&&<Empty ico="🏪" title="No shops yet"/>}
+              </div>
+              {showAddShop&&(
+                <Card sx={{padding:16}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                    <div style={{fontWeight:700}}>Add shop</div>
+                    <Btn v="def" sz="sm" onClick={()=>setShowAddShop(false)}>Cancel</Btn>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                    <FF label="Shop name" req><input value={shopDraft.name} onChange={e=>setShopDraft(p=>({...p,name:e.target.value}))} placeholder="e.g. Remera Branch"/></FF>
+                    <FF label="Location"><input value={shopDraft.location} onChange={e=>setShopDraft(p=>({...p,location:e.target.value}))} placeholder="e.g. Remera, Kigali"/></FF>
+                    <FF label="Retail group">
+                      <select value={shopDraft.merchantGroupId} onChange={e=>setShopDraft(p=>({...p,merchantGroupId:e.target.value}))}>
+                        <option value="">— Unassigned —</option>
+                        {mgs.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                      </select>
+                    </FF>
+                    <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 13px',fontSize:11,color:'var(--textMid)'}}>ID: <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{mkShopId()}</span></div>
+                    <Btn v="primary" full icon="＋" onClick={addShop}>Create shop</Btn>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Managers tab ────────────────────────────────── */}
+        {pg==='managers'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18,flexWrap:'wrap',gap:10}}>
+              <div>
+                <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Retail Managers</h1>
+                <p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{managers.length} manager account{managers.length!==1?'s':''}</p>
+              </div>
+              <Btn v="primary" icon="＋" onClick={()=>setShowAddMgr(true)}>Add manager</Btn>
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:showAddMgr?'1fr 380px':'1fr',gap:16,alignItems:'start'}}>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {managers.map(m=>{
+                  const grp=mgs.find(g=>g.id===m.merchantGroupId);
+                  const grpShops=(shops||[]).filter(s=>s.merchantGroupId===m.merchantGroupId);
+                  return(
+                    <Card key={m.id} sx={{padding:14}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,marginBottom:10}}>
+                        <div>
+                          <div style={{fontWeight:700,fontSize:14}}>{m.name}</div>
+                          <div style={{fontSize:11,color:'var(--textLight)'}}>{m.email} · <span style={{fontFamily:'DM Mono,monospace'}}>{m.id}</span></div>
+                          {grp&&<div style={{marginTop:5,fontSize:11,background:'var(--purBg)',color:'var(--pur)',padding:'2px 9px',borderRadius:99,display:'inline-block',border:'1px solid var(--purBorder)'}}>🏢 {grp.name}</div>}
+                        </div>
+                        <div style={{display:'flex',gap:6,flexWrap:'wrap',justifyContent:'flex-end'}}>
+                          {m.mustChangePassword&&<span style={{fontSize:10,background:'var(--warnBg)',color:'var(--warn)',padding:'2px 8px',borderRadius:99,alignSelf:'center'}}>Temp pwd</span>}
+                        </div>
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                        <FF label="Assign to group">
+                          <select value={m.merchantGroupId||''} onChange={e=>setUsers((users||[]).map(u=>u.id===m.id?{...u,merchantGroupId:e.target.value||null}:u))}>
+                            <option value="">— Unassigned —</option>
+                            {mgs.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                          </select>
+                        </FF>
+                        <FF label="Shops in group"><input readOnly value={grpShops.map(s=>s.name).join(', ')||'—'} style={{background:'var(--bg)',cursor:'default'}}/></FF>
+                      </div>
+                    </Card>
+                  );
+                })}
+                {managers.length===0&&<Empty ico="🧑‍💼" title="No retail managers yet" sub="Add a manager account below"/>}
+              </div>
+              {showAddMgr&&(
+                <Card sx={{padding:16}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                    <div style={{fontWeight:700}}>Add retail manager</div>
+                    <Btn v="def" sz="sm" onClick={()=>setShowAddMgr(false)}>Cancel</Btn>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                    <FF label="Full name" req><input value={mgrDraft.name} onChange={e=>setMgrDraft(p=>({...p,name:e.target.value}))} placeholder="e.g. Jean Pierre"/></FF>
+                    <FF label="Email address" req><input type="email" value={mgrDraft.email} onChange={e=>setMgrDraft(p=>({...p,email:e.target.value}))} placeholder="manager@company.com"/></FF>
+                    <FF label="Retail group" req>
+                      <select value={mgrDraft.merchantGroupId} onChange={e=>setMgrDraft(p=>({...p,merchantGroupId:e.target.value}))}>
+                        <option value="">Select group…</option>
+                        {mgs.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                      </select>
+                    </FF>
+                    <FF label="Password (optional — auto-generated if blank)"><input type="password" value={mgrDraft.password} onChange={e=>setMgrDraft(p=>({...p,password:e.target.value}))} placeholder="Leave blank to auto-generate"/></FF>
+                    <Btn v="primary" full icon="＋" onClick={addManager}>Create manager</Btn>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── MERCHANT VIEW ─────────────────────────────────────────────
 const MerchantView=({apps,addToast,users,setUsers,shops})=>{
   const {user,merchantGroups}=useContext(Ctx);
@@ -3265,6 +3539,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [fst,setFst]=useState('');
+  const [fGroup,setFGroup]=useState('');
   const [fShop,setFShop]=useState('');
   const [fRep,setFRep]=useState('');
   const [fDateFrom,setFDateFrom]=useState('');
@@ -3272,6 +3547,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
   const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const [adminTab,setAdminTab]=useState('devices');
   const shopName=(id)=>(shops||[]).find(s=>s.id===id)?.name||id||'—';
+  const groupOfShop=(shopId)=>(shops||[]).find(s=>s.id===shopId)?.merchantGroupId||null;
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
   if(sel){
@@ -3282,6 +3558,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
   const filtered=apps.filter(a=>{
     if(q&&!a.c.name.toLowerCase().includes(q.toLowerCase())&&!a.id.toLowerCase().includes(q.toLowerCase())&&!(a.rep||'').toLowerCase().includes(q.toLowerCase()))return false;
     if(fst&&a.status!==fst)return false;
+    if(fGroup){const g=groupOfShop(a.shopId);if(fGroup==='__none__'?g!==null:g!==fGroup)return false;}
     if(fShop&&a.shopId!==fShop)return false;
     if(fRep&&a.repId!==fRep)return false;
     if(fDateFrom){const d=new Date(a.createdAt);const from=new Date(fDateFrom);from.setHours(0,0,0,0);if(d<from)return false;}
@@ -3289,9 +3566,9 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
     return true;
   });
 
-  const roleLabelFor=r=>({rep:'Sales Representative',underwriter:'Underwriter',ops:'Ops & Support',merchant:'Retail Manager'}[r]||r);
+  const roleLabelFor=r=>({rep:'Sales Representative',underwriter:'Underwriter',ops:'Ops & Support',merchant:'Retail Manager',groupadmin:'Group Admin'}[r]||r);
   const mkUserId=r=>{
-    const pref=r==='rep'?'SR':r==='underwriter'?'UW':r==='merchant'?'MR':'OP';
+    const pref=r==='rep'?'SR':r==='underwriter'?'UW':r==='merchant'?'MR':r==='groupadmin'?'GA':'OP';
     const nums=(users||[]).filter(u=>u.id?.startsWith(pref)).map(u=>parseInt(String(u.id).slice(2),10)).filter(n=>!isNaN(n));
     const next=(nums.length?Math.max(...nums):0)+1;
     return pref+String(next).padStart(2,'0');
@@ -3684,6 +3961,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                           <option value="underwriter">Underwriter</option>
                           <option value="ops">Ops & Support</option>
                           <option value="merchant">Retail Manager</option>
+                          <option value="groupadmin">Group Admin</option>
                         </select>
                       </FF>
                       {u.role==='rep'&&(
@@ -3734,6 +4012,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                     <option value="underwriter">Underwriter</option>
                     <option value="ops">Ops & Support</option>
                     <option value="merchant">Retail Manager</option>
+                    <option value="groupadmin">Group Admin</option>
                   </select>
                 </FF>
                 {newUser.role==='rep'&&(
@@ -3976,10 +4255,17 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                     {Object.entries(SM).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
                   </select>
                 </FF>
+                <FF label="Retail group">
+                  <select value={fGroup} onChange={ev=>{setFGroup(ev.target.value);setFShop('');}}>
+                    <option value="">All groups</option>
+                    {(merchantGroups||[]).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                    <option value="__none__">— Unassigned —</option>
+                  </select>
+                </FF>
                 <FF label="Shop">
                   <select value={fShop} onChange={ev=>setFShop(ev.target.value)}>
                     <option value="">All shops</option>
-                    {(shops||[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                    {(fGroup&&fGroup!=='__none__'?(shops||[]).filter(s=>s.merchantGroupId===fGroup):(shops||[])).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </FF>
                 <FF label="Sales rep">
@@ -3993,12 +4279,14 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:10}}>
                 <span style={{fontSize:11,color:'var(--textLight)'}}>{filtered.length} result{filtered.length!==1?'s':''}</span>
-                {(q||fst||fShop||fRep||fDateFrom||fDateTo)&&<Btn v="ghost" sz="sm" onClick={()=>{setQ('');setFst('');setFShop('');setFRep('');setFDateFrom('');setFDateTo('');}}>Clear filters</Btn>}
+                {(q||fst||fGroup||fShop||fRep||fDateFrom||fDateTo)&&<Btn v="ghost" sz="sm" onClick={()=>{setQ('');setFst('');setFGroup('');setFShop('');setFRep('');setFDateFrom('');setFDateTo('');}}>Clear filters</Btn>}
               </div>
             </Card>
             <div style={{display:'flex',flexDirection:'column',gap:8}}>{filtered.map(a=>{
               const sn=shopName(a.shopId);
-              return <div key={a.id}><ACard app={a} onClick={()=>setSel(a.id)}/>{(a.shopId||a.rep)&&<div style={{display:'flex',gap:8,paddingLeft:8,marginTop:-4,marginBottom:4,flexWrap:'wrap'}}>{a.shopId&&<span style={{fontSize:10,color:'var(--brand2)',background:'var(--brandPale)',padding:'1px 7px',borderRadius:99,border:'1px solid var(--brandPale2)'}}>🏪 {sn}</span>}{a.rep&&<span style={{fontSize:10,color:'var(--textMid)',background:'var(--bg)',padding:'1px 7px',borderRadius:99,border:'1px solid var(--border)'}}>👤 {a.rep}</span>}</div>}</div>;
+              const gid=groupOfShop(a.shopId);
+              const gn=(merchantGroups||[]).find(g=>g.id===gid)?.name;
+              return <div key={a.id}><ACard app={a} onClick={()=>setSel(a.id)}/>{(a.shopId||a.rep||gn)&&<div style={{display:'flex',gap:8,paddingLeft:8,marginTop:-4,marginBottom:4,flexWrap:'wrap'}}>{gn&&<span style={{fontSize:10,color:'var(--pur)',background:'var(--purBg)',padding:'1px 7px',borderRadius:99,border:'1px solid var(--purBorder)'}}>🏢 {gn}</span>}{a.shopId&&<span style={{fontSize:10,color:'var(--brand2)',background:'var(--brandPale)',padding:'1px 7px',borderRadius:99,border:'1px solid var(--brandPale2)'}}>🏪 {sn}</span>}{a.rep&&<span style={{fontSize:10,color:'var(--textMid)',background:'var(--bg)',padding:'1px 7px',borderRadius:99,border:'1px solid var(--border)'}}>👤 {a.rep}</span>}</div>}</div>;
             })}</div>
             {filtered.length===0&&<Empty ico="🔍" title="No results found"/>}
           </div>
@@ -4085,6 +4373,7 @@ const App=()=>{
         {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} pricingConfig={pricingConfig} companyInfo={companyInfo}/>}
         {user.role==='underwriter'&&<UnderwriterView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
         {user.role==='support'&&<SupportView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
+        {user.role==='groupadmin'&&<GroupAdminView apps={apps} addToast={addToast} users={users} setUsers={setUsers} shops={shops} setShops={setShops} merchantGroups={merchantGroups} setMerchantGroups={setMerchantGroups}/>}
         {user.role==='merchant'&&<MerchantView apps={apps} addToast={addToast} users={users} setUsers={setUsers} shops={shops}/>}
         {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} shops={shops} setShops={setShops} setContracts={setContracts} pricingConfig={pricingConfig} setPricingConfig={setPricingConfig} merchantGroups={merchantGroups} setMerchantGroups={setMerchantGroups}/>}
       </div>
