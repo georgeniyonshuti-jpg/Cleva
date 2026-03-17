@@ -873,10 +873,10 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
     rep:[{k:'dash',l:t('home'),badge:0},{k:'prices',l:t('price_list')}],
     underwriter:[{k:'dash',l:'Home',badge:pending},{k:'queue',l:'Review Queue',badge:pending},{k:'all',l:'All Applications'}],
     support:[{k:'dash',l:'Home'},{k:'all',l:'All Applications'}],
-    ops:[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},...(user.superuser?[{k:'admin',l:'Admin'}]:[])],
+    ops:user.superuser?[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},{k:'admin',l:'Admin'}]:[{k:'all',l:'All Applications'}],
   }[user.role]||[];
   const initials=user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const go=(k)=>{ setPage(k); onClose&&onClose(); };
+  const go=(k)=>{ setPage(k); if(window.innerWidth<769) onClose&&onClose(); };
   return(
     <div className={'sidebar-wrapper'+(open?' desktop-expanded':' desktop-collapsed')}>
       <div className={'sidebar-backdrop'+(open?' visible':'')} onClick={onClose||(()=>{})} aria-hidden="true"/>
@@ -3044,7 +3044,8 @@ const EmailTplEditor=({addToast})=>{
 };
 
 const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,setShops,setContracts,pricingConfig,setPricingConfig})=>{
-  const [pg,setPg]=useState('overview');
+  const {user}=useContext(Ctx);
+  const [pg,setPg]=useState(()=>user?.superuser?'overview':'all');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [fst,setFst]=useState('');
@@ -3053,7 +3054,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
   const [fDateFrom,setFDateFrom]=useState('');
   const [fDateTo,setFDateTo]=useState('');
   const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
-  const {user}=useContext(Ctx);
+  const [adminTab,setAdminTab]=useState('devices');
   const shopName=(id)=>(shops||[]).find(s=>s.id===id)?.name||id||'—';
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
@@ -3091,7 +3092,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
   };
 
   const Admin=()=>{
-    const [tab,setTab]=useState('devices');
+    const tab=adminTab,setTab=setAdminTab;
     const [du,setDu]=useState('');
     const [uu,setUu]=useState('');
     const [showAddDevice,setShowAddDevice]=useState(false);
