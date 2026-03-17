@@ -452,7 +452,7 @@ const TR={
     lock_pt_desc:'Open the PayTrigger portal, find this device by IMEI, and lock it. Once the customer\'s screen shows the PAYGO lock, confirm below to activate the contract.',
     lock_only_once:'Only confirm once the lock screen is visible on the customer\'s phone.',
     open_pt_portal:'↗ Open PayTrigger portal',
-    activating_contract:'Activating contract…',confirm_lock_activate:'Confirm phone is locked — activate contract',
+    activating_contract:'Activating contract…',locking_phone:'Confirming lock…',confirm_lock_activate:'Confirm phone is locked — activate contract',phone_locked_toast:'Phone locked!',phone_locked_msg:'Contract is now awaiting first payment. It will activate automatically once payment is received.',
   },
   rw:{
     app_subtitle:'Urubuga rw\'isuzuma ry\'inguzanyo',
@@ -585,7 +585,7 @@ const TR={
     lock_pt_desc:'Fungura urubuga rwa PayTrigger, shakira iyi mashini na IMEI, kandi ufunge. Umukiriya nayibona urufunguzo rwa PAYGO, emeza hepfo gushyiraho amasezerano.',
     lock_only_once:'Emeza gusa igihe urufunguzo rwa PAYGO rurerekwa kuri simu y\'umukiriya.',
     open_pt_portal:'↗ Fungura urubuga rwa PayTrigger',
-    activating_contract:'Gushyiraho amasezerano…',confirm_lock_activate:'Emeza ko telefoni ifunze — shyiraho amasezerano',
+    activating_contract:'Gushyiraho amasezerano…',locking_phone:'Emeza gufunga…',confirm_lock_activate:'Emeza ko telefoni ifunze — shyiraho amasezerano',phone_locked_toast:'Telefoni ifunze!',phone_locked_msg:'Amasezerano arindirwa kwishyura bwa mbere. Azashyirwaho by\'ukuri kwishyura kugera.',
   },
 };
 // ── CONTEXT ───────────────────────────────────────────────────
@@ -1621,7 +1621,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
   const t=useT();
   const proxyUrl=(companyInfo?.imeiProxyUrl||CARLCARE_PROXY_FALLBACK).trim();
   const [imei,setImei]=useState(app.imei||'');
-  const [phase,setPhase]=useState(app.status===ST.LOCK_PENDING||app.status===ST.ACTIVE?'verified':app.imei&&app.status===ST.APPROVED?'autocheck_resume':'entry');
+  const [phase,setPhase]=useState([ST.LOCK_PENDING,ST.AWAITING_PAYMENT,ST.ACTIVE].includes(app.status)?'verified':app.imei&&app.status===ST.APPROVED?'autocheck_resume':'entry');
   const [ld,setLd]=useState(null);
   const [copied,setCopied]=useState(false);
   const [mismatchNote,setMismatchNote]=useState('');
@@ -1711,13 +1711,13 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
     setImei('');setCcResult(null);setPhase('entry');
   };
   const confirmLocked=async()=>{
-    setLd('lock');await sleep(2000);
-    onUpdate(app.id,{status:ST.ACTIVE,lockedAt:new Date().toISOString(),tlEntry:{by:user.name,txt:'Phone locked — contract activated, payments enabled'}});
-    addToast('ok',t('contract_activated_toast'),t('contract_activated_msg'));
+    setLd('lock');await sleep(1200);
+    onUpdate(app.id,{status:ST.AWAITING_PAYMENT,lockedAt:new Date().toISOString(),tlEntry:{by:user.name,txt:'Phone locked in PayTrigger — awaiting first payment to activate contract'}});
+    addToast('ok',t('phone_locked_toast'),t('phone_locked_msg'));
     setLd(null);onBack();
   };
 
-  const STEPS_DEF=[{l:t('imei_step1'),done:phase!=='entry'},{l:t('imei_step2'),done:['valid','mismatch','notfound','verified'].includes(phase)},{l:t('imei_step3'),done:phase==='verified'&&app.status===ST.ACTIVE}];
+  const STEPS_DEF=[{l:t('imei_step1'),done:phase!=='entry'},{l:t('imei_step2'),done:['valid','mismatch','notfound','verified'].includes(phase)},{l:t('imei_step3'),done:phase==='verified'&&[ST.AWAITING_PAYMENT,ST.ACTIVE].includes(app.status)}];
 
   return(
     <div className="fadeUp" style={{padding:'28px 32px',maxWidth:760}}>
@@ -1920,10 +1920,251 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
             <p style={{fontSize:12,color:'var(--textMid)',lineHeight:1.7,marginBottom:14}}>{t('lock_pt_desc')}</p>
             <div style={{padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6,marginBottom:18}}>{t('lock_only_once')}</div>
             <a href="https://paytrigger.shalltry.com/pay-trigger/" target="_blank" rel="noopener noreferrer" style={{display:'inline-flex',alignItems:'center',gap:6,padding:'9px 14px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',color:'var(--info)',fontSize:12,fontWeight:600,textDecoration:'none',marginBottom:16}}>{t('open_pt_portal')}</a>
-            <Btn onClick={confirmLocked} v="ok" sz="lg" full loading={ld==='lock'} disabled={!!ld} icon="🔒">{ld==='lock'?t('activating_contract'):t('confirm_lock_activate')}</Btn>
+            <Btn onClick={confirmLocked} v="ok" sz="lg" full loading={ld==='lock'} disabled={!!ld} icon="🔒">{ld==='lock'?t('locking_phone'):t('confirm_lock_activate')}</Btn>
           </div>
         )}
       </Card>
+    </div>
+  );
+};
+
+// ── UNDERWRITER REVIEW FLOW ──────────────────────────────────
+const FlagBtn=({fieldKey,requestedFields,onToggle,label=''})=>{
+  const on=requestedFields.includes(fieldKey);
+  return(
+    <button type="button" onClick={()=>onToggle(fieldKey)} style={{flexShrink:0,padding:'3px 9px',fontSize:10,fontWeight:600,background:on?'var(--warn)':'var(--bg)',color:on?'white':'var(--textMid)',border:'1px solid '+(on?'var(--warn)':'var(--border)'),borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}} title={on?'Remove flag':'Flag for correction'}>{on?'⚑ Flagged':'Flag'}{label?' '+label:''}</button>
+  );
+};
+const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
+  const {user}=useContext(Ctx);
+  const [step,setStep]=useState(1);
+  const [requestedFields,setRequestedFields]=useState(()=>app.requestedChangeFields||[]);
+  const [note,setNote]=useState(app.notes||'');
+  const [ld,setLd]=useState(null);
+  const [showRej,setShowRej]=useState(false);
+  const [rejReason,setRejReason]=useState('');
+  const isSuperuser=!!user.superuser;
+  const toggleRequest=(key)=>setRequestedFields(p=>p.includes(key)?p.filter(x=>x!==key):[...p,key]);
+  const hasFlags=requestedFields.length>0;
+  const c=app.c,d=app.dev;
+  const tot=d.totalCost||(d.dep+(d.weekly||0)*(d.wks||12));
+  const termMonths=d.wks||12;
+  const ratio=c.income>0?(d.weekly/c.income*100):0;
+  const affordOk=c.income>0&&ratio<30;
+  const lockedByOther=app.reviewLock&&app.reviewLock.by!==user.id&&!isSuperuser;
+  React.useEffect(()=>{
+    if(lockedByOther)return;
+    const lock=app.reviewLock;
+    if(lock&&lock.by===user.id)return;
+    onUpdate(app.id,{reviewLock:{by:user.id,byName:user.name,at:new Date().toISOString()},tlEntry:{by:user.name,txt:'Review started'}});
+  },[app.id]);// eslint-disable-line
+  const approve=async()=>{setLd('ap');await sleep(1200);onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:'Approved — sales rep to enter IMEI and verify device'}});addToast('ok','Application approved','Sales rep notified to proceed with IMEI verification');setLd(null);onBack();};
+  const reject=async()=>{if(!rejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}setLd('rej');await sleep(700);onUpdate(app.id,{status:ST.ARCHIVED,mboDecision:'REJECTED',mboRejectionReason:rejReason,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});addToast('info','Application rejected','Application is now closed');setLd(null);onBack();};
+  const requestChanges=async()=>{if(requestedFields.length===0){addToast('err','Select fields','Flag at least one field using the Flag buttons');return;}if(!note.trim()){addToast('err','Note required','Explain what the rep needs to fix');return;}setLd('ch');await sleep(700);const ap=app.application||{};const reqs=ap.fieldCorrectionRequests||[];const added=requestedFields.filter(f=>!reqs.some(r=>r.fieldName===f&&!r.resolvedAt));const newReqs=[...reqs,...added.map(fieldName=>({fieldName,reason:note,resolvedAt:null}))];onUpdate(app.id,{status:ST.UNDER_REVIEW,notes:note,application:{...ap,fieldCorrectionRequests:newReqs},reviewLock:null,tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});addToast('warn','Changes requested','Application returned to rep for correction');setLd(null);onBack();};
+  const escalate=async()=>{if(!note.trim()){addToast('err','Note required','Explain why you are escalating.');return;}setLd('esc');await sleep(700);onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Escalated to ops: ${note}`}});addToast('warn','Escalated to ops','Awaiting action from operations team');setLd(null);onBack();};
+  const STEPS=['Customer','Documents','Device & Deal','Decision'];
+  const StepRow=()=>(
+    <div style={{display:'flex',alignItems:'center',gap:0}}>
+      {STEPS.map((s,i)=>{
+        const n=i+1;const done=n<step;const active=n===step;
+        return(
+          <React.Fragment key={n}>
+            <div onClick={()=>{if(n<step)setStep(n);}} style={{display:'flex',alignItems:'center',gap:6,cursor:n<step?'pointer':'default',opacity:n>step?0.4:1,flexShrink:0}}>
+              <div style={{width:22,height:22,borderRadius:11,background:done?'var(--ok)':active?'var(--brand)':'var(--border)',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,flexShrink:0}}>{done?'✓':n}</div>
+              <span style={{fontSize:11,fontWeight:active?700:500,color:active?'var(--brand)':done?'var(--ok)':'var(--textLight)',whiteSpace:'nowrap'}}>{s}</span>
+            </div>
+            {i<STEPS.length-1&&<div style={{flex:1,height:1,background:'var(--border)',margin:'0 8px',minWidth:8}}/>}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+  return(
+    <div style={{display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
+      {/* Header */}
+      <div style={{flexShrink:0,padding:'16px 24px',borderBottom:'1.5px solid var(--border)',background:'var(--surface)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+          <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
+          <div style={{flex:1,minWidth:0}}><div style={{fontWeight:800,fontSize:17,letterSpacing:'-0.3px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>{app.id} · {app.rep} · {fmtD(app.createdAt)}</div></div>
+          <Badge st={app.status}/>
+        </div>
+        <StepRow/>
+      </div>
+      {/* Scrollable content */}
+      <div style={{flex:1,overflow:'auto',minHeight:0,padding:'24px 28px 120px'}}>
+        {lockedByOther&&step!==4&&(
+          <div style={{padding:'12px 16px',marginBottom:20,border:'2px solid var(--warnBorder)',background:'var(--warnBg)',borderRadius:'var(--r)',fontSize:12}}>
+            🔒 <strong>Under review by {app.reviewLock.byName}</strong> — you can review details but cannot make a decision.
+          </div>
+        )}
+        {/* Step 1: Customer */}
+        {step===1&&(
+          <div style={{maxWidth:720}}>
+            <h2 style={{fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:'-0.2px'}}>Customer information</h2>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:22}}>Review customer details. Use the <strong>Flag</strong> button on any field to request a correction.</p>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+              <FldWithRequest fieldKey="name" label="Full name" val={c.name} requestedFields={requestedFields} onToggle={toggleRequest}/>
+              <FldWithRequest fieldKey="nid" label={c.idType==='passport'?'Passport number':'National ID'} val={c.nid} requestedFields={requestedFields} onToggle={toggleRequest} mono/>
+              <FldWithRequest fieldKey="phone" label="Phone" val={c.phone} requestedFields={requestedFields} onToggle={toggleRequest}/>
+              <FldWithRequest fieldKey="occ" label="Occupation" val={c.occ} requestedFields={requestedFields} onToggle={toggleRequest}/>
+              <FldWithRequest fieldKey="addr" label="Address" val={c.addr} requestedFields={requestedFields} onToggle={toggleRequest}/>
+              <FldWithRequest fieldKey="income" label="Monthly income" val={fmtRWF(c.income)} requestedFields={requestedFields} onToggle={toggleRequest}/>
+            </div>
+            <div style={{marginTop:18,paddingTop:14,borderTop:'1.5px solid var(--border)'}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Next of kin / Guarantor</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:0}}>
+                <FldWithRequest fieldKey="kin_name" label="Name" val={c.kin.name} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="kin_phone" label="Phone" val={c.kin.phone} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="kin_rel" label="Relationship" val={c.kin.rel} requestedFields={requestedFields} onToggle={toggleRequest}/>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Step 2: Documents */}
+        {step===2&&(
+          <div style={{maxWidth:820}}>
+            <h2 style={{fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:'-0.2px'}}>Documents & photos</h2>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:22}}>Verify the customer photo, ID document, and proof of income. Use <strong>Flag</strong> to request a re-upload.</p>
+            {(app.customerPhoto||app.idPhoto)&&(
+              <div style={{display:'grid',gridTemplateColumns:app.customerPhoto&&app.idPhoto?'1fr 1.9fr':'1fr',gap:18,marginBottom:app.incomeProof?24:0}}>
+                {app.customerPhoto&&(
+                  <div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><span style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',color:'var(--textLight)'}}>Customer photo</span><FlagBtn fieldKey="customerPhoto" requestedFields={requestedFields} onToggle={toggleRequest}/></div>
+                    <div style={{position:'relative',borderRadius:10,overflow:'hidden',border:`2px solid ${requestedFields.includes('customerPhoto')?'var(--warn)':'var(--border)'}`,cursor:'pointer'}} onClick={()=>window.open(app.customerPhoto,'_blank','noopener')}>
+                      <img src={app.customerPhoto} alt="Customer" style={{width:'100%',maxHeight:340,objectFit:'cover',display:'block'}}/>
+                      <div style={{position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.5)',color:'white',fontSize:10,fontWeight:600,padding:'3px 9px',borderRadius:99}}>↗ Full size</div>
+                    </div>
+                  </div>
+                )}
+                {app.idPhoto&&(
+                  <div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><span style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',color:'var(--textLight)'}}>ID document</span><FlagBtn fieldKey="idPhoto" requestedFields={requestedFields} onToggle={toggleRequest}/></div>
+                    <div style={{position:'relative',borderRadius:10,overflow:'hidden',border:`2px solid ${requestedFields.includes('idPhoto')?'var(--warn)':'var(--border)'}`,cursor:'pointer'}} onClick={()=>window.open(app.idPhoto,'_blank','noopener')}>
+                      <img src={app.idPhoto} alt="ID" style={{width:'100%',maxHeight:340,objectFit:'contain',display:'block',background:'var(--bg)'}}/>
+                      <div style={{position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.5)',color:'white',fontSize:10,fontWeight:600,padding:'3px 9px',borderRadius:99}}>↗ Full size</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {app.incomeProof&&(
+              <div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><span style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',color:'var(--textLight)'}}>Proof of income</span><FlagBtn fieldKey="incomeProof" requestedFields={requestedFields} onToggle={toggleRequest}/></div>
+                {app.incomeProof.startsWith('data:application/pdf')?(
+                  <div style={{display:'flex',alignItems:'center',gap:14,padding:'18px 20px',background:'var(--bg)',border:`2px solid ${requestedFields.includes('incomeProof')?'var(--warn)':'var(--border)'}`,borderRadius:10}}>
+                    <span style={{fontSize:32}}>📄</span>
+                    <div style={{flex:1}}><div style={{fontWeight:600,fontSize:14}}>PDF Document</div><div style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Income proof attached</div></div>
+                    <a href={app.incomeProof} download="income_proof.pdf" style={{display:'inline-flex',alignItems:'center',gap:6,padding:'9px 16px',background:'var(--brand)',color:'white',borderRadius:'var(--r2)',fontSize:12,fontWeight:600,textDecoration:'none'}}>⬇ Download PDF</a>
+                  </div>
+                ):(
+                  <div style={{position:'relative',borderRadius:10,overflow:'hidden',border:`2px solid ${requestedFields.includes('incomeProof')?'var(--warn)':'var(--border)'}`,cursor:'pointer'}} onClick={()=>window.open(app.incomeProof,'_blank','noopener')}>
+                    <img src={app.incomeProof} alt="Income proof" style={{width:'100%',maxHeight:400,objectFit:'contain',display:'block',background:'var(--bg)'}}/>
+                    <div style={{position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.5)',color:'white',fontSize:10,fontWeight:600,padding:'3px 9px',borderRadius:99}}>↗ Full size</div>
+                  </div>
+                )}
+              </div>
+            )}
+            {!app.customerPhoto&&!app.idPhoto&&!app.incomeProof&&<div style={{padding:'40px 24px',textAlign:'center',color:'var(--textMid)',fontSize:13}}>No documents uploaded with this application.</div>}
+          </div>
+        )}
+        {/* Step 3: Device & Deal */}
+        {step===3&&(
+          <div style={{maxWidth:700}}>
+            <h2 style={{fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:'-0.2px'}}>Device & deal</h2>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:22}}>Review the device and payment terms. Check the affordability ratio.</p>
+            <div style={{marginBottom:24}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+                <FldWithRequest fieldKey="device_id" label="Device" val={`${d.brand} ${d.model}`} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <Fld label="Storage / RAM" val={d.specs}/>
+              </div>
+            </div>
+            <div style={{marginBottom:24}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Payment terms</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+                <FldWithRequest fieldKey="dep" label="Upfront deposit" val={fmtRWF(d.dep)} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="weekly" label={`Monthly × ${termMonths}`} val={fmtRWF(d.weekly)} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="tot" label="Total price" val={fmtRWF(tot)} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <Fld label="Term" val={`${termMonths} months`}/>
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Affordability check</div>
+              <div style={{padding:'18px 20px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r)'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:12}}>
+                  <span style={{fontSize:13,color:'var(--textMid)'}}>Monthly repayment / income</span>
+                  <span style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:24,color:affordOk?'var(--ok)':'var(--err)'}}>{c.income>0?ratio.toFixed(1):'—'}%</span>
+                </div>
+                <div style={{height:8,background:'var(--bg)',borderRadius:4,overflow:'hidden',marginBottom:12}}>
+                  <div style={{height:'100%',borderRadius:4,width:`${Math.min(100,ratio)}%`,background:affordOk?'var(--ok)':'var(--err)',transition:'width .6s'}}/>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                  <div style={{padding:'9px 12px',background:'var(--bg)',borderRadius:'var(--r2)'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:2}}>Income</div><div style={{fontWeight:700,fontSize:13}}>{fmtRWF(c.income)}</div></div>
+                  <div style={{padding:'9px 12px',background:'var(--bg)',borderRadius:'var(--r2)'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:2}}>Monthly payment</div><div style={{fontWeight:700,fontSize:13}}>{fmtRWF(d.weekly)}</div></div>
+                  <div style={{padding:'9px 12px',background:affordOk?'var(--okBg)':'var(--errBg)',border:`1px solid ${affordOk?'var(--okBorder)':'var(--errBorder)'}`,borderRadius:'var(--r2)'}}><div style={{fontSize:10,fontWeight:600,color:affordOk?'var(--ok)':'var(--err)',marginBottom:2}}>Policy (max 30%)</div><div style={{fontWeight:700,fontSize:13,color:affordOk?'var(--ok)':'var(--err)'}}>{affordOk?'✓ Within limit':'✗ Exceeds limit'}</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Step 4: Decision */}
+        {step===4&&(
+          <div style={{maxWidth:600}}>
+            <h2 style={{fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:'-0.2px'}}>Decision</h2>
+            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:22}}>Make your credit decision. A note is required for Request changes, Escalate, and Reject.</p>
+            {lockedByOther&&(
+              <div style={{padding:'16px 18px',background:'var(--warnBg)',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',marginBottom:20}}>
+                <div style={{fontWeight:700,fontSize:14,color:'var(--warn)',marginBottom:4}}>🔒 Under review by {app.reviewLock.byName}</div>
+                <div style={{fontSize:12,color:'var(--warn)'}}>Only {app.reviewLock.byName} or a superuser can make a credit decision on this application.</div>
+              </div>
+            )}
+            {hasFlags&&(
+              <div style={{marginBottom:18,padding:'12px 16px',background:'var(--warnBg)',border:'1.5px solid var(--warnBorder)',borderRadius:'var(--r2)'}}>
+                <div style={{fontWeight:700,fontSize:12,color:'var(--warn)',marginBottom:4}}>⚑ {requestedFields.length} field{requestedFields.length!==1?'s':''} flagged for correction</div>
+                <div style={{fontSize:11,color:'var(--warn)',marginBottom:4}}>{requestedFields.join(' · ')}</div>
+                <div style={{fontSize:11,color:'var(--textMid)'}}>Approve is not available — use <strong>Request changes</strong> or <strong>Escalate to ops</strong>.</div>
+              </div>
+            )}
+            {!lockedByOther&&(
+              <FF label="Note (required for Request changes, Escalate, and Reject)">
+                <textarea value={note} onChange={ev=>setNote(ev.target.value)} placeholder="Explain your decision or what the rep needs to fix..." rows={5} style={{resize:'vertical'}}/>
+              </FF>
+            )}
+          </div>
+        )}
+      </div>
+      {/* Sticky footer */}
+      <div style={{flexShrink:0,padding:'12px 24px',borderTop:'1.5px solid var(--border)',background:'var(--surface)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          {step>1&&<Btn onClick={()=>setStep(s=>s-1)} v="ghost" icon="←" sz="sm">Back</Btn>}
+          {hasFlags&&<div style={{fontSize:11,fontWeight:600,color:'var(--warn)',padding:'3px 10px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:99}}>⚑ {requestedFields.length} flag{requestedFields.length!==1?'s':''}</div>}
+        </div>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end'}}>
+          {step<4&&<Btn onClick={()=>setStep(s=>s+1)} v="primary" icon="→">Continue</Btn>}
+          {step===4&&!lockedByOther&&(<>
+            {!hasFlags&&<Btn onClick={approve} v="ok" loading={ld==='ap'} icon="✓">Approve</Btn>}
+            <Btn onClick={requestChanges} v="warn" loading={ld==='ch'} icon="↩" disabled={requestedFields.length===0}>Request changes</Btn>
+            <Btn onClick={escalate} v="pur" loading={ld==='esc'} icon="↑" disabled={!note.trim()}>Escalate to ops</Btn>
+            <Btn onClick={()=>setShowRej(p=>!p)} v="err" icon="✕">Reject</Btn>
+          </>)}
+        </div>
+      </div>
+      {/* Reject modal */}
+      {showRej&&ReactDOM.createPortal(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1200}} onClick={()=>setShowRej(false)}>
+          <div style={{background:'var(--surface)',borderRadius:'var(--r)',padding:26,maxWidth:420,width:'90%',boxShadow:'0 12px 40px rgba(0,0,0,0.25)'}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontWeight:800,fontSize:16,marginBottom:4,color:'var(--err)'}}>Reject application</div>
+            <div style={{fontSize:12,color:'var(--textMid)',marginBottom:16}}>This action is <strong>permanent</strong> and cannot be undone.</div>
+            <FF label="Rejection reason (required)">
+              <textarea value={rejReason} onChange={ev=>setRejReason(ev.target.value)} placeholder="Explain why the application is being rejected..." rows={3} style={{borderColor:'var(--errBorder)',resize:'vertical'}}/>
+            </FF>
+            <div style={{display:'flex',gap:8,marginTop:16}}>
+              <Btn onClick={reject} v="err" loading={ld==='rej'} disabled={!rejReason.trim()}>Confirm rejection</Btn>
+              <Btn onClick={()=>setShowRej(false)} v="ghost" sz="sm">Cancel</Btn>
+            </div>
+          </div>
+        </div>,document.body
+      )}
     </div>
   );
 };
@@ -2240,6 +2481,12 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
           <Btn onClick={()=>setShowImei(true)} v="warn" icon="→">{t('continue_imei_lock')}</Btn>
         </Card>
       )}
+      {isRep&&app.status===ST.AWAITING_PAYMENT&&(
+        <Card sx={{padding:'14px 16px',marginBottom:14,background:'var(--infoBg)',border:'2px solid var(--infoBorder)'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--info)',marginBottom:6}}>⏳ Awaiting first payment</div>
+          <div style={{fontSize:12,color:'var(--textMid)'}}>The phone has been locked in PayTrigger. The contract will activate automatically once the customer makes their first payment.{app.ptId&&<span style={{display:'block',marginTop:6,fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>PayTrigger ID: {app.ptId}</span>}</div>
+        </Card>
+      )}
       {/* Escalated — ops action panel */}
       {isSuperuser&&app.status===ST.ESCALATED&&(
         <Card sx={{padding:18,marginBottom:14,border:'2px solid var(--purBorder)',background:'var(--purBg)'}}>
@@ -2263,7 +2510,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
       )}
       {app.notes&&!isRep&&!isUnderwriter&&!isSuperuser&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Underwriter notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
       {app.notes&&isSuperuser&&app.status!==ST.ESCALATED&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
-      <Card sx={{padding:'16px 18px'}}>
+      {!isUnderwriter&&<Card sx={{padding:'16px 18px'}}>
         <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>{t('activity_timeline')}</div>
         {(app.tl||[]).map((t,i)=>(
           <div key={i} style={{display:'flex',gap:12,marginBottom:12,alignItems:'flex-start'}}>
@@ -2274,7 +2521,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
             <div style={{flex:1}}><div style={{fontSize:12,fontWeight:500}}>{t.txt}</div><div style={{fontSize:11,color:'var(--textLight)',marginTop:1}}>{t.by} · {fmtD(t.at)} at {fmtT(t.at)}</div></div>
           </div>
         ))}
-      </Card>
+      </Card>}
       </div>
     </div>
   );
@@ -2317,6 +2564,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
     imei:mine.filter(a=>a.status===ST.APPROVED||a.status===ST.LOCK_PENDING),
     changes:mine.filter(a=>a.status===ST.UNDER_REVIEW&&(a.application?.fieldCorrectionRequests||[]).some(r=>!r.resolvedAt)),
     review:mine.filter(a=>a.status===ST.PENDING_APPROVAL),
+    awaiting:mine.filter(a=>a.status===ST.AWAITING_PAYMENT),
     active:mine.filter(a=>a.status===ST.ACTIVE),
     closed:mine.filter(a=>(a.mboDecision==='REJECTED'||a.status===ST.ARCHIVED)&&a.status!==ST.DRAFT),
   };
@@ -2380,7 +2628,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
             )}
             <div className="home-actions">
               <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>startNewApp()}>{t('start_new_app')}</button>
-              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('active')}>{t('view_applications')} {(grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.active.length)>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.active.length}</span>}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('active')}>{t('view_applications')} {(grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.awaiting.length+grps.active.length)>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.awaiting.length+grps.active.length}</span>}</button>
               <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('completed')}>{t('closed_applications')} {grps.closed.length>0&&<span style={{background:'var(--bg)',color:'var(--textMid)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.closed.length}</span>}</button>
             </div>
             <div style={{marginTop:20,textAlign:'center'}}><button type="button" className="home-action-btn" style={{background:'transparent',color:'var(--textMid)',borderColor:'var(--border)',maxWidth:280,margin:'0 auto'}} onClick={()=>setPg('prices')}>📄 {t('price_list')}</button></div>
@@ -2417,8 +2665,9 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
             )}
             {grps.drafts.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--info)',marginBottom:10}}>{t('drafts_section')} <span style={{background:'var(--infoBg)',color:'var(--info)',padding:'1px 7px',borderRadius:99}}>{grps.drafts.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.drafts.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
             {grps.review.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>{t('submitted_review')} <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{grps.review.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.review.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
+            {grps.awaiting.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--info)',marginBottom:10}}>⏳ Awaiting first payment <span style={{background:'var(--infoBg)',color:'var(--info)',padding:'1px 7px',borderRadius:99}}>{grps.awaiting.length}</span></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.awaiting.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
             {grps.active.length>0&&<div style={{marginBottom:22}}><div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>{t('active_contracts')}</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.active.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div></div>}
-            {grps.imei.length===0&&grps.changes.length===0&&grps.drafts.length===0&&grps.review.length===0&&grps.active.length===0&&<Empty ico="📋" title={t('no_active')} sub={t('no_active_sub')}/>}
+            {grps.imei.length===0&&grps.changes.length===0&&grps.drafts.length===0&&grps.review.length===0&&grps.awaiting.length===0&&grps.active.length===0&&<Empty ico="📋" title={t('no_active')} sub={t('no_active_sub')}/>}
           </div>
         )}
         {pg==='completed'&&(
@@ -2469,7 +2718,21 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={APP_NAME}/><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app){
+      const reviewable=[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(app.status);
+      if(reviewable){
+        return(
+          <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
+            <Sidebar {...sidebarProps}/>
+            <div className="app-main" style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column',minHeight:0}}>
+              <TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title="Review application"/>
+              <UWReviewFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/>
+            </div>
+          </div>
+        );
+      }
+      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={APP_NAME}/><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    }
   }
 
   const merchantCodes=(user&&user.merchantCodes)||[];
