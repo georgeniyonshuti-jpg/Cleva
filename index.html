@@ -1129,39 +1129,59 @@ const ccNorm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const ccNum=s=>parseInt(String(s||'').replace(/[^0-9]/g,''))||0;
 
 // Parse the Carlcare imei-policy JSON response into a flat object.
-// We try many possible field names because the API is undocumented.
+// Actual API structure: { code:200, data:{ valid:[{ productModelCode, brandCategoryName, expiryDate, periodOfValid, status, warrantyName, isInvalid, ... }] } }
 const parseCarlcareResp=(raw)=>{
-  const d=raw?.data||raw?.result||raw;
-  if(!d||typeof d!=='object')return null;
-  // If the API returned an error code
-  if(raw?.code!==undefined&&raw.code!==0&&raw.code!==200&&raw.code!=='200')return null;
+  if(!raw||raw.code!==200)return null;
 
-  const brand=String(d.brandName||d.brand||d.manufacturer||'').trim();
-  const model=String(d.productName||d.productModel||d.model||d.deviceModel||'').trim();
-  const ram=String(d.ram||d.RAM||d.memory||d.memorySize||'').trim();
-  const rom=String(d.rom||d.ROM||d.storage||d.internalStorage||d.storageSize||'').trim();
+  // data.valid is an array of warranty entries (one per warranty type)
+  const validList=raw?.data?.valid;
+  if(!Array.isArray(validList)||validList.length===0)return null;
 
-  // Warranty dates — try multiple field names and date formats
-  const endRaw=d.warrantyEndDate||d.warrantyExpireDate||d.expireDate||d.endDate||
-               d.phoneWarranty?.end||d.warranty?.endDate||'';
-  const startRaw=d.warrantyStartDate||d.startDate||d.phoneWarranty?.start||d.warranty?.startDate||'';
+  // Pick the best entry: prefer ones with status="valid" and a months-based warranty
+  const pickBest=(list)=>{
+    const active=list.filter(e=>String(e.status||'').toLowerCase()==='valid'&&(e.isInvalid===0||e.isInvalid==='0'));
+    if(active.length===0)return list[0];
+    const monthsEntry=active.find(e=>(e.warrantyName||'').toLowerCase().includes('month'));
+    return monthsEntry||active[0];
+  };
+  const entry=pickBest(validList);
+  if(!entry)return null;
 
-  // Parse dates — Carlcare sometimes uses "DD-MM-YYYY" format
+  // productModelCode = "X6728B 128+4" → model="X6728B", rom="128", ram="4"
+  const modelCode=String(entry.productModelCode||'').trim();
+  const spaceIdx=modelCode.indexOf(' ');
+  const modelName=spaceIdx>-1?modelCode.slice(0,spaceIdx):modelCode;
+  const specsPart=spaceIdx>-1?modelCode.slice(spaceIdx+1):'';
+  const specNums=specsPart.split('+');
+  const rom=specNums[0]?specNums[0].replace(/[^0-9]/g,''):'';
+  const ram=specNums[1]?specNums[1].replace(/[^0-9]/g,''):'';
+
+  // brandCategoryName = "Infinix-SP" or "TECNO-itel" → take part before first "-"
+  const brandRaw=String(entry.brandCategoryName||'').trim();
+  const brand=brandRaw.includes('-')?brandRaw.split('-')[0].trim():brandRaw;
+
+  // Parse DD-MM-YYYY dates
   const parseDate=s=>{
     if(!s)return null;
-    // try ISO first
     const iso=new Date(s);
-    if(!isNaN(iso))return iso;
-    // try DD-MM-YYYY
+    if(!isNaN(iso)&&s.includes('-')&&s.length>8)return iso;
     const m=String(s).match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
     if(m)return new Date(+m[3],+m[2]-1,+m[1]);
     return null;
   };
-  const expiry=parseDate(endRaw);
-  const warrantyValid=expiry?expiry>new Date():false;
-  const warrantyClass=d.warrantyClass||d.warrantyType||d.warranty?.class||'';
+  const expiry=parseDate(entry.expiryDate||'');
+  const warrantyValid=String(entry.status||'').toLowerCase()==='valid'&&
+                      (entry.isInvalid===0||entry.isInvalid==='0')&&
+                      (expiry?expiry>new Date():true);
 
-  return{brand,model,ram,rom,warrantyValid,expiry:expiry?expiry.toLocaleDateString('en-GB'):endRaw||'',start:startRaw,warrantyClass,raw:d};
+  return{
+    brand,model:modelName,ram,rom,
+    warrantyValid,
+    expiry:expiry?expiry.toLocaleDateString('en-GB'):entry.expiryDate||'',
+    start:entry.periodOfValid||'',
+    warrantyClass:entry.warrantyName||'',
+    raw:entry
+  };
 };
 
 // Compare expected device specs (from application) vs. Carlcare result
