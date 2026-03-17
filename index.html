@@ -315,6 +315,39 @@ const OCCS=['Trader / Business owner','Teacher','Civil servant','Driver / Transp
 const EMPLOYMENT_TYPES=['formal','informal','self-employed'];
 const KYC_STATUSES=['pending','passed','failed'];
 const RELS=['Spouse','Parent','Sibling','Child','Colleague','Friend','Other'];
+// Brand metadata — colors + SVG logo mark for the brand picker
+const BRAND_META={
+  Tecno:{bg:'#1a1a2e',fg:'#00d4ff',accent:'#00d4ff',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#1a1a2e"/><text x="20" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="900" letter-spacing="0.5" fill="#00d4ff">TECNO</text></svg>`},
+  Infinix:{bg:'#e8001c',fg:'#fff',accent:'#ffcc00',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#e8001c"/><text x="20" y="19" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="900" fill="white">∞</text><text x="20" y="33" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" font-weight="700" letter-spacing="1" fill="rgba(255,255,255,0.8)">INFINIX</text></svg>`},
+  Samsung:{bg:'#1428a0',fg:'#fff',accent:'#1428a0',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#1428a0"/><text x="20" y="23" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" font-weight="700" letter-spacing="0.3" fill="white">SAMSUNG</text></svg>`},
+  Redmi:{bg:'#ff6900',fg:'#fff',accent:'#ff6900',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#ff6900"/><text x="20" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="900" fill="white">MI</text></svg>`},
+  Oppo:{bg:'#1d6f42',fg:'#fff',accent:'#1d6f42',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#1d6f42"/><text x="20" y="26" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="900" fill="white">OPPO</text></svg>`},
+  itel:{bg:'#0057a8',fg:'#fff',accent:'#0057a8',logo:(sz=32)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#0057a8"/><text x="20" y="27" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="900" font-style="italic" fill="white">itel</text></svg>`},
+};
+const BRAND_ORDER=['Tecno','Infinix','Samsung','Redmi','Oppo','itel'];
+const BrandLogo=({brand,size=40,selected=false})=>{
+  const m=BRAND_META[brand]||{bg:'var(--border)',fg:'var(--text)',accent:'var(--brand)',logo:(sz)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#eee"/><text x="20" y="26" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#666">${brand.slice(0,6).toUpperCase()}</text></svg>`};
+  const svgStr=m.logo(size);
+  return <div style={{borderRadius:10,overflow:'hidden',border:`${selected?3:2}px solid ${selected?m.accent:'transparent'}`,boxShadow:selected?`0 0 0 2px ${m.accent}33`:'none',transition:'all .15s',flexShrink:0}} dangerouslySetInnerHTML={{__html:svgStr}}/>;
+};
+const BrandPicker=({devices,selectedBrand,onSelect})=>{
+  const presentBrands=BRAND_ORDER.filter(b=>(devices||[]).some(d=>d.brand===b));
+  if(presentBrands.length===0)return null;
+  return(
+    <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:24}}>
+      {presentBrands.map(b=>{
+        const m=BRAND_META[b]||{bg:'var(--border)',accent:'var(--brand)',fg:'var(--text)'};
+        const sel=selectedBrand===b;
+        return(
+          <button key={b} type="button" onClick={()=>onSelect(sel?null:b)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'10px 14px',border:`2px solid ${sel?m.accent:'var(--border)'}`,borderRadius:12,background:sel?m.bg+'11':'var(--surface)',cursor:'pointer',transition:'all .15s',minWidth:72,boxShadow:sel?`0 2px 8px ${m.accent}33`:undefined}}>
+            <BrandLogo brand={b} size={40} selected={sel}/>
+            <span style={{fontSize:10,fontWeight:700,letterSpacing:'0.4px',color:sel?m.accent:'var(--textMid)',textTransform:b==='itel'?'none':'uppercase'}}>{b}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
 const readFileAsDataURL=(file)=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file);});
 const UNDERWRITING_CHECKS=['identity_kyc','contactability','customer_education','employment_affordability','social_contacts','pledge_video'];
 const elapsedMinutes=(createdAt)=>{const ms=Date.now()-new Date(createdAt).getTime();return Math.floor(ms/60000);};
@@ -871,34 +904,40 @@ const Login=({onLogin,users})=>{
 const TERM_OPTIONS=[{t:3,label:'Pay off in 3 months',badge:'30% early discount',disc:0.30},{t:6,label:'Pay off in 6 months',badge:'20% early discount',disc:0.20},{t:12,label:'Standard 12 months',badge:'No discount',disc:0}];
 const PriceList=({devices,onStartApp})=>{
   const t=useT();
+  const [selBrand,setSelBrand]=useState(()=>{const b=BRAND_ORDER.find(br=>(devices||[]).some(d=>d.brand===br));return b||null;});
   const [selId,setSelId]=useState(null);
   const [term,setTerm]=useState(12);
+  const brandDevs=(devices||[]).filter(d=>d.brand===selBrand);
   const selDev=(devices||[]).find(d=>d.id===selId);
   const pricing=selDev?calcTermPricing(selDev,term):null;
   const selectDevice=(id)=>{setSelId(id);setTerm(12);};
+  const handleBrandSelect=(b)=>{setSelBrand(b);setSelId(null);};
   return(
     <div className="fadeUp" style={{padding:'28px 32px'}}>
-      <div style={{marginBottom:18}}>
+      <div style={{marginBottom:20}}>
         <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>{t('pl_heading')}</h1>
         <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>{t('pl_sub')}</p>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:10,marginBottom:selDev?20:0}}>
-        {(devices||[]).map(d=>{
+      <BrandPicker devices={devices} selectedBrand={selBrand} onSelect={handleBrandSelect}/>
+      {selBrand&&brandDevs.length===0&&<div style={{padding:'32px',textAlign:'center',color:'var(--textMid)',fontSize:13}}>No devices for {selBrand} yet.</div>}
+      {selBrand&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:10,marginBottom:selDev?20:8}}>
+        {brandDevs.map(d=>{
           const cashPrice=d.retail||d.cogs||d.cash||0;
           const specs=d.specs||[d.RAM||d.ram,d.ROM||d.rom].filter(Boolean).join(' / ');
           const isSel=d.id===selId;
+          const m=BRAND_META[d.brand]||{accent:'var(--brand)'};
           return(
-            <div key={d.id} onClick={()=>selectDevice(d.id)} style={{border:`${isSel?2:1.5}px solid ${isSel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'13px 14px',cursor:'pointer',background:isSel?'var(--brandPale)':'white',transition:'all .13s',position:'relative',overflow:'hidden'}}>
-              <div style={{height:3,background:isSel?'linear-gradient(90deg,var(--brand),var(--brand3))':'var(--border)',margin:'-13px -14px 11px'}}/>
-              {isSel&&<div style={{position:'absolute',top:12,right:12,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
-              <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
+            <div key={d.id} onClick={()=>selectDevice(d.id)} style={{border:`${isSel?2:1.5}px solid ${isSel?m.accent:'var(--border)'}`,borderRadius:'var(--r)',padding:'13px 14px',cursor:'pointer',background:isSel?m.accent+'11':'white',transition:'all .13s',position:'relative',overflow:'hidden'}}>
+              <div style={{height:3,background:isSel?m.accent:'var(--border)',margin:'-13px -14px 11px'}}/>
+              {isSel&&<div style={{position:'absolute',top:12,right:12,width:18,height:18,borderRadius:9,background:m.accent,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
               <div style={{fontWeight:700,fontSize:14,marginBottom:3,paddingRight:isSel?20:0}}>{d.model}</div>
               <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{specs}</div>
               <div style={{fontSize:11,color:'var(--textMid)'}}>{t('cash_lbl')} <span style={{fontWeight:700,color:'var(--text)',fontFamily:'DM Mono,monospace'}}>{fmtRWF(cashPrice)}</span></div>
             </div>
           );
         })}
-      </div>
+      </div>}
+      {!selBrand&&<div style={{padding:'48px 24px',textAlign:'center',color:'var(--textMid)',fontSize:13}}>Select a brand above to see available devices.</div>}
       {selDev&&pricing&&(
         <Card sx={{padding:22}} className="slideRight">
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12,marginBottom:18,paddingBottom:16,borderBottom:'1.5px solid var(--border)'}}>
@@ -1311,6 +1350,10 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
   const [f,setF]=useState(()=>initialData?{name:initialData.name||'',idType:initialData.idType||'nid',nid:initialData.nid||'',phone:initialData.phone||'',addr:initialData.addr||'',occ:initialData.occ||'',income:initialData.income?String(initialData.income):'',kn:initialData.kn||'',kp:initialData.kp||'',kr:initialData.kr||'',did:initialData.did||preSelDevId||'',term:initialData.term||preSelTerm,sig:initialData.sig||null,customerPhoto:initialData.customerPhoto||null,idPhoto:initialData.idPhoto||null,incomeProof:initialData.incomeProof||null}:{name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:preSelDevId||'',term:preSelTerm,sig:null,customerPhoto:null,idPhoto:null,incomeProof:null});
   const [e,setE]=useState({});
   const [cam,setCam]=useState(null);
+  const [selBrand2,setSelBrand2]=useState(()=>{
+    if(preSelDevId){const d=(devices||[]).find(x=>x.id===preSelDevId);if(d)return d.brand;}
+    return BRAND_ORDER.find(b=>(devices||[]).some(d=>d.brand===b))||null;
+  });
   const autoSaveRef=React.useRef(onAutoSave);
   React.useEffect(()=>{autoSaveRef.current=onAutoSave;},[onAutoSave]);
   React.useEffect(()=>{
@@ -1396,20 +1439,22 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
         {step===2&&(()=>{
           const selDev2=(devices||[]).find(d=>d.id===f.did);
           const pricing2=selDev2?calcTermPricing(selDev2,f.term):null;
+          const brandDevs2=(devices||[]).filter(d=>d.brand===selBrand2);
           return(
             <div>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Choose device</div>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>{t('step_device')}</div>
               {e.did&&<div style={{padding:'9px 13px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',marginBottom:12}}>{e.did}</div>}
+              <BrandPicker devices={devices} selectedBrand={selBrand2} onSelect={b=>{setSelBrand2(b);if(b!==selBrand2)s('did','');}}/>
               <div className="device-select-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:10,marginBottom:selDev2?20:0}}>
-                {(devices||[]).map(d=>{
+                {(selBrand2?brandDevs2:devices||[]).map(d=>{
                   const isSel=f.did===d.id;
                   const cashPrice=d.retail||d.cogs||d.cash||0;
                   const specs=d.specs||[d.ram,d.rom].filter(Boolean).join(' / ');
+                  const m=BRAND_META[d.brand]||{accent:'var(--brand)'};
                   return(
-                    <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${isSel?2:1.5}px solid ${isSel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'13px 14px',cursor:'pointer',background:isSel?'var(--brandPale)':'white',transition:'all .13s',position:'relative',overflow:'hidden'}}>
-                      <div style={{height:3,background:isSel?'linear-gradient(90deg,var(--brand),var(--brand3))':'var(--border)',margin:'-13px -14px 11px'}}/>
-                      {isSel&&<div style={{position:'absolute',top:12,right:12,width:18,height:18,borderRadius:9,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
-                      <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
+                    <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${isSel?2:1.5}px solid ${isSel?m.accent:'var(--border)'}`,borderRadius:'var(--r)',padding:'13px 14px',cursor:'pointer',background:isSel?m.accent+'11':'white',transition:'all .13s',position:'relative',overflow:'hidden'}}>
+                      <div style={{height:3,background:isSel?m.accent:'var(--border)',margin:'-13px -14px 11px'}}/>
+                      {isSel&&<div style={{position:'absolute',top:12,right:12,width:18,height:18,borderRadius:9,background:m.accent,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'white',fontWeight:700}}>✓</div>}
                       <div style={{fontWeight:700,fontSize:14,marginBottom:3,paddingRight:isSel?20:0}}>{d.model}</div>
                       <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{specs}</div>
                       <div style={{fontSize:11,color:'var(--textMid)'}}>Cash: <span style={{fontWeight:700,color:'var(--text)',fontFamily:'DM Mono,monospace'}}>{fmtRWF(cashPrice)}</span></div>
