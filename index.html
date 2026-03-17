@@ -1147,11 +1147,35 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
   doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text('SERVICE PROVIDER',M,y);
   let ly=y+5;
   [[co.name||''],[co.address||''],[co.phone||''],[co.email||''],[co.regNo?'Reg: '+co.regNo:'']].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark).text(v,M,ly);ly+=4.5;});
-  // Customer col
+  // Customer col — text on left of right half, photo on far right
+  const photoW=28,photoH=35,photoGap=4;
+  const custTextW=CW/2-photoW-photoGap-8;
   doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text('CUSTOMER',colMid,startY);
   let ry=startY+5;
-  [[app.fullName||''],[`${app.idType==='passport'?'Passport':'National ID'}: ${app.nationalIdNumber||''}`],[`Phone: ${app.phoneNumber||''}`],[`Address: ${app.address||''}`],[`Occupation: ${app.employmentType||''}`],[`Income: RWF ${Number(app.monthlyIncomeRwf||0).toLocaleString()}`]].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);const lines=doc.splitTextToSize(v,CW/2-6);lines.forEach(l=>{doc.text(l,colMid,ry);ry+=4.5;});});
+  [[app.fullName||''],[`${app.idType==='passport'?'Passport':'National ID'}: ${app.nationalIdNumber||''}`],[`Phone: ${app.phoneNumber||''}`],[`Address: ${app.address||''}`],[`Occupation: ${app.employmentType||''}`],[`Income: RWF ${Number(app.monthlyIncomeRwf||0).toLocaleString()}`]].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);const lines=doc.splitTextToSize(v,custTextW);lines.forEach(l=>{doc.text(l,colMid,ry);ry+=4.5;});});
+  // Customer passport-style photo beside text
+  if(app.customerPhoto){
+    try{
+      const photoX=PW-M-photoW;
+      doc.setDrawColor(...light);doc.setLineWidth(0.3);doc.rect(photoX-1,startY-1,photoW+2,photoH+2);
+      const ext=app.customerPhoto.includes('jpeg')||app.customerPhoto.includes('jpg')?'JPEG':'PNG';
+      doc.addImage(app.customerPhoto,ext,photoX,startY,photoW,photoH);
+      doc.setFont('helvetica','normal').setFontSize(6.5).setTextColor(...light).text('CUSTOMER PHOTO',photoX+photoW/2,startY+photoH+3,{align:'center'});
+    }catch(e){}
+  }
   y=Math.max(ly,ry)+4;
+  // ID document photo — full width below parties
+  if(app.idPhoto){
+    chk(50);
+    doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text('IDENTITY DOCUMENT',M,y);y+=4;
+    try{
+      const idImgW=CW,idImgH=55;
+      doc.setDrawColor(...light);doc.setLineWidth(0.3);doc.rect(M-0.5,y-0.5,idImgW+1,idImgH+1);
+      const ext=app.idPhoto.includes('jpeg')||app.idPhoto.includes('jpg')?'JPEG':'PNG';
+      doc.addImage(app.idPhoto,ext,M,y,idImgW,idImgH,undefined,'FAST');
+    }catch(e){}
+    y+=58;
+  }
   hline();
 
   // ── Device & Financing ──────────────────────────────────────
@@ -1213,22 +1237,39 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
   doc.text('Date: '+date,colMid,co.signatoryTitle?sigStartY+48:sigStartY+43);
   y=sigStartY+55;
 
-  // ── Photos page ─────────────────────────────────────────────
+  // ── Photos attachment page ───────────────────────────────────
   if(app.customerPhoto||app.idPhoto){
     doc.addPage();y=M;
     doc.setFont('helvetica','bold').setFontSize(13).setTextColor(...brand).text('ATTACHMENT: CUSTOMER IDENTIFICATION',PW/2,y,{align:'center'});y+=6;
     doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...light).text('Agreement No: '+(contractData.id||'DRAFT')+' · '+app.fullName,PW/2,y,{align:'center'});y+=7;
     hline(brand,0.5);
-    if(app.customerPhoto){
-      doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...dark).text('Customer Photograph',M,y);y+=5;
-      try{const ext=app.customerPhoto.includes('jpeg')||app.customerPhoto.includes('jpg')?'JPEG':'PNG';doc.addImage(app.customerPhoto,ext,M,y,55,70);}catch(e){}
-      y+=76;
-    }
-    if(app.idPhoto){
-      chk(90);
-      doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...dark).text('Identity Document',M,y);y+=5;
-      try{const ext=app.idPhoto.includes('jpeg')||app.idPhoto.includes('jpg')?'JPEG':'PNG';doc.addImage(app.idPhoto,ext,M,y,100,68);}catch(e){}
-      y+=74;
+    if(app.customerPhoto&&app.idPhoto){
+      // Side-by-side layout
+      const halfW=(CW-6)/2;
+      const imgH=Math.round(halfW*1.3);
+      doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text('CUSTOMER PHOTOGRAPH',M,y);
+      doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text('IDENTITY DOCUMENT',M+halfW+6,y);
+      y+=5;
+      try{const ext=app.customerPhoto.includes('jpeg')||app.customerPhoto.includes('jpg')?'JPEG':'PNG';doc.setDrawColor(...light);doc.setLineWidth(0.3);doc.rect(M-0.5,y-0.5,halfW+1,imgH+1);doc.addImage(app.customerPhoto,ext,M,y,halfW,imgH);}catch(e){}
+      try{const ext=app.idPhoto.includes('jpeg')||app.idPhoto.includes('jpg')?'JPEG':'PNG';doc.setDrawColor(...light);doc.setLineWidth(0.3);doc.rect(M+halfW+5.5,y-0.5,halfW+1,imgH+1);doc.addImage(app.idPhoto,ext,M+halfW+6,y,halfW,imgH,undefined,'FAST');}catch(e){}
+      y+=imgH+6;
+      doc.setFont('helvetica','normal').setFontSize(7.5).setTextColor(...mid).text(app.fullName||'',M+halfW/2,y,{align:'center'});
+      doc.setFont('helvetica','normal').setFontSize(7.5).setTextColor(...mid).text(`${app.idType==='passport'?'Passport':'NID'}: ${app.nationalIdNumber||''}`,M+halfW+6+halfW/2,y,{align:'center'});
+      y+=8;
+    } else {
+      if(app.customerPhoto){
+        doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text('CUSTOMER PHOTOGRAPH',M,y);y+=5;
+        const imgH=Math.round(CW*1.1);
+        try{const ext=app.customerPhoto.includes('jpeg')||app.customerPhoto.includes('jpg')?'JPEG':'PNG';doc.setDrawColor(...light);doc.setLineWidth(0.3);doc.rect(M-0.5,y-0.5,CW+1,imgH+1);doc.addImage(app.customerPhoto,ext,M,y,CW,imgH);}catch(e){}
+        y+=imgH+8;
+      }
+      if(app.idPhoto){
+        chk(100);
+        doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text('IDENTITY DOCUMENT',M,y);y+=5;
+        const imgH=Math.round(CW*0.65);
+        try{const ext=app.idPhoto.includes('jpeg')||app.idPhoto.includes('jpg')?'JPEG':'PNG';doc.setDrawColor(...light);doc.setLineWidth(0.3);doc.rect(M-0.5,y-0.5,CW+1,imgH+1);doc.addImage(app.idPhoto,ext,M,y,CW,imgH,undefined,'FAST');}catch(e){}
+        y+=imgH+8;
+      }
     }
   }
 
@@ -1983,13 +2024,52 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
             })}
           </div>
           {(app.customerPhoto||app.idPhoto||app.incomeProof)&&(
-            <div style={{borderTop:'1.5px solid var(--border)',paddingTop:11,marginTop:4}}>
-              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>{t('documents_lbl')}</div>
-              <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                {app.customerPhoto&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>{t('customer_photo')}</span><a href={app.customerPhoto} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>{t('view_lnk')}</a><img src={app.customerPhoto} alt="Customer" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/></div>}
-                {app.idPhoto&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>{t('id_document')}</span><a href={app.idPhoto} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>{t('view_lnk')}</a><img src={app.idPhoto} alt="ID" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/></div>}
-                {app.incomeProof&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>{t('proof_of_income')}</span><a href={app.incomeProof} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>{t('view_lnk')}</a>{app.incomeProof.startsWith('data:application/pdf')?<span style={{fontSize:10,background:'var(--surface)',padding:'2px 6px',borderRadius:4}}>PDF</span>:<img src={app.incomeProof} alt="Income" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/>}</div>}
-              </div>
+            <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>{t('documents_lbl')}</div>
+              {/* Customer photo + ID side by side */}
+              {(app.customerPhoto||app.idPhoto)&&(
+                <div style={{display:'grid',gridTemplateColumns:app.customerPhoto&&app.idPhoto?'1fr 1fr':'1fr',gap:10,marginBottom:app.incomeProof?12:0}}>
+                  {app.customerPhoto&&(
+                    <div style={{display:'flex',flexDirection:'column',gap:5}}>
+                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',color:'var(--textLight)'}}>{t('customer_photo')}</div>
+                      <div style={{position:'relative',borderRadius:8,overflow:'hidden',border:'1.5px solid var(--border)',background:'var(--bg)',cursor:'pointer'}} onClick={()=>window.open(app.customerPhoto,'_blank','noopener')}>
+                        <img src={app.customerPhoto} alt="Customer" style={{width:'100%',maxHeight:220,objectFit:'cover',display:'block'}}/>
+                        <div style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.45)',color:'white',fontSize:9,fontWeight:600,padding:'2px 7px',borderRadius:99,pointerEvents:'none'}}>↗ Full size</div>
+                      </div>
+                    </div>
+                  )}
+                  {app.idPhoto&&(
+                    <div style={{display:'flex',flexDirection:'column',gap:5}}>
+                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',color:'var(--textLight)'}}>{t('id_document')}</div>
+                      <div style={{position:'relative',borderRadius:8,overflow:'hidden',border:'1.5px solid var(--border)',background:'var(--bg)',cursor:'pointer'}} onClick={()=>window.open(app.idPhoto,'_blank','noopener')}>
+                        <img src={app.idPhoto} alt="ID" style={{width:'100%',maxHeight:220,objectFit:'contain',display:'block',background:'var(--bg)'}}/>
+                        <div style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.45)',color:'white',fontSize:9,fontWeight:600,padding:'2px 7px',borderRadius:99,pointerEvents:'none'}}>↗ Full size</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Proof of income */}
+              {app.incomeProof&&(
+                <div style={{display:'flex',flexDirection:'column',gap:5}}>
+                  <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',color:'var(--textLight)'}}>{t('proof_of_income')}</div>
+                  {app.incomeProof.startsWith('data:application/pdf')?(
+                    <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:'var(--bg)',border:'1.5px solid var(--border)',borderRadius:8}}>
+                      <span style={{fontSize:22}}>📄</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:600,fontSize:12}}>PDF Document</div>
+                        <div style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>Income proof attached</div>
+                      </div>
+                      <a href={app.incomeProof} download="income_proof.pdf" style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 13px',background:'var(--brand)',color:'white',borderRadius:'var(--r2)',fontSize:11,fontWeight:600,textDecoration:'none'}}>⬇ Download PDF</a>
+                    </div>
+                  ):(
+                    <div style={{position:'relative',borderRadius:8,overflow:'hidden',border:'1.5px solid var(--border)',background:'var(--bg)',cursor:'pointer'}} onClick={()=>window.open(app.incomeProof,'_blank','noopener')}>
+                      <img src={app.incomeProof} alt="Income proof" style={{width:'100%',maxHeight:260,objectFit:'contain',display:'block',background:'var(--bg)'}}/>
+                      <div style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.45)',color:'white',fontSize:9,fontWeight:600,padding:'2px 7px',borderRadius:99,pointerEvents:'none'}}>↗ Full size</div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </Card>
