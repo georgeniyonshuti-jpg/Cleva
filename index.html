@@ -201,7 +201,7 @@ const {useState,useCallback,useContext,createContext,useEffect}=React;
 // ── APP CONFIG ────────────────────────────────────────────────
 const APP_NAME='Cleva';
 const EMAIL_DOMAIN='leout.rw';
-const LS={MERCHANTS:'cleva_merchants_v1',SHOPS:'cleva_shops_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1',COMPANY:'cleva_company_v1',EMAIL_TPL:'cleva_email_tpl_v1'};
+const LS={MERCHANTS:'cleva_merchants_v1',MERCHANT_GROUPS:'cleva_merchant_groups_v1',SHOPS:'cleva_shops_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1',COMPANY:'cleva_company_v1',EMAIL_TPL:'cleva_email_tpl_v1'};
 const defaultCompanyInfo={name:'Cleva Financial Services Ltd',tagline:'Smart PAYGO Solutions — Empowering Access',address:'KG 15 Avenue, Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevapaygo.rw',website:'www.clevapaygo.rw',regNo:'RDB/2024/CL001',logo:null,signatoryName:'',signatoryTitle:'Authorised Signatory',signatorySig:null,imeiProxyUrl:''};
 const readLS=(k,fallback)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):fallback;}catch{return fallback;}};
 const writeLS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
@@ -352,9 +352,13 @@ const isValidImei=(imei)=>{
 // ── SEED (only if key missing) ─────────────────────────────────
 const EMAIL_DOMAIN_SEED=EMAIL_DOMAIN;
 const MERCHANTS_SEED=[{merchantCode:'M01',merchantName:'Kigali Central Store',country:'RW'},{merchantCode:'M02',merchantName:'Gasabo Branch',country:'RW'}];
+const MERCHANT_GROUPS_SEED=[
+  {id:'MG-001',name:'Kigali Central Retail Group',country:'RW',contactEmail:'',createdAt:new Date(Date.now()-86400000*30).toISOString()},
+  {id:'MG-002',name:'Gasabo Retail Group',country:'RW',contactEmail:'',createdAt:new Date(Date.now()-86400000*20).toISOString()},
+];
 const SHOPS_SEED=[
-  {id:'SH-001',name:'Kigali Central Store',location:'KG 15 Ave, Kigali',createdAt:new Date(Date.now()-86400000*30).toISOString()},
-  {id:'SH-002',name:'Gasabo Branch',location:'Gasabo District, Kigali',createdAt:new Date(Date.now()-86400000*20).toISOString()},
+  {id:'SH-001',name:'Kigali Central Store',location:'KG 15 Ave, Kigali',merchantGroupId:'MG-001',createdAt:new Date(Date.now()-86400000*30).toISOString()},
+  {id:'SH-002',name:'Gasabo Branch',location:'Gasabo District, Kigali',merchantGroupId:'MG-002',createdAt:new Date(Date.now()-86400000*20).toISOString()},
 ];
 const USERS_SEED=[
   {id:'SR01',name:'Alice Ndayisaba',email:`alice@${EMAIL_DOMAIN_SEED}`,password:'alice123',role:'rep',roleLabel:'Sales Representative',agentCode:'AG01',shopId:'SH-001',merchantCode:'M01',seniority:2,mustChangePassword:false},
@@ -363,6 +367,7 @@ const USERS_SEED=[
   {id:'UW01',name:'Jane Murekatete',email:`jane@${EMAIL_DOMAIN_SEED}`,password:'jane123',role:'underwriter',roleLabel:'Underwriter',merchantCodes:['M01','M02'],mustChangePassword:false},
   {id:'SU01',name:'Support User',email:`support@${EMAIL_DOMAIN_SEED}`,password:'support123',role:'support',roleLabel:'Support User',mustChangePassword:false},
   {id:'OP01',name:'Ops Superuser',email:`ops@${EMAIL_DOMAIN_SEED}`,password:'ops123',role:'ops',roleLabel:'Ops Superuser',superuser:true,mustChangePassword:false},
+  {id:'MR01',name:'Retail Manager',email:`manager@${EMAIL_DOMAIN_SEED}`,password:'manager123',role:'merchant',roleLabel:'Retail Manager',merchantGroupId:'MG-001',mustChangePassword:false},
 ];
 const DEVICES_SEED=[
   {id:'D01',brand:'Tecno',model:'Spark 40 Pro+',ram:'4GB',rom:'128GB',cash:179000},
@@ -372,6 +377,7 @@ const DEVICES_SEED=[
 const PRICING_CONFIG_SEED=defaultPricingConfig;
 function seedIfMissing(){
   if(!readLS(LS.MERCHANTS))writeLS(LS.MERCHANTS,MERCHANTS_SEED);
+  if(!readLS(LS.MERCHANT_GROUPS))writeLS(LS.MERCHANT_GROUPS,MERCHANT_GROUPS_SEED);
   if(!readLS(LS.SHOPS))writeLS(LS.SHOPS,SHOPS_SEED);
   if(!readLS(LS.USERS))writeLS(LS.USERS,USERS_SEED);
   if(!readLS(LS.PRICING_CONFIG))writeLS(LS.PRICING_CONFIG,PRICING_CONFIG_SEED);
@@ -881,6 +887,7 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
     underwriter:[{k:'dash',l:'Home',badge:pending},{k:'queue',l:'Review Queue',badge:pending},{k:'all',l:'All Applications'}],
     support:[{k:'dash',l:'Home'},{k:'all',l:'All Applications'}],
     ops:user.superuser?[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},{k:'admin',l:'Admin'}]:[{k:'all',l:'All Applications'}],
+    merchant:[{k:'sales',l:'Completed Sales'},{k:'team',l:'My Team'}],
   }[user.role]||[];
   const initials=user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const go=(k)=>{ setPage(k); if(window.innerWidth<769) onClose&&onClose(); };
@@ -3004,6 +3011,207 @@ const SupportView=({apps,onUpdate,addToast})=>{
 };
 
 // ── OPS VIEW ──────────────────────────────────────────────────
+// ── MERCHANT VIEW ─────────────────────────────────────────────
+const MerchantView=({apps,addToast,users,setUsers,shops})=>{
+  const {user,merchantGroups}=useContext(Ctx);
+  const t=useT();
+  const [pg,setPg]=useState('sales');
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
+  const [q,setQ]=useState('');
+  const [fShop,setFShop]=useState('');
+  const [fRep,setFRep]=useState('');
+  const [fDateFrom,setFDateFrom]=useState('');
+  const [fDateTo,setFDateTo]=useState('');
+  const [showAddRep,setShowAddRep]=useState(false);
+  const [newRep,setNewRep]=useState({name:'',email:'',password:'',shopId:''});
+
+  const myGroup=(merchantGroups||[]).find(g=>g.id===user.merchantGroupId);
+  const myShops=(shops||[]).filter(s=>s.merchantGroupId===user.merchantGroupId);
+  const myShopIds=myShops.map(s=>s.id);
+  const myReps=(users||[]).filter(u=>u.role==='rep'&&myShopIds.includes(u.shopId));
+
+  const completedApps=apps.filter(a=>{
+    if(a.status!==ST.COMPLETED&&a.status!==ST.ACTIVE)return false;
+    if(!myShopIds.includes(a.shopId))return false;
+    if(q&&!a.c.name.toLowerCase().includes(q.toLowerCase())&&!a.id.toLowerCase().includes(q.toLowerCase()))return false;
+    if(fShop&&a.shopId!==fShop)return false;
+    if(fRep&&a.repId!==fRep)return false;
+    if(fDateFrom){const d=new Date(a.createdAt);const from=new Date(fDateFrom);from.setHours(0,0,0,0);if(d<from)return false;}
+    if(fDateTo){const d=new Date(a.createdAt);const to=new Date(fDateTo);to.setHours(23,59,59,999);if(d>to)return false;}
+    return true;
+  });
+
+  const mkRepId=()=>{
+    const nums=(users||[]).filter(u=>u.id?.startsWith('SR')).map(u=>parseInt(String(u.id).slice(2),10)).filter(n=>!isNaN(n));
+    return 'SR'+String(((nums.length?Math.max(...nums):0)+1)).padStart(2,'0');
+  };
+  const addRep=()=>{
+    const name=newRep.name.trim();
+    const email=normEmail(newRep.email.trim());
+    if(!name||!email){addToast('err','Missing fields','Name and email are required');return;}
+    if(!newRep.shopId){addToast('err','Select a shop','Assign the rep to one of your shops');return;}
+    if((users||[]).some(u=>normEmail(u.email)===email)){addToast('err','Email already exists',email);return;}
+    const id=mkRepId();
+    const password=newRep.password.trim()||randPwd();
+    const u={id,name,email,password,role:'rep',roleLabel:'Sales Representative',shopId:newRep.shopId,mustChangePassword:!newRep.password.trim()};
+    setUsers([...(users||[]),u]);
+    sendEmail('welcome',{to_name:name,to_email:email,temp_password:password,role:'Sales Representative',login_url:window.location.href,must_change:u.mustChangePassword?'Please change your password after first login.':''});
+    setNewRep({name:'',email:'',password:'',shopId:''});
+    setShowAddRep(false);
+    addToast('ok','Sales rep added',`Welcome email sent to ${email}`);
+  };
+
+  const sidebarProps={page:pg,setPage:p=>setPg(p),apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
+  const totalRevenue=completedApps.filter(a=>a.status===ST.COMPLETED).reduce((s,a)=>s+(a.dev?.totalCost||0),0);
+
+  return(
+    <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
+      <Sidebar {...sidebarProps}/>
+      <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><span style={{fontWeight:700,fontSize:16}}>{myGroup?.name||'My Group'}</span></div>
+
+        {pg==='sales'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{marginBottom:18,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:10}}>
+              <div>
+                <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>{myGroup?.name||'My Retail Group'}</h1>
+                <p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{myShops.length} shop{myShops.length!==1?'s':''} · {myReps.length} rep{myReps.length!==1?'s':''}</p>
+              </div>
+              <Btn v="def" sz="sm" icon="⬇" onClick={()=>{
+                const rows=[['ID','Date','Status','Customer','Phone','Rep','Shop','Device','Total (RWF)','Deposit (RWF)','Monthly (RWF)']];
+                completedApps.forEach(a=>rows.push([a.id,a.createdAt?new Date(a.createdAt).toLocaleDateString('en-GB'):'',SM[a.status]?.label||a.status,a.c.name||'',a.c.phone||'',a.rep||'',myShops.find(s=>s.id===a.shopId)?.name||a.shopId||'',a.dev?.brand?`${a.dev.brand} ${a.dev.model}`:'',a.dev?.totalCost||'',a.dev?.dep||'',a.dev?.weekly||'']));
+                const csv=rows.map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+                const el=document.createElement('a');el.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);el.download=`sales_${new Date().toISOString().slice(0,10)}.csv`;el.click();
+              }}>Export CSV</Btn>
+            </div>
+
+            <div className="stats-grid-3" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:20}}>
+              {[
+                ['Completed sales',completedApps.filter(a=>a.status===ST.COMPLETED).length,'var(--ok)'],
+                ['Active contracts',completedApps.filter(a=>a.status===ST.ACTIVE).length,'var(--info)'],
+                ['Total revenue',fmtRWF(totalRevenue),'var(--accent)'],
+              ].map(([l,v,c])=>(
+                <Card key={l} sx={{padding:'14px 16px'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:5}}>{l}</div><div style={{fontSize:22,fontWeight:800,color:c}}>{v}</div></Card>
+              ))}
+            </div>
+
+            <Card sx={{padding:'14px 16px',marginBottom:14}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:10}}>
+                <FF label="Search (name / ID)"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…"/></FF>
+                <FF label="Shop">
+                  <select value={fShop} onChange={e=>setFShop(e.target.value)}>
+                    <option value="">All shops</option>
+                    {myShops.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </FF>
+                <FF label="Sales rep">
+                  <select value={fRep} onChange={e=>setFRep(e.target.value)}>
+                    <option value="">All reps</option>
+                    {myReps.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </FF>
+                <FF label="From"><input type="date" value={fDateFrom} onChange={e=>setFDateFrom(e.target.value)}/></FF>
+                <FF label="To"><input type="date" value={fDateTo} onChange={e=>setFDateTo(e.target.value)}/></FF>
+                {(q||fShop||fRep||fDateFrom||fDateTo)&&<div style={{display:'flex',alignItems:'flex-end'}}><Btn v="def" sz="sm" onClick={()=>{setQ('');setFShop('');setFRep('');setFDateFrom('');setFDateTo('');}}>Clear</Btn></div>}
+              </div>
+            </Card>
+
+            {completedApps.length===0?<Empty ico="📋" title="No completed sales" sub="Completed and active contracts will appear here"/>:(
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {completedApps.map(a=>{
+                  const shop=myShops.find(s=>s.id===a.shopId);
+                  return(
+                    <Card key={a.id} sx={{padding:'13px 16px'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,flexWrap:'wrap'}}>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div>
+                          <div style={{fontSize:10,color:'var(--textLight)',fontFamily:'DM Mono,monospace',marginTop:1}}>{a.id}</div>
+                        </div>
+                        <Badge st={a.status}/>
+                      </div>
+                      <div style={{display:'flex',gap:12,flexWrap:'wrap',fontSize:11,color:'var(--textMid)',marginTop:8}}>
+                        <span>📱 {a.dev?.brand} {a.dev?.model}</span>
+                        <span>🏪 {shop?.name||a.shopId||'—'}</span>
+                        <span>👤 {a.rep}</span>
+                        <span>📅 {fmtD(a.createdAt)}</span>
+                        {a.dev?.totalCost&&<span style={{fontWeight:700,color:'var(--text)'}}>{fmtRWF(a.dev.totalCost)}</span>}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {pg==='team'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18,flexWrap:'wrap',gap:10}}>
+              <div>
+                <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>My Team</h1>
+                <p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Sales reps assigned to your shops</p>
+              </div>
+              <Btn v="primary" icon="＋" onClick={()=>setShowAddRep(true)}>Add sales rep</Btn>
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:showAddRep?'1fr 380px':'1fr',gap:16,alignItems:'start'}}>
+              <div>
+                {myShops.map(shop=>{
+                  const shopReps=(users||[]).filter(u=>u.role==='rep'&&u.shopId===shop.id);
+                  return(
+                    <Card key={shop.id} sx={{padding:16,marginBottom:12}}>
+                      <div style={{fontWeight:700,fontSize:15,marginBottom:3}}>{shop.name}</div>
+                      <div style={{fontSize:11,color:'var(--textLight)',marginBottom:12}}>{shop.location||'—'} · {shop.id}</div>
+                      {shopReps.length===0?<div style={{fontSize:12,color:'var(--textLight)',fontStyle:'italic'}}>No reps assigned</div>:(
+                        <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                          {shopReps.map(r=>(
+                            <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 12px',background:'var(--bg)',borderRadius:'var(--r2)',gap:10}}>
+                              <div>
+                                <div style={{fontWeight:600,fontSize:13}}>{r.name}</div>
+                                <div style={{fontSize:11,color:'var(--textMid)'}}>{r.email}</div>
+                              </div>
+                              <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0}}>
+                                <span style={{fontSize:10,background:'var(--brandPale)',color:'var(--brand2)',padding:'2px 8px',borderRadius:99}}>Rep</span>
+                                {r.mustChangePassword&&<span style={{fontSize:10,background:'var(--warnBg)',color:'var(--warn)',padding:'2px 8px',borderRadius:99}}>Temp pwd</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+                {myShops.length===0&&<Empty ico="🏪" title="No shops in your group" sub="Contact your ops admin to assign shops to your group"/>}
+              </div>
+
+              {showAddRep&&(
+                <Card sx={{padding:16}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                    <div style={{fontWeight:700}}>Add sales rep</div>
+                    <Btn v="def" sz="sm" onClick={()=>{setShowAddRep(false);setNewRep({name:'',email:'',password:'',shopId:''});}}>Cancel</Btn>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                    <FF label="Full name" req><input value={newRep.name} onChange={e=>setNewRep(p=>({...p,name:e.target.value}))} placeholder="e.g. Jean Pierre"/></FF>
+                    <FF label="Email address" req><input type="email" value={newRep.email} onChange={e=>setNewRep(p=>({...p,email:e.target.value}))} placeholder="rep@company.com"/></FF>
+                    <FF label="Assign to shop" req>
+                      <select value={newRep.shopId} onChange={e=>setNewRep(p=>({...p,shopId:e.target.value}))}>
+                        <option value="">Select shop…</option>
+                        {myShops.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </FF>
+                    <FF label="Password (optional — auto-generated if blank)"><input type="password" value={newRep.password} onChange={e=>setNewRep(p=>({...p,password:e.target.value}))} placeholder="Leave blank to auto-generate"/></FF>
+                    <Btn v="primary" full icon="＋" onClick={addRep}>Create sales rep</Btn>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── EMAIL TEMPLATE EDITOR ─────────────────────────────────────
 const EmailTplEditor=({addToast})=>{
   const [tpls,setTpls]=useState(()=>readLS(LS.EMAIL_TPL,DEFAULT_EMAIL_TPLS));
@@ -3051,7 +3259,7 @@ const EmailTplEditor=({addToast})=>{
   );
 };
 
-const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,setShops,setContracts,pricingConfig,setPricingConfig})=>{
+const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,setShops,setContracts,pricingConfig,setPricingConfig,merchantGroups,setMerchantGroups})=>{
   const {user}=useContext(Ctx);
   const [pg,setPg]=useState(()=>user?.superuser?'overview':'all');
   const [sel,setSel]=useState(null);
@@ -3081,9 +3289,9 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
     return true;
   });
 
-  const roleLabelFor=r=>({rep:'Sales Representative',underwriter:'Underwriter',ops:'Ops & Support'}[r]||r);
+  const roleLabelFor=r=>({rep:'Sales Representative',underwriter:'Underwriter',ops:'Ops & Support',merchant:'Retail Manager'}[r]||r);
   const mkUserId=r=>{
-    const pref=r==='rep'?'SR':r==='underwriter'?'UW':'OP';
+    const pref=r==='rep'?'SR':r==='underwriter'?'UW':r==='merchant'?'MR':'OP';
     const nums=(users||[]).filter(u=>u.id?.startsWith(pref)).map(u=>parseInt(String(u.id).slice(2),10)).filter(n=>!isNaN(n));
     const next=(nums.length?Math.max(...nums):0)+1;
     return pref+String(next).padStart(2,'0');
@@ -3099,6 +3307,83 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
     return 'SH-'+String(next).padStart(3,'0');
   };
 
+  const RetailGroupsTab=()=>{
+    const mgs=merchantGroups||[];
+    const setMgs=setMerchantGroups||(()=>{});
+    const [showAdd,setShowAdd]=useState(false);
+    const [draft,setDraft]=useState({name:'',country:'RW',contactEmail:''});
+    const mkGroupId=()=>{const nums=mgs.map(g=>parseInt(String(g.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));return 'MG-'+String(((nums.length?Math.max(...nums):0)+1)).padStart(3,'0');};
+    const save=()=>{
+      if(!draft.name.trim()){addToast('err','Name required','');return;}
+      const id=mkGroupId();
+      const next=[...mgs,{id,name:draft.name.trim(),country:draft.country,contactEmail:draft.contactEmail,createdAt:new Date().toISOString()}];
+      setMgs(next);
+      setDraft({name:'',country:'RW',contactEmail:''});setShowAdd(false);
+      addToast('ok','Retail group created',`${draft.name.trim()} (${id})`);
+    };
+    const removeGroup=g=>{
+      const groupShops=(shops||[]).filter(s=>s.merchantGroupId===g.id);
+      if(groupShops.length>0){addToast('err','Cannot remove','Reassign all shops first');return;}
+      setMgs(mgs.filter(x=>x.id!==g.id));addToast('ok','Group removed','');
+    };
+    const updateGroup=(id,patch)=>{setMgs(mgs.map(x=>x.id===id?{...x,...patch}:x));};
+    return(
+      <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:showAdd?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
+        <Card sx={{padding:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+            <div style={{fontWeight:800}}>Retail groups <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({(mgs||[]).length})</span></div>
+            <Btn v="primary" sz="sm" onClick={()=>setShowAdd(true)} icon="＋">Add group</Btn>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {(mgs||[]).map(g=>{
+              const groupShops=(shops||[]).filter(s=>s.merchantGroupId===g.id);
+              const groupManagers=(users||[]).filter(u=>u.merchantGroupId===g.id);
+              const groupReps=(users||[]).filter(u=>u.role==='rep'&&groupShops.map(s=>s.id).includes(u.shopId));
+              return(
+                <Card key={g.id} sx={{padding:14,boxShadow:'none'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',marginBottom:10}}>
+                    <div>
+                      <div style={{fontWeight:800}}>{g.name} <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({g.id})</span></div>
+                      <div style={{display:'flex',gap:12,marginTop:6,fontSize:11,color:'var(--textMid)'}}>
+                        <span>🏪 {groupShops.length} shop{groupShops.length!==1?'s':''}</span>
+                        <span>👤 {groupReps.length} rep{groupReps.length!==1?'s':''}</span>
+                        <span>🧑‍💼 {groupManagers.length} manager{groupManagers.length!==1?'s':''}</span>
+                      </div>
+                    </div>
+                    <Btn v="err" sz="sm" onClick={()=>removeGroup(g)}>Remove</Btn>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                    <FF label="Group name"><input value={g.name} onChange={e=>updateGroup(g.id,{name:e.target.value})}/></FF>
+                    <FF label="Contact email"><input type="email" value={g.contactEmail||''} onChange={e=>updateGroup(g.id,{contactEmail:e.target.value})} placeholder="owner@company.com"/></FF>
+                  </div>
+                  {groupShops.length>0&&<div style={{marginTop:10,display:'flex',gap:6,flexWrap:'wrap'}}>{groupShops.map(s=><span key={s.id} style={{fontSize:11,background:'var(--brandPale)',color:'var(--brand2)',padding:'2px 8px',borderRadius:99}}>{s.name}</span>)}</div>}
+                </Card>
+              );
+            })}
+            {(mgs||[]).length===0&&<Empty ico="🏢" title="No retail groups yet"/>}
+          </div>
+        </Card>
+        {showAdd&&(
+          <Card sx={{padding:16}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+              <div style={{fontWeight:800}}>New retail group</div>
+              <Btn v="def" sz="sm" onClick={()=>setShowAdd(false)}>Cancel</Btn>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              <FF label="Group name" req><input value={draft.name} onChange={e=>setDraft(p=>({...p,name:e.target.value}))} placeholder="e.g. Kigali Retail Ltd"/></FF>
+              <FF label="Country"><input value={draft.country} onChange={e=>setDraft(p=>({...p,country:e.target.value}))} placeholder="RW"/></FF>
+              <FF label="Contact email"><input type="email" value={draft.contactEmail} onChange={e=>setDraft(p=>({...p,contactEmail:e.target.value}))} placeholder="owner@company.com"/></FF>
+              <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 13px',fontSize:11,color:'var(--textMid)'}}>
+                Group ID: <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{mkGroupId()}</span>
+              </div>
+              <Btn v="primary" full icon="＋" onClick={save}>Create group</Btn>
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   const Admin=()=>{
     const tab=adminTab,setTab=setAdminTab;
     const [du,setDu]=useState('');
@@ -3107,8 +3392,8 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
     const [showAddUser,setShowAddUser]=useState(false);
     const [showAddShop,setShowAddShop]=useState(false);
     const [newDev,setNewDev]=useState({brand:'',model:'',ram:'',rom:'',cash:''});
-    const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',shopId:'',superuser:false});
-    const [newShop,setNewShop]=useState({name:'',location:''});
+    const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',shopId:'',merchantGroupId:'',superuser:false});
+    const [newShop,setNewShop]=useState({name:'',location:'',merchantGroupId:''});
     const [cfgDraft,setCfgDraft]=useState({markupRate:Math.round(((pricingConfig||defaultPricingConfig).markupRate||0.60)*100),depositPct:Math.round(((pricingConfig||defaultPricingConfig).depositPct||0.20)*100)});
     // Company info — hooks must be at component top level
     const {companyInfo,setCompanyInfo}=useContext(Ctx);
@@ -3244,10 +3529,10 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
       const customPwd=String(newUser.password||'').trim();
       const password=customPwd||randPwd();
       const mustChangePassword=!customPwd;
-      const u={id,name,email,password,role:newUser.role,roleLabel:roleLabelFor(newUser.role),superuser:!!newUser.superuser,mustChangePassword,...(newUser.role==='rep'&&newUser.shopId?{shopId:newUser.shopId}:{})};
+      const u={id,name,email,password,role:newUser.role,roleLabel:roleLabelFor(newUser.role),superuser:!!newUser.superuser,mustChangePassword,...(newUser.role==='rep'&&newUser.shopId?{shopId:newUser.shopId}:{}),...(newUser.role==='merchant'&&newUser.merchantGroupId?{merchantGroupId:newUser.merchantGroupId}:{})};
       setUsers([...(users||[]),u]);
       sendEmail('welcome',{to_name:name,to_email:email,temp_password:password,role:roleLabelFor(newUser.role),login_url:window.location.href,must_change:mustChangePassword?'Please change your password after your first login.':''});
-      setNewUser({name:'',email:'',password:'',role:'rep',shopId:'',superuser:false});
+      setNewUser({name:'',email:'',password:'',role:'rep',shopId:'',merchantGroupId:'',superuser:false});
       setShowAddUser(false);
       addToast('ok','User added',`Welcome email sent to ${email}`);
     };
@@ -3262,6 +3547,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
           <Btn v={tab==='pricing'?'primary':'def'} onClick={()=>setTab('pricing')}>Pricing rules</Btn>
           <Btn v={tab==='devices'?'primary':'def'} onClick={()=>setTab('devices')}>Devices</Btn>
           <Btn v={tab==='users'?'primary':'def'} onClick={()=>setTab('users')}>Users</Btn>
+          {user.superuser&&<Btn v={tab==='groups'?'primary':'def'} onClick={()=>setTab('groups')}>Retail groups</Btn>}
           {user.superuser&&<Btn v={tab==='shops'?'primary':'def'} onClick={()=>setTab('shops')}>Shops</Btn>}
           {user.superuser&&<Btn v={tab==='company'?'primary':'def'} onClick={()=>setTab('company')}>Company info</Btn>}
           {user.superuser&&<Btn v={tab==='emailtpl'?'primary':'def'} onClick={()=>setTab('emailtpl')}>Email templates</Btn>}
@@ -3397,6 +3683,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                           <option value="rep">Sales Representative</option>
                           <option value="underwriter">Underwriter</option>
                           <option value="ops">Ops & Support</option>
+                          <option value="merchant">Retail Manager</option>
                         </select>
                       </FF>
                       {u.role==='rep'&&(
@@ -3404,6 +3691,14 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                           <select value={u.shopId||''} onChange={e=>upUser(u.id,{shopId:e.target.value})}>
                             <option value="">No shop assigned</option>
                             {(shops||[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                        </FF>
+                      )}
+                      {u.role==='merchant'&&(
+                        <FF label="Retail group">
+                          <select value={u.merchantGroupId||''} onChange={e=>upUser(u.id,{merchantGroupId:e.target.value||null})}>
+                            <option value="">— Unassigned —</option>
+                            {(merchantGroups||[]).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
                           </select>
                         </FF>
                       )}
@@ -3425,7 +3720,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
             <Card sx={{padding:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
                 <div style={{fontWeight:800}}>Add user</div>
-                <Btn v="def" sz="sm" onClick={()=>{setShowAddUser(false);setNewUser({name:'',email:'',password:'',role:'rep',shopId:'',superuser:false});}}>Cancel</Btn>
+                <Btn v="def" sz="sm" onClick={()=>{setShowAddUser(false);setNewUser({name:'',email:'',password:'',role:'rep',shopId:'',merchantGroupId:'',superuser:false});}}>Cancel</Btn>
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:10}}>
                 <FF label="Full name" req><input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="e.g. Grace Mukamana"/></FF>
@@ -3434,10 +3729,11 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                   <input type="password" value={newUser.password} onChange={e=>setNewUser(p=>({...p,password:e.target.value}))} placeholder="Leave blank to auto-generate temp password"/>
                 </FF>
                 <FF label="Role">
-                  <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value,superuser:false,shopId:''}))}>
+                  <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value,superuser:false,shopId:'',merchantGroupId:''}))}>
                     <option value="rep">Sales Representative</option>
                     <option value="underwriter">Underwriter</option>
                     <option value="ops">Ops & Support</option>
+                    <option value="merchant">Retail Manager</option>
                   </select>
                 </FF>
                 {newUser.role==='rep'&&(
@@ -3445,6 +3741,14 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                     <select value={newUser.shopId} onChange={e=>setNewUser(p=>({...p,shopId:e.target.value}))}>
                       <option value="">Select shop…</option>
                       {(shops||[]).map(s=><option key={s.id} value={s.id}>{s.name}{s.location?` — ${s.location}`:''}</option>)}
+                    </select>
+                  </FF>
+                )}
+                {newUser.role==='merchant'&&(
+                  <FF label="Retail group" req>
+                    <select value={newUser.merchantGroupId||''} onChange={e=>setNewUser(p=>({...p,merchantGroupId:e.target.value}))}>
+                      <option value="">Select group…</option>
+                      {(merchantGroups||[]).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                   </FF>
                 )}
@@ -3463,6 +3767,8 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
             )}
           </div>
         )}
+        {tab==='groups'&&user.superuser&&<RetailGroupsTab/>}
+
         {tab==='shops'&&user.superuser&&(
           <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:showAddShop?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
             <Card sx={{padding:16}}>
@@ -3494,6 +3800,12 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                         <FF label="Shop name"><input value={s.name} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,name:e.target.value}:sh))}/></FF>
                         <FF label="Location"><input value={s.location||''} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,location:e.target.value}:sh))} placeholder="e.g. KG 15 Ave, Kigali"/></FF>
+                        <FF label="Retail group">
+                          <select value={s.merchantGroupId||''} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,merchantGroupId:e.target.value||null}:sh))}>
+                            <option value="">— Unassigned —</option>
+                            {(merchantGroups||[]).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                          </select>
+                        </FF>
                       </div>
                     </Card>
                   );
@@ -3510,14 +3822,20 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                 <div style={{display:'flex',flexDirection:'column',gap:10}}>
                   <FF label="Shop name" req><input value={newShop.name} onChange={e=>setNewShop(p=>({...p,name:e.target.value}))} placeholder="e.g. Remera Branch"/></FF>
                   <FF label="Location"><input value={newShop.location} onChange={e=>setNewShop(p=>({...p,location:e.target.value}))} placeholder="e.g. Remera, Kigali"/></FF>
+                  <FF label="Retail group">
+                    <select value={newShop.merchantGroupId||''} onChange={e=>setNewShop(p=>({...p,merchantGroupId:e.target.value||null}))}>
+                      <option value="">— Unassigned —</option>
+                      {(merchantGroups||[]).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
+                  </FF>
                   <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 13px',fontSize:11,color:'var(--textMid)'}}>
                     Shop ID will be auto-generated (e.g. <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{mkShopId()}</span>)
                   </div>
                   <Btn v="primary" full icon="＋" onClick={()=>{
                     if(!newShop.name.trim()){addToast('err','Shop name required','');return;}
                     const id=mkShopId();
-                    setShops([...(shops||[]),{id,name:newShop.name.trim(),location:newShop.location.trim(),createdAt:new Date().toISOString()}]);
-                    setNewShop({name:'',location:''});setShowAddShop(false);
+                    setShops([...(shops||[]),{id,name:newShop.name.trim(),location:newShop.location.trim(),merchantGroupId:newShop.merchantGroupId||null,createdAt:new Date().toISOString()}]);
+                    setNewShop({name:'',location:'',merchantGroupId:''});setShowAddShop(false);
                     addToast('ok','Shop added',`${newShop.name.trim()} (${id})`);
                   }}>Create shop</Btn>
                 </div>
@@ -3715,6 +4033,7 @@ const App=()=>{
   useEffect(()=>{seedIfMissing();const list=readLS(LS.CONTRACTS,[]);const nums=list.map(c=>parseInt(String(c.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));if(nums.length)contractSeq=Math.max(contractSeq,...nums);},[]);
 
   const [users,setUsers]=useState(()=>readLS(LS.USERS,USERS_SEED));
+  const [merchantGroups,setMerchantGroups]=useState(()=>readLS(LS.MERCHANT_GROUPS,MERCHANT_GROUPS_SEED));
   const [shops,setShops]=useState(()=>readLS(LS.SHOPS,SHOPS_SEED));
   const [devices,setDevices]=useState(()=>readLS(LS.DEVICES,DEVICES_SEED));
   const [contracts,setContracts]=useState(()=>readLS(LS.CONTRACTS,[]));
@@ -3731,6 +4050,7 @@ const App=()=>{
   },[]);
 
   useEffect(()=>writeLS(LS.USERS,users),[users]);
+  useEffect(()=>writeLS(LS.MERCHANT_GROUPS,merchantGroups),[merchantGroups]);
   useEffect(()=>writeLS(LS.DEVICES,devices),[devices]);
   useEffect(()=>writeLS(LS.CONTRACTS,contracts),[contracts]);
   useEffect(()=>writeLS(LS.PRICING_CONFIG,pricingConfig),[pricingConfig]);
@@ -3750,7 +4070,7 @@ const App=()=>{
 
   const [lang,setLang]=useState(()=>readLS('cleva_lang_v1','en'));
   const toggleLang=useCallback(()=>setLang(l=>{const nl=l==='en'?'rw':'en';writeLS('cleva_lang_v1',nl);return nl;}),[]);
-  const ctx={user,logout:()=>setUser(null),companyInfo,setCompanyInfo,lang,toggleLang,shops,setShops,users};
+  const ctx={user,logout:()=>setUser(null),companyInfo,setCompanyInfo,lang,toggleLang,shops,setShops,users,merchantGroups};
 
   if(!user) return(
     <Ctx.Provider value={ctx}>
@@ -3765,7 +4085,8 @@ const App=()=>{
         {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} pricingConfig={pricingConfig} companyInfo={companyInfo}/>}
         {user.role==='underwriter'&&<UnderwriterView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
         {user.role==='support'&&<SupportView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
-        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} shops={shops} setShops={setShops} setContracts={setContracts} pricingConfig={pricingConfig} setPricingConfig={setPricingConfig}/>}
+        {user.role==='merchant'&&<MerchantView apps={apps} addToast={addToast} users={users} setUsers={setUsers} shops={shops}/>}
+        {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} shops={shops} setShops={setShops} setContracts={setContracts} pricingConfig={pricingConfig} setPricingConfig={setPricingConfig} merchantGroups={merchantGroups} setMerchantGroups={setMerchantGroups}/>}
       </div>
       <Toast toasts={toasts}/>
     </Ctx.Provider>
