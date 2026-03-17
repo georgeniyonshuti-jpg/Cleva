@@ -1219,7 +1219,7 @@ const SignaturePad=({onChange})=>{
 
 // ── CONTRACT TEXT BUILDER ──────────────────────────────────────
 const buildContractData=(f,dev,term,pricing,user,companyInfo)=>{
-  const co=companyInfo||defaultCompanyInfo;
+  const co={...defaultCompanyInfo,...(companyInfo||{})};
   const date=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
   const discLabel=term===3?'Pay off in 3 months (30% early discount)':term===6?'Pay off in 6 months (20% early discount)':'Standard 12 months';
   return {co,f,dev,term,pricing,date,discLabel,repName:user?.name||'',
@@ -1301,6 +1301,12 @@ const resolveLogoForPdf=async(logo)=>{
   if(typeof logo==='string'&&logo.startsWith('data:'))return logo;
   try{const r=await fetch(logo);const b=await r.blob();return new Promise((ok,err)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=err;fr.readAsDataURL(b);});}catch{return null;}
 };
+const resolveLogoWithFallback=async(co)=>{
+  const primary=co.logo||LOGO_URL;
+  let data=await resolveLogoForPdf(primary);
+  if(!data&&primary!==LOGO_URL)data=await resolveLogoForPdf(LOGO_URL);
+  return data;
+};
 
 // ── PDF GENERATOR ──────────────────────────────────────────────
 const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
@@ -1330,11 +1336,11 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
     y+=5;
   };
   const {co,f,dev,term,pricing,date,discLabel,repName,app,deal}=contractData;
-  const logoData=await resolveLogoForPdf(co.logo||LOGO_URL);
+  const logoData=await resolveLogoWithFallback(co);
 
   // ── Header (matches ContractDoc preview: centered logo + company info) ──
   const logoH=20,logoW=20;
-  if(logoData){const fmt=logoData.includes('image/jpeg')||logoData.includes('image/jpg')?'JPEG':'PNG';try{doc.addImage(logoData,fmt,(PW-logoW)/2,y,logoW,logoH);}catch(e){}
+  if(logoData){let fmt='PNG';if(logoData.includes('image/jpeg')||logoData.includes('image/jpg'))fmt='JPEG';else if(logoData.includes('image/webp'))fmt='WEBP';try{doc.addImage(logoData,fmt,(PW-logoW)/2,y,logoW,logoH);}catch(e){}
     y+=logoH+4;}
   doc.setFont('helvetica','bold').setFontSize(18).setTextColor(...brand).text(co.name,PW/2,y,{align:'center'});y+=7;
   doc.setFont('helvetica','normal').setFontSize(9).setTextColor(...mid);
@@ -2455,7 +2461,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
             const tp={total:deal.totalCost||0,dep:deal.upfrontPayment||0,monthly:deal.recurrentPayment||0,disc:deal.discountPct||0,savings:deal.discountPct>0?Math.round(deal.totalCost/(1-deal.discountPct))-deal.totalCost:0,term:deal.termOption||12};
             const term=deal.termOption||12;
             const discLabel=term===3?'Pay off in 3 months (30% early discount)':term===6?'Pay off in 6 months (20% early discount)':'Standard 12 months';
-            const contractData={id:app.id,createdAt:app.createdAt,repName:app.rep||'',co:companyInfo||defaultCompanyInfo,f:{name:ap.fullName||'',nid:ap.nationalIdNumber||'',idType:ap.idType||'nid',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kn:ap.guarantorName||'',kp:ap.guarantorPhone||'',kr:'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},dev:{brand:deal.manufacturer||'',model:deal.deviceModel||'',ram:deal.RAM||'',rom:deal.ROM||'',retail:deal.cogs||0,markupRate:deal.markupRate||0},term,pricing:tp,date:new Date(app.createdAt||Date.now()).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),discLabel,app:{fullName:ap.fullName||'',nationalIdNumber:ap.nationalIdNumber||'',idType:ap.idType||'nid',phoneNumber:ap.phoneNumber||'',address:ap.address||'',employmentType:ap.employmentType||'',monthlyIncomeRwf:ap.monthlyIncomeRwf||0,guarantorName:ap.guarantorName||'',guarantorPhone:ap.guarantorPhone||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},deal};
+            const contractData={id:app.id,createdAt:app.createdAt,repName:app.rep||'',co:{...defaultCompanyInfo,...(companyInfo||{})},f:{name:ap.fullName||'',nid:ap.nationalIdNumber||'',idType:ap.idType||'nid',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kn:ap.guarantorName||'',kp:ap.guarantorPhone||'',kr:'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},dev:{brand:deal.manufacturer||'',model:deal.deviceModel||'',ram:deal.RAM||'',rom:deal.ROM||'',retail:deal.cogs||0,markupRate:deal.markupRate||0},term,pricing:tp,date:new Date(app.createdAt||Date.now()).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),discLabel,app:{fullName:ap.fullName||'',nationalIdNumber:ap.nationalIdNumber||'',idType:ap.idType||'nid',phoneNumber:ap.phoneNumber||'',address:ap.address||'',employmentType:ap.employmentType||'',monthlyIncomeRwf:ap.monthlyIncomeRwf||0,guarantorName:ap.guarantorName||'',guarantorPhone:ap.guarantorPhone||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},deal};
             generateContractPDF(contractData,companyInfo||defaultCompanyInfo,ap.customerSignature||null);
           }}>{t('dl_contract_pdf')}</Btn>
         </div>
