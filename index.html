@@ -884,7 +884,6 @@ const TopBar=({onMenu,homeBtn,title})=>{
     <div className="top-bar">
       <button type="button" className="hamburger" onClick={onMenu} aria-label="Open menu">☰</button>
       {homeBtn}
-      <LogoBrand iconSize={28} textSize={14} style={{marginRight:6}}/>
       <span style={{flex:1,fontWeight:600,fontSize:15,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'var(--text)'}}>{title}</span>
       {user?.role==='rep'&&<button type="button" onClick={toggleLang} style={{padding:'5px 11px',fontSize:11,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:99,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>{t('lang_toggle')}</button>}
       <button type="button" onClick={logout} style={{padding:'7px 13px',fontSize:12,fontWeight:600,color:'var(--textMid)',background:'var(--bg)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0,lineHeight:1.2}}>{t('sign_out')}</button>
@@ -911,13 +910,13 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
     <div className={'sidebar-wrapper'+(open?' desktop-expanded':' desktop-collapsed')}>
       <div className={'sidebar-backdrop'+(open?' visible':'')} onClick={onClose||(()=>{})} aria-hidden="true"/>
       <div className="sidebar-collapsed-bar">
-        <img src={LOGO_URL} alt="" style={{width:32,height:32,objectFit:'contain',marginBottom:10,flexShrink:0}}/>
+        <img src={LOGO_URL} alt="" style={{width:38,height:38,objectFit:'contain',marginBottom:10,flexShrink:0}}/>
         <button type="button" className="hamburger-desk" onClick={onOpen} aria-label="Open menu">☰</button>
       </div>
       <div className={'sidebar-drawer'+(open?' mobile-open':'')}>
         <button type="button" className="sidebar-collapse-btn" onClick={onClose} aria-label="Close menu">{t('hide_menu')}</button>
         <div style={{padding:'16px 18px 12px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-          <LogoBrand iconSize={36} textSize={15} layout="column" style={{alignItems:'flex-start',gap:8}}/>
+          <LogoBrand iconSize={44} textSize={16} layout="column" style={{alignItems:'flex-start',gap:8}}/>
           <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:8,textTransform:'uppercase',letterSpacing:'1.5px'}}>{t('app_subtitle')}</div>
         </div>
         <div style={{padding:'13px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
@@ -974,7 +973,7 @@ const Login=({onLogin,users})=>{
       <button onClick={toggleLang} style={{position:'absolute',top:16,right:16,padding:'6px 14px',background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:99,color:'white',cursor:'pointer',fontSize:12,fontWeight:600}}>{t('lang_toggle')}</button>
       <div style={{width:'100%',maxWidth:380,position:'relative',padding:'0 8px'}}>
         <div style={{textAlign:'center',marginBottom:44}}>
-          <LogoBrand iconSize={128} textSize={36} layout="column" bold style={{alignItems:'center',margin:'0 auto 16px'}}/>
+          <LogoBrand iconSize={180} textSize={42} layout="column" bold style={{alignItems:'center',margin:'0 auto 20px'}}/>
           <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'3px'}}>{t('app_subtitle')}</div>
         </div>
         <div className="login-card" style={{background:'rgba(255,255,255,0.06)',backdropFilter:'blur(12px)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'var(--r)',padding:'28px 26px'}}>
@@ -1242,7 +1241,7 @@ const ContractDoc=({data})=>{
   return(
     <div style={{fontFamily:'DM Sans,sans-serif',background:'white',borderRadius:'var(--r)',border:'1.5px solid var(--border)',padding:'28px 32px',maxWidth:760,margin:'0 auto'}}>
       <div style={{textAlign:'center',marginBottom:22,paddingBottom:18,borderBottom:'2px solid var(--brand)'}}>
-        {(co.logo||LOGO_URL)&&<img src={co.logo||LOGO_URL} alt="logo" style={{height:48,marginBottom:8,display:'block',margin:'0 auto 8px'}}/>}
+        {(co.logo||LOGO_URL)&&<img src={co.logo||LOGO_URL} alt="logo" style={{height:56,marginBottom:10,display:'block',margin:'0 auto 10px'}}/>}
         <div style={{fontWeight:800,fontSize:20,color:'var(--brand)',letterSpacing:'-0.3px'}}>{co.name}</div>
         <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{co.tagline}</div>
         <div style={{fontSize:10,color:'var(--textLight)',marginTop:3}}>{[co.address,co.phone,co.email].filter(Boolean).join(' · ')}</div>
@@ -2748,7 +2747,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
 
   const goHome=()=>{setPg('dash');setSel(null);};
-  const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:'6px 12px',fontSize:12,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}}>{t('home')}</button>;
+  const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:4,border:'none',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}} aria-label={t('home')}><LogoBrand iconSize={30} textSize={13}/></button>;
   if(sel){
     const app=apps.find(a=>a.id===sel);
     // Draft owned by this rep → continue editing in the full NewApp form
@@ -2893,7 +2892,7 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
   const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
   const goHome=()=>{setPg('dash');setSel(null);};
-  const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:'6px 12px',fontSize:12,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:'var(--r2)',cursor:'pointer',whiteSpace:'nowrap'}}>Home</button>;
+  const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:4,border:'none',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}} aria-label="Home"><LogoBrand iconSize={30} textSize={13}/></button>;
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
@@ -3004,14 +3003,14 @@ const SupportView=({apps,onUpdate,addToast})=>{
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={26} textSize={13} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
   const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return (a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s);});
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={26} textSize={13} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':'All applications'}</span></div>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':'All applications'}</span></div>
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:8}}>Support — QC & override</h1>
@@ -3099,7 +3098,7 @@ const GroupAdminView=({apps,addToast,users,setUsers,shops,setShops,merchantGroup
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={26} textSize={13} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>Group Admin</span></div>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>Group Admin</span></div>
 
         {/* ── Groups tab ──────────────────────────────────── */}
         {pg==='groups'&&(
@@ -3364,7 +3363,7 @@ const MerchantView=({apps,addToast,users,setUsers,shops})=>{
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={26} textSize={13} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{myGroup?.name||'My Group'}</span></div>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{myGroup?.name||'My Group'}</span></div>
 
         {pg==='sales'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
@@ -3574,7 +3573,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
-    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={26} textSize={13} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)} devices={user.superuser?devices:undefined}/></div></div></div>;
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)} devices={user.superuser?devices:undefined}/></div></div></div>;
   }
 
   const filtered=apps.filter(a=>{
@@ -4233,7 +4232,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={26} textSize={13} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{mobileTitle}</span></div>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{mobileTitle}</span></div>
         {pg==='overview'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:22}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Operations overview</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{APP_NAME} Rwanda · Live pipeline</p></div>
@@ -4343,6 +4342,11 @@ const App=()=>{
   useEffect(()=>{seedIfMissing();const list=readLS(LS.CONTRACTS,[]);const nums=list.map(c=>parseInt(String(c.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));if(nums.length)contractSeq=Math.max(contractSeq,...nums);},[]);
 
   const [users,setUsers]=useState(()=>readLS(LS.USERS,USERS_SEED));
+  useEffect(()=>{
+    const stored=readLS(LS.USERS,USERS_SEED);
+    const toAdd=USERS_SEED.filter(s=>!stored.some(u=>u.id===s.id));
+    if(toAdd.length){const merged=[...stored,...toAdd];writeLS(LS.USERS,merged);setUsers(merged);}
+  },[]);
   const [merchantGroups,setMerchantGroups]=useState(()=>readLS(LS.MERCHANT_GROUPS,MERCHANT_GROUPS_SEED));
   const [shops,setShops]=useState(()=>readLS(LS.SHOPS,SHOPS_SEED));
   const [devices,setDevices]=useState(()=>readLS(LS.DEVICES,DEVICES_SEED));
