@@ -975,7 +975,7 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
     const ap=app.application||{};
     const application={...ap,fullName:f.name.trim(),nationalIdNumber:f.nid,phoneNumber:f.phone.trim(),address:f.addr.trim(),employmentType:f.occ,monthlyIncomeRwf:+f.income,guarantorName:f.kn.trim(),guarantorPhone:f.kp.trim(),fieldCorrectionRequests:(ap.fieldCorrectionRequests||[]).map(r=>({...r,resolvedAt:r.resolvedAt||new Date().toISOString()}))};
     const deal=app.deal?{...app.deal,dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12,cogs:dev.retail}:{dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12,cogs:dev.retail};
-    onUpdate(app.id,{application,deal,status:ST.PENDING_APPROVAL,tlEntry:{by:user.name,txt:'Resubmitted after changes — returned to reviewer'}});
+    onUpdate(app.id,{application,deal,status:ST.PENDING_APPROVAL,reviewLock:null,tlEntry:{by:user.name,txt:'Resubmitted after changes — returned to reviewer'}});
     addToast('ok',t('toast_resubmitted'),t('toast_resubmitted_msg'));onBack();
   };
   return(
@@ -1304,13 +1304,21 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
 };
 
 // ── NEW APPLICATION ───────────────────────────────────────────
-const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=12})=>{
+const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,preSelTerm=12})=>{
   const {user,companyInfo}=useContext(Ctx);
   const t=useT();
   const [step,setStep]=useState(1);
   const [f,setF]=useState({name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:preSelDevId||'',term:preSelTerm,sig:null,customerPhoto:null,idPhoto:null,incomeProof:null});
   const [e,setE]=useState({});
   const [cam,setCam]=useState(null);
+  const autoSaveRef=React.useRef(onAutoSave);
+  React.useEffect(()=>{autoSaveRef.current=onAutoSave;},[onAutoSave]);
+  React.useEffect(()=>{
+    if(!autoSaveRef.current)return;
+    const devCur=(devices||[]).find(d=>d.id===f.did);
+    const timer=setTimeout(()=>autoSaveRef.current(f,devCur),3000);
+    return()=>clearTimeout(timer);
+  },[f]);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const handleFile=(k,file)=>{if(!file)return;readFileAsDataURL(file).then(url=>s(k,url)).catch(()=>{});};
   const openCam=(field,facing,mode='portrait',allowFlip=false)=>setCam({field,facing,mode,allowFlip});
@@ -1947,13 +1955,13 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
 
   const approve=async()=>{
     setLd('ap');await sleep(1200);
-    onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:'Approved — sales rep to enter IMEI and verify device'}});
+    onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:'Approved — sales rep to enter IMEI and verify device'}});
     addToast('ok','Application approved','Sales rep notified to proceed with IMEI verification');setLd(null);onBack();
   };
   const reject=async()=>{
     if(!rejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}
     setLd('rej');await sleep(700);
-    onUpdate(app.id,{status:ST.ARCHIVED,mboDecision:'REJECTED',mboRejectionReason:rejReason,mboReviewedBy:user.name,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});
+    onUpdate(app.id,{status:ST.ARCHIVED,mboDecision:'REJECTED',mboRejectionReason:rejReason,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});
     addToast('info','Application rejected','Application is now closed');setLd(null);onBack();
   };
   const requestChanges=async()=>{
@@ -1964,13 +1972,13 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
     const reqs=ap.fieldCorrectionRequests||[];
     const added=requestedFields.filter(f=>!reqs.some(r=>r.fieldName===f&&!r.resolvedAt));
     const newReqs=[...reqs,...added.map(fieldName=>({fieldName,reason:note,resolvedAt:null}))];
-    onUpdate(app.id,{status:ST.UNDER_REVIEW,notes:note,application:{...ap,fieldCorrectionRequests:newReqs},tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});
+    onUpdate(app.id,{status:ST.UNDER_REVIEW,notes:note,application:{...ap,fieldCorrectionRequests:newReqs},reviewLock:null,tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});
     addToast('warn','Changes requested','Application returned to rep for correction');setLd(null);onBack();
   };
   const escalate=async()=>{
     if(!note.trim()){addToast('err','Note required','Explain why you are escalating.');return;}
     setLd('esc');await sleep(700);
-    onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,tlEntry:{by:user.name,txt:`Escalated to ops: ${note}`}});
+    onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Escalated to ops: ${note}`}});
     addToast('warn','Escalated to ops','Awaiting action from operations team');setLd(null);onBack();
   };
 
@@ -1982,7 +1990,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const opsReturn=async()=>{
     if(!opsNote.trim()){addToast('err','Note required','Explain what the underwriter should do');return;}
     setOpsLd('ret');await sleep(700);
-    onUpdate(app.id,{status:ST.PENDING_APPROVAL,notes:opsNote,tlEntry:{by:user.name,txt:`Returned to underwriter queue by ops: ${opsNote}`}});
+    onUpdate(app.id,{status:ST.PENDING_APPROVAL,notes:opsNote,reviewLock:null,tlEntry:{by:user.name,txt:`Returned to underwriter queue by ops: ${opsNote}`}});
     addToast('info','Returned to queue','Underwriter will review again');setOpsLd(null);onBack();
   };
   const opsReject=async()=>{
@@ -2000,6 +2008,15 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const isRep=user.role==='rep';
   const reviewable=[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(app.status);
   const pendingCorrections=(app.application?.fieldCorrectionRequests||[]).filter(r=>!r.resolvedAt);
+  // Auto-lock when underwriter opens a reviewable contract
+  React.useEffect(()=>{
+    if(!isUnderwriter||!reviewable)return;
+    const lock=app.reviewLock;
+    if(lock&&lock.by!==user.id)return; // already locked by someone else, don't overwrite
+    if(lock&&lock.by===user.id)return; // already locked by me
+    onUpdate(app.id,{reviewLock:{by:user.id,byName:user.name,at:new Date().toISOString()},tlEntry:{by:user.name,txt:'Review started'}});
+  },[app.id]); // eslint-disable-line
+  const lockedByOther=isUnderwriter&&reviewable&&app.reviewLock&&app.reviewLock.by!==user.id&&!isSuperuser;
   const statusOptions=Object.entries(ST).map(([k,v])=>[v,SM[v]?.label||v]);
 
   if(showImei){
@@ -2127,7 +2144,13 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
           </Card>
         </div>
       </div>
-      {isUnderwriter&&reviewable&&(
+      {lockedByOther&&(
+        <Card sx={{padding:'14px 18px',marginBottom:14,border:'2px solid var(--warnBorder)',background:'var(--warnBg)'}}>
+          <div style={{fontWeight:700,fontSize:14,color:'var(--warn)',marginBottom:4}}>🔒 Under review by {app.reviewLock.byName}</div>
+          <div style={{fontSize:12,color:'var(--warn)'}}>This application is currently being reviewed by <strong>{app.reviewLock.byName}</strong> and cannot be acted on by another underwriter. Only they or a superuser can make a decision.</div>
+        </Card>
+      )}
+      {isUnderwriter&&reviewable&&!lockedByOther&&(
         <Card sx={{padding:18,marginBottom:14,border:'2px solid var(--brandPale2)'}}>
           <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Credit decision</div>
           <div style={{fontSize:11,color:'var(--textMid)',marginBottom:14}}>
@@ -2265,9 +2288,24 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const [sel,setSel]=useState(null);
   const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const [preselDev,setPreselDev]=useState(null);
+  const [activeDraftId,setActiveDraftId]=useState(null);
   const cfg=pricingConfig||defaultPricingConfig;
   const devicesWithPricing=React.useMemo(()=>(devices||[]).map(d=>{const deal=calcDealFromDevice(d,cfg);return{...d,...deal,dep:deal.upfrontPayment,weekly:deal.recurrentPayment,wks:deal.termOption,retail:deal.cogs};}),[devices,cfg]);
   const mine=apps.filter(a=>a.repId===user.id&&(!user.merchantCode||a.merchantCode===user.merchantCode));
+  const buildAppData=(f,dev,term)=>{
+    const tp=dev?calcTermPricing(dev,term):{dep:0,monthly:0,total:0,disc:0};
+    const deal=dev?{dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc}:null;
+    const application={fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:Math.max(0,+f.income||0),pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:!!f.sig,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,idType:f.idType};
+    return{application,deal:deal||{}};
+  };
+  const startNewApp=(presel=null)=>{
+    const id=nextContractId();
+    const now=new Date().toISOString();
+    onUpdate(null,null,{id,merchantCode:user.merchantCode||'M01',shopId:user.shopId||null,status:ST.DRAFT,createdAt:now,updatedAt:now,repId:user.id,repName:user.name,application:{fullName:'',dateOfBirth:'',nationalIdNumber:'',phoneNumber:'',address:'',kycStatus:'pending',guarantorName:'',guarantorPhone:'',neighbourName:'',neighbourPhone:'',employerName:'',employmentType:'',monthlyIncomeRwf:0,monthlyExpensesRwf:0,freeCashflowRwf:0,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:null,idPhoto:null,incomeProof:null,customerSignature:null,idType:'nid'},deal:{},dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:now,by:user.name,txt:'Application started — draft auto-created'}]});
+    setActiveDraftId(id);
+    if(presel)setPreselDev(presel);
+    setPg('new');
+  };
   const grps={
     drafts:mine.filter(a=>a.status===ST.DRAFT),
     imei:mine.filter(a=>a.status===ST.APPROVED||a.status===ST.LOCK_PENDING),
@@ -2314,7 +2352,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
               </div>
             )}
             <div className="home-actions">
-              <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>setPg('new')}>{t('start_new_app')}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>startNewApp()}>{t('start_new_app')}</button>
               <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('active')}>{t('view_applications')} {(grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.active.length)>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.drafts.length+grps.imei.length+grps.changes.length+grps.review.length+grps.active.length}</span>}</button>
               <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('completed')}>{t('closed_applications')} {grps.closed.length>0&&<span style={{background:'var(--bg)',color:'var(--textMid)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{grps.closed.length}</span>}</button>
             </div>
@@ -2363,21 +2401,29 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
             {grps.closed.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>{grps.closed.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>:<Empty ico="✓" title={t('no_closed')} sub={t('no_closed_sub')}/>}
           </div>
         )}
-        {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devicesWithPricing} preSelDevId={preselDev?.id||null} preSelTerm={preselDev?.term||12} onBack={()=>{setPg('dash');setPreselDev(null);}} onSaveDraft={(f,dev)=>{
-          const term=f.term||12;
-          const tp=dev?calcTermPricing(dev,term):{dep:0,monthly:0,total:0,disc:0};
-          const deal=dev?{dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc}:null;
-          const draftContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',shopId:user.shopId||null,status:ST.DRAFT,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:0,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,idType:f.idType},deal:deal||{},dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Saved as draft'}]};
-          onUpdate(null,null,draftContract);addToast('info',t('toast_draft_saved'),t('toast_draft_msg'));setPg('dash');setPreselDev(null);
-        }} onSubmit={(f,dev)=>{
-          const term=f.term||12;
-          const tp=calcTermPricing(dev,term);
-          const deal={dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc};
-          const freeCashflow=Math.max(0,(+f.income||0)-0);
-          const newContract={id:nextContractId(),merchantCode:user.merchantCode||'M01',shopId:user.shopId||null,status:ST.PENDING_APPROVAL,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),repId:user.id,repName:user.name,application:{fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:freeCashflow,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,digitalSignatureConfirmed:!!f.sig,idType:f.idType},deal,dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:new Date().toISOString(),by:user.name,txt:'Application submitted for approval'}]};
-          onUpdate(null,null,newContract);addToast('ok',t('toast_submitted'),t('toast_submitted_msg'));setPg('dash');setPreselDev(null);
-        }}/></div>}
-        {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devicesWithPricing} onStartApp={(did,term)=>{setPreselDev({id:did,term});setPg('new');}}/></div>}
+        {pg==='new'&&<div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}><NewApp devices={devicesWithPricing} preSelDevId={preselDev?.id||null} preSelTerm={preselDev?.term||12}
+          onBack={()=>{setActiveDraftId(null);setPg('dash');setPreselDev(null);}}
+          onAutoSave={(f,dev)=>{
+            if(!activeDraftId)return;
+            const term=f.term||12;
+            const {application,deal}=buildAppData(f,dev,term);
+            onUpdate(activeDraftId,{application,deal,updatedAt:new Date().toISOString()});
+          }}
+          onSaveDraft={(f,dev)=>{
+            if(!activeDraftId)return;
+            const term=f.term||12;
+            const {application,deal}=buildAppData(f,dev,term);
+            onUpdate(activeDraftId,{application,deal,updatedAt:new Date().toISOString(),tlEntry:{by:user.name,txt:'Draft saved'}});
+            addToast('info',t('toast_draft_saved'),t('toast_draft_msg'));setActiveDraftId(null);setPg('dash');setPreselDev(null);
+          }}
+          onSubmit={(f,dev)=>{
+            if(!activeDraftId)return;
+            const term=f.term||12;
+            const {application,deal}=buildAppData(f,dev,term);
+            onUpdate(activeDraftId,{status:ST.PENDING_APPROVAL,application,deal,dealLocked:false,tlEntry:{by:user.name,txt:'Application submitted for approval'}});
+            addToast('ok',t('toast_submitted'),t('toast_submitted_msg'));setActiveDraftId(null);setPg('dash');setPreselDev(null);
+          }}/></div>}
+        {pg==='prices'&&<div className="page-content" style={{padding:'28px 32px'}}><PriceList devices={devicesWithPricing} onStartApp={(did,term)=>startNewApp({id:did,term})}/></div>}
       </div>
     </div>
   );
@@ -2431,14 +2477,19 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
                     const tot=a.dev?(a.dev.totalCost||(a.dev.dep||0)+(a.dev.weekly||0)*12):0;
                     const repFirst=(a.repName||a.rep||'').split(' ')[0];
                     const hasPendingChanges=a.status===ST.UNDER_REVIEW&&(a.application?.fieldCorrectionRequests||[]).some(r=>!r.resolvedAt);
+                    const lockedByMe=a.reviewLock&&a.reviewLock.by===user.id;
+                    const lockedByAnother=a.reviewLock&&a.reviewLock.by!==user.id;
+                    const borderColor=lockedByAnother?'var(--purBorder)':hasPendingChanges?'var(--warnBorder)':'var(--border)';
                     return (
-                    <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:`1.5px solid ${hasPendingChanges?'var(--warnBorder)':'var(--border)'}`,borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',transition:'all .13s'}}
+                    <div key={a.id} onClick={()=>setSel(a.id)} style={{background:lockedByAnother?'var(--purBg)':'white',border:`1.5px solid ${borderColor}`,borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',transition:'all .13s'}}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--brand2)';e.currentTarget.style.boxShadow='0 2px 10px rgba(11,61,46,0.1)'}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor=hasPendingChanges?'var(--warnBorder)':'var(--border)';e.currentTarget.style.boxShadow='none'}}>
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=borderColor;e.currentTarget.style.boxShadow='none'}}>
                       <div>
                         <div style={{fontWeight:600,fontSize:14}}>{a.c?a.c.name:''}</div>
                         <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev?a.dev.brand:''} {a.dev?a.dev.model:''} · {a.dev?fmtRWF(tot):'—'} total · {fmtD(a.createdAt)} · {repFirst}</div>
                         {hasPendingChanges&&<div style={{fontSize:10,color:'var(--warn)',marginTop:3,fontWeight:600}}>↩ Changes sent — awaiting rep resubmission</div>}
+                        {lockedByMe&&<div style={{fontSize:10,color:'var(--brand)',marginTop:3,fontWeight:600}}>🔒 You are reviewing this</div>}
+                        {lockedByAnother&&<div style={{fontSize:10,color:'var(--pur)',marginTop:3,fontWeight:600}}>🔒 Being reviewed by {a.reviewLock.byName}</div>}
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:10}}><Badge st={a.status}/><span style={{color:'var(--textLight)',fontSize:18}}>›</span></div>
                     </div>
