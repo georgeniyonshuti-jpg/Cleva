@@ -375,6 +375,79 @@ const TR={
     rel_parent:'Parent',rel_sibling:'Sibling',rel_spouse:'Spouse',rel_child:'Child',rel_friend:'Friend',rel_other:'Other',
     months_3:'3 months',months_6:'6 months',months_12:'12 months',
     lang_toggle:'🇷🇼 Kinyarwanda',
+    // PriceList
+    pl_heading:'Device price list',pl_sub:'Select a device · choose payment duration · All amounts in RWF',
+    cash_price_lbl:'Cash price',cash_lbl:'Cash:',
+    early_discount_title:'Early payoff discount',
+    early_discount_desc:'All contracts run 12 months. Customers who pay off early get a discount applied upfront.',
+    early_saving_lbl:(n)=>`Early payoff saving (${n}% off)`,
+    total_price:'Total price',deposit_upfront:'Deposit (upfront)',monthly_x12:(n)=>`Monthly × ${n}`,
+    start_app_device:'Start application with this device',
+    term_3_label:'Pay off in 3 months',term_6_label:'Pay off in 6 months',term_12_label:'Standard 12 months',
+    term_3_badge:'30% early discount',term_6_badge:'20% early discount',term_no_disc:'No discount',
+    // EditAndResubmit
+    edit_resubmit_title:'Edit & resubmit',uw_note_lbl:'Underwriter note',uw_req_changes:'Underwriter requested changes',
+    resubmit_btn:'Resubmit to reviewer',device_section_lbl:'Device',
+    toast_resubmitted:'Application resubmitted',toast_resubmitted_msg:'Sent back to the reviewer',
+    // AppDetail (rep)
+    customer_lbl:'Customer',documents_lbl:'Documents',view_lnk:'View',device_lbl:'Device',
+    affordability_lbl:'Affordability check',monthly_ratio_lbl:'Monthly repayment / income',
+    within_policy:'✓ Within policy (< 30% of income)',exceeds_policy:'⚠ Exceeds policy limit (> 30% of income)',
+    activity_timeline:'Activity timeline',dl_contract_pdf:'Download contract PDF',
+    draft_banner_title:'📝 Draft application',
+    draft_banner_desc:'This application was saved as a draft. Review the details and submit for underwriter review when ready.',
+    submit_for_review:'Submit for review',delete_draft_btn:'Delete draft',
+    draft_deleted_toast:'Draft deleted',submitted_toast:'Submitted',submitted_toast_msg:'Sent to underwriter for review',
+    rejected_banner_title:'✕ Application rejected',
+    rejected_banner_desc:'This application was rejected and cannot be resubmitted.',
+    reason_lbl:'Reason:',
+    changes_banner_title:'↩ Changes requested by underwriter',
+    fields_to_correct:'Fields to correct:',
+    edit_resubmit_hint:'Use <strong>Edit & resubmit</strong> from your application list to make corrections and send back for review.',
+    approved_banner_title:'✓ Application approved — action required',
+    imei_enter_desc:'Enter the device IMEI and verify it on Carlcare to proceed to contract activation.',
+    imei_retry_desc:(imei)=>`Previous IMEI ${imei} was checked but not fully confirmed. You can retry with the same or a different IMEI.`,
+    enter_imei_verify:'Enter IMEI & verify device',retry_imei_btn:'Retry IMEI verification',
+    lock_banner_title:'⏳ Lock phone in PayTrigger',
+    lock_banner_desc:'IMEI verified. Lock the phone in PayTrigger to activate the contract.',
+    continue_imei_lock:'Continue IMEI / lock flow',
+    // IMEI flow
+    imei_check_title:'IMEI & warranty check',imei_step1:'Enter IMEI',imei_step2:'Carlcare check',imei_step3:'Lock & activate',
+    imei_expected_device:'Expected device (from application)',
+    imei_enter_title:'Enter device IMEI',
+    imei_dial_hint:(brand,model)=>`Dial *#06# on the ${brand} ${model} to get its IMEI. Enter it below.`,
+    imei_auto_warranty:'Warranty will be checked automatically.',imei_manual_verify:'You will verify it manually on the Carlcare website.',
+    imei_15_lbl:'15-digit IMEI',imei_digit_count:(n)=>`${n}/15 digits`,
+    imei_auto_btn:'Check warranty automatically',imei_manual_btn:'Proceed to manual check',
+    imei_checking_title:'Checking with Carlcare…',imei_checking_desc:'Verifying warranty status and device specs automatically',
+    imei_valid_title:'✓ Warranty valid — all specs match',warranty_until:'Warranty valid until:',
+    registering_pt:'Registering in PayTrigger…',confirm_pt_btn:'Confirm & proceed to PayTrigger',re_enter_imei:'Re-enter IMEI',
+    imei_verified_toast:'IMEI verified',imei_verified_msg:'Carlcare: warranty valid & specs match',
+    contract_activated_toast:'Contract activated!',contract_activated_msg:'Device locked in PayTrigger. Customer can now make payments.',
+    mismatch_title:'⚠ Specs mismatch — action required',
+    mismatch_carlcare:'Carlcare confirmed the IMEI is in warranty, but the device specs do not match the application.',
+    mismatch_no_carlcare:'The device found on Carlcare does not match the application specs.',
+    app_says:'Application says',carlcare_shows:'Carlcare shows',auto_detected:'(auto-detected — read only)',enter_manually:'(enter manually)',
+    note_mismatch:'Note — describe the mismatch',try_diff_imei:'Try a different IMEI',
+    send_back_uw:'Send back to underwriter for review',escalate_ops_btn:'Escalate to ops',
+    notfound_title:'IMEI not found on Carlcare',warranty_expired_title:'Warranty expired or not valid',
+    notfound_exp_msg:(exp)=>`The device was found but the warranty is no longer valid (expired: ${exp||'unknown'}). Do not proceed with activation.`,
+    notfound_gen_msg:'Carlcare could not find this IMEI. The device may not be genuine, may not be a supported brand (TECNO/itel/Infinix), or the warranty has expired.',
+    what_to_check:'What to check:',what_to_check_desc:'Confirm the IMEI was entered correctly (dial *#06# again). Try the second IMEI if dual-SIM. If still not found or expired, send back to underwriter.',
+    note_uw_ops:'Note for underwriter / ops',send_back_uw_btn:'Send back to underwriter',
+    manual_check_title:'Check warranty on Carlcare',imei_to_check_lbl:'IMEI to check',
+    copy_imei_btn:'Copy IMEI',copied_btn:'Copied!',open_carlcare_btn:'Open Carlcare',
+    manual_instructions:'Instructions: Click "Open Carlcare" → paste the IMEI → check the result. Confirm brand, model, RAM and storage match the expected device above. Then select the outcome below.',
+    what_carlcare_show:'What did Carlcare show?',
+    valid_match_title:'Warranty valid — specs match',valid_match_sub:'IMEI found, in warranty, all specs match the application',
+    specs_differ_title:'Device found but specs don\'t match',specs_differ_sub:'IMEI found and in warranty, but specs differ from the application',
+    not_found_btn_title:'IMEI not found or out of warranty',not_found_btn_sub:'Carlcare did not recognise this IMEI or the warranty has expired',
+    verified_cc_title:'✓ Carlcare warranty confirmed — IMEI verified',
+    lock_pt_title:'Lock the phone in PayTrigger',
+    lock_pt_desc:'Open the PayTrigger portal, find this device by IMEI, and lock it. Once the customer\'s screen shows the PAYGO lock, confirm below to activate the contract.',
+    lock_only_once:'Only confirm once the lock screen is visible on the customer\'s phone.',
+    open_pt_portal:'↗ Open PayTrigger portal',
+    activating_contract:'Activating contract…',confirm_lock_activate:'Confirm phone is locked — activate contract',
   },
   rw:{
     app_subtitle:'Urubuga rw\'isuzuma ry\'inguzanyo',
@@ -435,11 +508,84 @@ const TR={
     rel_parent:'Umubyeyi',rel_sibling:'Umuvandimwe',rel_spouse:'Uwo bashakanye',rel_child:'Umwana',rel_friend:'Inshuti',rel_other:'Ibindi',
     months_3:'Amezi 3',months_6:'Amezi 6',months_12:'Amezi 12',
     lang_toggle:'🇬🇧 English',
+    // PriceList
+    pl_heading:'Urutonde rw\'ibiciro rw\'imashini',pl_sub:'Hitamo imashini · hitamo igihe · Amafaranga muri RWF',
+    cash_price_lbl:'Igiciro cy\'amafaranga',cash_lbl:'Amafaranga:',
+    early_discount_title:'Ihuzwa ryo kwishyura hakiri kare',
+    early_discount_desc:'Amasezerano yose amara amezi 12. Abakiriya bishyura hakiri kare bahabwa ihuzwa.',
+    early_saving_lbl:(n)=>`Isinzigwa ryo kwishyura hakiri kare (ihuzwa ${n}%)`,
+    total_price:'Igiciro cyose',deposit_upfront:'Inguzanyo ya mbere',monthly_x12:(n)=>`Buri kwezi × ${n}`,
+    start_app_device:'Tangira ubusabe na iyi mashini',
+    term_3_label:'Kwishyura mu mezi 3',term_6_label:'Kwishyura mu mezi 6',term_12_label:'Amezi 12 asanzwe',
+    term_3_badge:'Ihuzwa 30%',term_6_badge:'Ihuzwa 20%',term_no_disc:'Nta ihuzwa',
+    // EditAndResubmit
+    edit_resubmit_title:'Hindura & ohereze',uw_note_lbl:'Icyitonderwa cy\'usuzuma',uw_req_changes:'Usuzuma asaba impinduka',
+    resubmit_btn:'Ohereza ku musuzuma',device_section_lbl:'Imashini',
+    toast_resubmitted:'Ubusabe bwoherejwe',toast_resubmitted_msg:'Bwoherejwe ku musuzuma',
+    // AppDetail (rep)
+    customer_lbl:'Umukiriya',documents_lbl:'Impapuro',view_lnk:'Reba',device_lbl:'Imashini',
+    affordability_lbl:'Kugenzura ubushobozi',monthly_ratio_lbl:'Kwishyura buri kwezi / inyungu',
+    within_policy:'✓ Mu mategeko (< 30% y\'inyungu)',exceeds_policy:'⚠ Irenze umurego (> 30% y\'inyungu)',
+    activity_timeline:'Urutonde rw\'ibikorwa',dl_contract_pdf:'Kuramo amasezerano PDF',
+    draft_banner_title:'📝 Ubusabe bw\'imbure',
+    draft_banner_desc:'Ubusabe bwabitswe nk\'imbure. Suzuma amakuru kandi uohereze gusubwa mu gihe ubishoboye.',
+    submit_for_review:'Ohereza gusubwa',delete_draft_btn:'Siba imbure',
+    draft_deleted_toast:'Imbure yasibwe',submitted_toast:'Yoherejwe',submitted_toast_msg:'Yoherejwe ku musuzuma',
+    rejected_banner_title:'✕ Ubusabe bwanzwe',
+    rejected_banner_desc:'Ubusabe bwanzwe kandi ntibushobora gusubmitwa.',
+    reason_lbl:'Impamvu:',
+    changes_banner_title:'↩ Impinduka zirasabwa n\'usuzuma',
+    fields_to_correct:'Ibisabwa gukorerwa:',
+    edit_resubmit_hint:'Koresha <strong>Hindura & ohereze</strong> mu rutonde rw\'ubusabe bwawe gukososha kandi usubize usuzuma.',
+    approved_banner_title:'✓ Ubusabe bwemejwe — igikorwa kirasabwa',
+    imei_enter_desc:'Injiza IMEI y\'imashini kandi uyigenzure kuri Carlcare kugirango ukomeze gufungura amasezerano.',
+    imei_retry_desc:(imei)=>`IMEI ${imei} yagenzuwe ariko ntiyaremejwe burundu. Ushobora kongera ugenzure IMEI imwe cyangwa indi.`,
+    enter_imei_verify:'Injiza IMEI kandi ugenzure imashini',retry_imei_btn:'Ongera ugenzure IMEI',
+    lock_banner_title:'⏳ Funga telefoni kuri PayTrigger',
+    lock_banner_desc:'IMEI yemejwe. Funga telefoni kuri PayTrigger kugirango ushyireho amasezerano.',
+    continue_imei_lock:'Komeza IMEI / gufunga',
+    // IMEI flow
+    imei_check_title:'Kugenzura IMEI & garantiya',imei_step1:'Injiza IMEI',imei_step2:'Kugenzura Carlcare',imei_step3:'Funga & shakira',
+    imei_expected_device:'Imashini iteganyijwe (mu busabe)',
+    imei_enter_title:'Injiza IMEI y\'imashini',
+    imei_dial_hint:(brand,model)=>`Fyonda *#06# kuri ${brand} ${model} kugirango ubone IMEI yawo. Injiza hano.`,
+    imei_auto_warranty:'Garantiya izagenzurwa mu buryo bwikora.',imei_manual_verify:'Uzayigenzura wowe ubwawe kuri urubuga rwa Carlcare.',
+    imei_15_lbl:'IMEI y\'imibare 15',imei_digit_count:(n)=>`${n}/15 imibare`,
+    imei_auto_btn:'Genzura garantiya mu buryo bwikora',imei_manual_btn:'Komeza kugenzura wowe ubwawe',
+    imei_checking_title:'Kugenzura kuri Carlcare…',imei_checking_desc:'Kugenzura uko garantiya ihagaze n\'amakuru y\'imashini mu buryo bwikora',
+    imei_valid_title:'✓ Garantiya igufi — ibyombi bihura',warranty_until:'Garantiya igufi kugeza:',
+    registering_pt:'Kwiyandikisha kuri PayTrigger…',confirm_pt_btn:'Emeza kandi ujye kuri PayTrigger',re_enter_imei:'Injiza IMEI indi',
+    imei_verified_toast:'IMEI yemejwe',imei_verified_msg:'Carlcare: garantiya igufi kandi amakuru ahura',
+    contract_activated_toast:'Amasezerano yashyizweho!',contract_activated_msg:'Telefoni ifunze kuri PayTrigger. Umukiriya ashobora kwishyura ubu.',
+    mismatch_title:'⚠ Amakuru ntahura — igikorwa kirasabwa',
+    mismatch_carlcare:'Carlcare yemeje ko IMEI iri mu garantiya, ariko amakuru y\'imashini ntahura n\'ubusabe.',
+    mismatch_no_carlcare:'Imashini yabonetse kuri Carlcare ntihura n\'amakuru y\'ubusabe.',
+    app_says:'Ubusabe bugira',carlcare_shows:'Carlcare yerekana',auto_detected:'(yagenzuwe wenyine — gusoma gusa)',enter_manually:'(injiza wowe ubwawe)',
+    note_mismatch:'Icyitonderwa — sobanura kutahura',try_diff_imei:'Gerageza IMEI nziza',
+    send_back_uw:'Ohereza gusubwa ku musuzuma',escalate_ops_btn:'Yandikisha ku bategura',
+    notfound_title:'IMEI ntibonetse kuri Carlcare',warranty_expired_title:'Garantiya yarangiye cyangwa ntago',
+    notfound_exp_msg:(exp)=>`Imashini yabonetse ariko garantiya ntakiri igufi (yarangiye: ${exp||'itazwi'}). Ntugomba gukomeza gufungura amasezerano.`,
+    notfound_gen_msg:'Carlcare ntiyashoboye kubona IMEI iyi. Imashini irashobora kutari ya nyazo, kutaba iy\'ubwoko bwashyigikiwe (TECNO/itel/Infinix), cyangwa garantiya yarangiye.',
+    what_to_check:'Ibyo gusuzuma:',what_to_check_desc:'Emeza ko IMEI yinjijwe neza (fyonda *#06# ukundi). Gerageza IMEI ya kabiri niba imashini ifite SIM ebyiri. Niba itigeze ibonetse cyangwa yarangiye, ohereza gusubwa ku musuzuma.',
+    note_uw_ops:'Icyitonderwa ku musuzuma / abateguzi',send_back_uw_btn:'Ohereza ku musuzuma',
+    manual_check_title:'Genzura garantiya kuri Carlcare',imei_to_check_lbl:'IMEI yo kugenzura',
+    copy_imei_btn:'Kopi IMEI',copied_btn:'Yakopiwe!',open_carlcare_btn:'Fungura Carlcare',
+    manual_instructions:'Amabwiriza: Kanda "Fungura Carlcare" → shyira IMEI → reba ibisubizo. Emeza ubwoko, modeli, RAM na ROM bihura n\'imashini iteganyijwe. Hanyuma hitamo igisubizo hepfo.',
+    what_carlcare_show:'Carlcare yerekeje iki?',
+    valid_match_title:'Garantiya igufi — amakuru ahura',valid_match_sub:'IMEI yabonetse, iri mu garantiya, amakuru yose ahura n\'ubusabe',
+    specs_differ_title:'Imashini yabonetse ariko amakuru ntahura',specs_differ_sub:'IMEI yabonetse kandi iri mu garantiya, ariko amakuru atandukanye n\'ubusabe',
+    not_found_btn_title:'IMEI ntibonetse cyangwa inyuma ya garantiya',not_found_btn_sub:'Carlcare ntiyashoboye kumenya IMEI iyi cyangwa garantiya yarangiye',
+    verified_cc_title:'✓ Garantiya ya Carlcare yemejwe — IMEI yemejwe',
+    lock_pt_title:'Funga telefoni kuri PayTrigger',
+    lock_pt_desc:'Fungura urubuga rwa PayTrigger, shakira iyi mashini na IMEI, kandi ufunge. Umukiriya nayibona urufunguzo rwa PAYGO, emeza hepfo gushyiraho amasezerano.',
+    lock_only_once:'Emeza gusa igihe urufunguzo rwa PAYGO rurerekwa kuri simu y\'umukiriya.',
+    open_pt_portal:'↗ Fungura urubuga rwa PayTrigger',
+    activating_contract:'Gushyiraho amasezerano…',confirm_lock_activate:'Emeza ko telefoni ifunze — shyiraho amasezerano',
   },
 };
 // ── CONTEXT ───────────────────────────────────────────────────
 const Ctx=createContext(null);
-const useT=()=>{const {lang}=useContext(Ctx);return (k,...args)=>{const val=(TR[lang]||TR.en)[k];return typeof val==='function'?val(...args):val??k;};};
+const useT=()=>{const {lang,user}=useContext(Ctx);const L=user?.role==='rep'?lang:'en';return (k,...args)=>{const val=(TR[L]||TR.en)[k];return typeof val==='function'?val(...args):val??k;};};
 
 // ── UI COMPONENTS ─────────────────────────────────────────────
 const Badge=({st})=>{
@@ -662,6 +808,7 @@ const Login=({onLogin,users})=>{
 // ── PRICE LIST ────────────────────────────────────────────────
 const TERM_OPTIONS=[{t:3,label:'Pay off in 3 months',badge:'30% early discount',disc:0.30},{t:6,label:'Pay off in 6 months',badge:'20% early discount',disc:0.20},{t:12,label:'Standard 12 months',badge:'No discount',disc:0}];
 const PriceList=({devices,onStartApp})=>{
+  const t=useT();
   const [selId,setSelId]=useState(null);
   const [term,setTerm]=useState(12);
   const selDev=(devices||[]).find(d=>d.id===selId);
@@ -670,8 +817,8 @@ const PriceList=({devices,onStartApp})=>{
   return(
     <div className="fadeUp" style={{padding:'28px 32px'}}>
       <div style={{marginBottom:18}}>
-        <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Device price list</h1>
-        <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>Select a device · choose payment duration · All amounts in RWF</p>
+        <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>{t('pl_heading')}</h1>
+        <p style={{fontSize:12,color:'var(--textMid)',marginTop:3}}>{t('pl_sub')}</p>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:10,marginBottom:selDev?20:0}}>
         {(devices||[]).map(d=>{
@@ -685,7 +832,7 @@ const PriceList=({devices,onStartApp})=>{
               <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
               <div style={{fontWeight:700,fontSize:14,marginBottom:3,paddingRight:isSel?20:0}}>{d.model}</div>
               <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{specs}</div>
-              <div style={{fontSize:11,color:'var(--textMid)'}}>Cash: <span style={{fontWeight:700,color:'var(--text)',fontFamily:'DM Mono,monospace'}}>{fmtRWF(cashPrice)}</span></div>
+              <div style={{fontSize:11,color:'var(--textMid)'}}>{t('cash_lbl')} <span style={{fontWeight:700,color:'var(--text)',fontFamily:'DM Mono,monospace'}}>{fmtRWF(cashPrice)}</span></div>
             </div>
           );
         })}
@@ -699,22 +846,22 @@ const PriceList=({devices,onStartApp})=>{
               <div style={{fontSize:11,color:'var(--textLight)'}}>{selDev.specs||[selDev.RAM||selDev.ram,selDev.ROM||selDev.rom].filter(Boolean).join(' / ')}</div>
             </div>
             <div style={{textAlign:'right'}}>
-              <div style={{fontSize:10,color:'var(--textLight)',marginBottom:2}}>Cash price</div>
+              <div style={{fontSize:10,color:'var(--textLight)',marginBottom:2}}>{t('cash_price_lbl')}</div>
               <div style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:16}}>{fmtRWF(selDev.retail||selDev.cogs||0)}</div>
             </div>
           </div>
           <div style={{marginBottom:18}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:6}}>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)'}}>Early payoff discount</div>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)'}}>{t('early_discount_title')}</div>
             </div>
-            <p style={{fontSize:11,color:'var(--textMid)',marginBottom:12,lineHeight:1.5}}>All contracts run 12 months. Customers who pay off early get a discount applied upfront.</p>
+            <p style={{fontSize:11,color:'var(--textMid)',marginBottom:12,lineHeight:1.5}}>{t('early_discount_desc')}</p>
             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-              {TERM_OPTIONS.map(({t,label,badge,disc})=>{
-                const active=term===t;
+              {[{tv:3,lk:'term_3_label',bk:'term_3_badge',disc:0.30},{tv:6,lk:'term_6_label',bk:'term_6_badge',disc:0.20},{tv:12,lk:'term_12_label',bk:'term_no_disc',disc:0}].map(({tv,lk,bk,disc})=>{
+                const active=term===tv;
                 return(
-                  <button key={t} type="button" onClick={()=>setTerm(t)} style={{flex:'1 1 120px',padding:'11px 10px',border:`${active?2:1.5}px solid ${active?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',background:active?'var(--brandPale)':'white',cursor:'pointer',textAlign:'center',transition:'all .13s'}}>
-                    <div style={{fontWeight:700,fontSize:13,color:active?'var(--brand)':'var(--text)',marginBottom:4}}>{label}</div>
-                    <div style={{fontSize:10,fontWeight:700,color:disc>0?'var(--ok)':'var(--textLight)',background:disc>0?'var(--okBg)':'var(--bg)',padding:'2px 8px',borderRadius:99,display:'inline-block'}}>{badge}</div>
+                  <button key={tv} type="button" onClick={()=>setTerm(tv)} style={{flex:'1 1 120px',padding:'11px 10px',border:`${active?2:1.5}px solid ${active?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',background:active?'var(--brandPale)':'white',cursor:'pointer',textAlign:'center',transition:'all .13s'}}>
+                    <div style={{fontWeight:700,fontSize:13,color:active?'var(--brand)':'var(--text)',marginBottom:4}}>{t(lk)}</div>
+                    <div style={{fontSize:10,fontWeight:700,color:disc>0?'var(--ok)':'var(--textLight)',background:disc>0?'var(--okBg)':'var(--bg)',padding:'2px 8px',borderRadius:99,display:'inline-block'}}>{t(bk)}</div>
                   </button>
                 );
               })}
@@ -723,11 +870,11 @@ const PriceList=({devices,onStartApp})=>{
           <div style={{background:'var(--bg)',borderRadius:'var(--r)',padding:'16px 18px',marginBottom:18}}>
             {pricing.disc>0&&(
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,padding:'9px 13px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)'}}>
-                <span style={{fontSize:12,fontWeight:700,color:'var(--ok)'}}>Early payoff saving ({Math.round(pricing.disc*100)}% off)</span>
+                <span style={{fontSize:12,fontWeight:700,color:'var(--ok)'}}>{t('early_saving_lbl',Math.round(pricing.disc*100))}</span>
                 <span style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:14,color:'var(--ok)'}}>− {fmtRWF(pricing.savings)}</span>
               </div>
             )}
-            {[['Total price',fmtRWF(pricing.total)],['Deposit (upfront)',fmtRWF(pricing.dep)],['Monthly × 12',fmtRWF(pricing.monthly)]].map(([k,v])=>(
+            {[[t('total_price'),fmtRWF(pricing.total)],[t('deposit_upfront'),fmtRWF(pricing.dep)],[t('monthly_x12',12),fmtRWF(pricing.monthly)]].map(([k,v])=>(
               <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:10}}>
                 <span style={{fontSize:13,color:'var(--textMid)'}}>{k}</span>
                 <span style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:16}}>{v}</span>
@@ -735,7 +882,7 @@ const PriceList=({devices,onStartApp})=>{
             ))}
           </div>
           {onStartApp&&(
-            <Btn v="primary" full icon="→" onClick={()=>onStartApp(selDev.id,term)}>Start application with this device</Btn>
+            <Btn v="primary" full icon="→" onClick={()=>onStartApp(selDev.id,term)}>{t('start_app_device')}</Btn>
           )}
         </Card>
       )}
@@ -746,6 +893,7 @@ const PriceList=({devices,onStartApp})=>{
 // ── EDIT & RESUBMIT (after changes requested) ───────────────────
 const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
   const {user}=useContext(Ctx);
+  const t=useT();
   const pendingReqs=(app.application?.fieldCorrectionRequests||[]).filter(r=>!r.resolvedAt);
   const requested=pendingReqs.map(r=>r.fieldName);
   const highlight=(key)=>requested.includes(key)?{borderLeft:'3px solid var(--warn)',background:'var(--warnBg)',padding:'8px 10px',margin:'0 -10px 8px -10px',borderRadius:'var(--r2)'}:{};
@@ -754,9 +902,9 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const validate=()=>{
     const er={};
-    if(!f.name.trim())er.name='Required';
-    if(f.idType==='nid'){if(f.nid.replace(/\D/g,'').length!==16)er.nid='National ID must be 16 digits';}else{if(!f.nid.trim())er.nid='Passport number required';}
-    if(!f.phone.trim())er.phone='Required';if(!f.addr.trim())er.addr='Required';if(!f.occ)er.occ='Required';if(!f.income||isNaN(f.income)||+f.income<1)er.income='Enter a valid amount';if(!f.kn.trim())er.kn='Required';if(!f.kp.trim())er.kp='Required';if(!f.kr)er.kr='Required';if(!f.did)er.did='Select a device';
+    if(!f.name.trim())er.name=t('err_required');
+    if(f.idType==='nid'){if(f.nid.replace(/\D/g,'').length!==16)er.nid=t('err_nid_16');}else{if(!f.nid.trim())er.nid=t('err_passport');}
+    if(!f.phone.trim())er.phone=t('err_required');if(!f.addr.trim())er.addr=t('err_required');if(!f.occ)er.occ=t('err_required');if(!f.income||isNaN(f.income)||+f.income<1)er.income=t('err_income');if(!f.kn.trim())er.kn=t('err_required');if(!f.kp.trim())er.kp=t('err_required');if(!f.kr)er.kr=t('err_required');if(!f.did)er.did=t('err_device');
     setE(er);return!Object.keys(er).length;
   };
   const submit=()=>{
@@ -766,44 +914,44 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
     const application={...ap,fullName:f.name.trim(),nationalIdNumber:f.nid,phoneNumber:f.phone.trim(),address:f.addr.trim(),employmentType:f.occ,monthlyIncomeRwf:+f.income,guarantorName:f.kn.trim(),guarantorPhone:f.kp.trim(),fieldCorrectionRequests:(ap.fieldCorrectionRequests||[]).map(r=>({...r,resolvedAt:r.resolvedAt||new Date().toISOString()}))};
     const deal=app.deal?{...app.deal,dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12,cogs:dev.retail}:{dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12,cogs:dev.retail};
     onUpdate(app.id,{application,deal,status:ST.PENDING_APPROVAL,tlEntry:{by:user.name,txt:'Resubmitted after changes — returned to reviewer'}});
-    addToast('ok','Application resubmitted','Sent back to the reviewer');onBack();
+    addToast('ok',t('toast_resubmitted'),t('toast_resubmitted_msg'));onBack();
   };
   return(
     <div className="fadeUp" style={{padding:'28px 32px',maxWidth:820}}>
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22}}>
-        <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
-        <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Edit & resubmit</h1><p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>{app.id} · Underwriter requested changes</p></div>
+        <Btn onClick={onBack} v="ghost" icon="←" sz="sm">{t('back')}</Btn>
+        <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>{t('edit_resubmit_title')}</h1><p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>{app.id} · {t('uw_req_changes')}</p></div>
       </div>
       {app.notes&&(
         <Card sx={{padding:14,marginBottom:18,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}>
-          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:6}}>Underwriter note</div>
+          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:6}}>{t('uw_note_lbl')}</div>
           <div style={{fontSize:13,color:'var(--text)'}}>{app.notes}</div>
           {pendingReqs.length>0&&<ul style={{margin:'8px 0 0 16px',padding:0}}>{pendingReqs.map((r,i)=><li key={i} style={{fontSize:11,color:'var(--textMid)'}}><strong>{r.fieldName}</strong>{r.reason&&r.reason!==app.notes?` — ${r.reason}`:''}</li>)}</ul>}
         </Card>
       )}
       <Card sx={{padding:22}}>
-        <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Customer information</div>
+        <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>{t('customer_information')}</div>
         <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-          <div style={highlight('name')}><FF label="Full name" req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder="As on ID" className={e.name?'err':''}/></FF></div>
-          <div style={highlight('nid')}><FF label="ID type" req><select value={f.idType} onChange={ev=>{s('idType',ev.target.value);if(ev.target.value==='nid')s('nid',f.nid.replace(/\D/g,'').slice(0,16));}}><option value="nid">National ID</option><option value="passport">Passport</option></select></FF></div>
+          <div style={highlight('name')}><FF label={t('full_name')} req err={e.name}><input value={f.name} onChange={ev=>s('name',ev.target.value)} placeholder={t('full_name_ph')} className={e.name?'err':''}/></FF></div>
+          <div style={highlight('nid')}><FF label={t('id_type')} req><select value={f.idType} onChange={ev=>{s('idType',ev.target.value);if(ev.target.value==='nid')s('nid',f.nid.replace(/\D/g,'').slice(0,16));}}><option value="nid">{t('national_id')}</option><option value="passport">{t('passport')}</option></select></FF></div>
         </div>
-        <div style={highlight('nid')}><FF label={f.idType==='nid'?'National ID number (16 digits)':'Passport number'} req err={e.nid}><input value={f.nid} onChange={ev=>s('nid',f.idType==='nid'?ev.target.value.replace(/\D/g,'').slice(0,16):ev.target.value)} placeholder={f.idType==='nid'?'16 digits':'e.g. AB1234567'} className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/></FF></div>
+        <div style={highlight('nid')}><FF label={f.idType==='nid'?t('national_id_number'):t('passport_number')} req err={e.nid}><input value={f.nid} onChange={ev=>s('nid',f.idType==='nid'?ev.target.value.replace(/\D/g,'').slice(0,16):ev.target.value)} placeholder={f.idType==='nid'?t('id_ph_nid'):t('id_ph_passport')} className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/></FF></div>
         <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-          <div style={highlight('phone')}><FF label="Phone number" req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF></div>
-          <div style={highlight('occ')}><FF label="Occupation" req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">Select...</option>{OCCS.map(o=><option key={o}>{o}</option>)}</select></FF></div>
+          <div style={highlight('phone')}><FF label={t('phone_number')} req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF></div>
+          <div style={highlight('occ')}><FF label={t('occupation')} req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">{t('select_ph')}</option>{[[t('occ_trader'),'Trader / Business owner'],[t('occ_teacher'),'Teacher'],[t('occ_civil'),'Civil servant'],[t('occ_driver'),'Driver / Transport'],[t('occ_farmer'),'Farmer'],[t('occ_health'),'Healthcare worker'],[t('occ_student'),'Student'],[t('occ_other'),'Other']].map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}</select></FF></div>
         </div>
-        <div style={highlight('addr')}><FF label="Address / location" req err={e.addr}><input value={f.addr} onChange={ev=>s('addr',ev.target.value)} placeholder="Sector, district" className={e.addr?'err':''}/></FF></div>
-        <div style={highlight('income')}><FF label="Monthly income (RWF)" req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder="e.g. 150000" className={e.income?'err':''}/></FF></div>
+        <div style={highlight('addr')}><FF label={t('address_loc')} req err={e.addr}><input value={f.addr} onChange={ev=>s('addr',ev.target.value)} placeholder={t('address_ph')} className={e.addr?'err':''}/></FF></div>
+        <div style={highlight('income')}><FF label={t('monthly_income')} req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder={t('income_ph')} className={e.income?'err':''}/></FF></div>
         <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
-          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Next of kin</div>
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>{t('next_of_kin')}</div>
           <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 160px',gap:12}}>
-            <div style={highlight('kin_name')}><FF label="Full name" req err={e.kn}><input value={f.kn} onChange={ev=>s('kn',ev.target.value)} placeholder="Next of kin name" className={e.kn?'err':''}/></FF></div>
-            <div style={highlight('kin_phone')}><FF label="Phone" req err={e.kp}><input value={f.kp} onChange={ev=>s('kp',ev.target.value)} placeholder="07XXXXXXXX" className={e.kp?'err':''}/></FF></div>
-            <div style={highlight('kin_rel')}><FF label="Relationship" req err={e.kr}><select value={f.kr} onChange={ev=>s('kr',ev.target.value)} className={e.kr?'err':''}><option value="">Select...</option>{RELS.map(r=><option key={r}>{r}</option>)}</select></FF></div>
+            <div style={highlight('kin_name')}><FF label={t('kin_name')} req err={e.kn}><input value={f.kn} onChange={ev=>s('kn',ev.target.value)} placeholder={t('kin_name')} className={e.kn?'err':''}/></FF></div>
+            <div style={highlight('kin_phone')}><FF label={t('kin_phone')} req err={e.kp}><input value={f.kp} onChange={ev=>s('kp',ev.target.value)} placeholder="07XXXXXXXX" className={e.kp?'err':''}/></FF></div>
+            <div style={highlight('kin_rel')}><FF label={t('relationship')} req err={e.kr}><select value={f.kr} onChange={ev=>s('kr',ev.target.value)} className={e.kr?'err':''}><option value="">{t('select_ph')}</option>{[[t('rel_parent'),'Parent'],[t('rel_sibling'),'Sibling'],[t('rel_spouse'),'Spouse'],[t('rel_child'),'Child'],[t('rel_friend'),'Friend'],[t('rel_other'),'Other']].map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}</select></FF></div>
           </div>
         </div>
         <div style={{borderTop:'1.5px solid var(--border)',paddingTop:18,marginTop:14}}>
-          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>{t('device_section_lbl')}</div>
           <div className="device-select-grid" style={{...highlight('device_id'),display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
             {(devices||[]).map(d=>{const sel=f.did===d.id;const tot=d.totalCost||(d.dep+(d.weekly||0)*(d.wks||12));return(
               <div key={d.id} onClick={()=>s('did',d.id)} style={{border:`${sel?2:1.5}px solid ${sel?'var(--brand2)':'var(--border)'}`,borderRadius:'var(--r)',padding:'12px 13px',cursor:'pointer',background:sel?'var(--brandPale)':'white',transition:'all .13s',position:'relative'}}>
@@ -811,7 +959,7 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
                 <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:1}}>{d.brand}</div>
                 <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>{d.model}</div>
                 <div style={{fontSize:10,color:'var(--textLight)',marginBottom:10,lineHeight:1.5}}>{d.specs||[d.ram,d.rom].filter(Boolean).join(' / ')}</div>
-                {[['Deposit',fmtRWF(d.dep)],[`Monthly × ${d.wks||12}`,fmtRWF(d.weekly)],['Total price',fmtRWF(tot)]].map(([k,v])=>(
+                {[[t('deposit'),fmtRWF(d.dep)],[t('monthly_x12',d.wks||12),fmtRWF(d.weekly)],[t('total_price'),fmtRWF(tot)]].map(([k,v])=>(
                   <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:4}}><span style={{color:'var(--textMid)'}}>{k}</span><span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{v}</span></div>
                 ))}
               </div>
@@ -820,8 +968,8 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
           {e.did&&<span style={{fontSize:11,color:'var(--err)'}}>{e.did}</span>}
         </div>
         <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:22,paddingTop:18,borderTop:'1.5px solid var(--border)'}}>
-          <Btn onClick={onBack} v="def">Cancel</Btn>
-          <Btn onClick={submit} v="primary" icon="✓">Resubmit to reviewer</Btn>
+          <Btn onClick={onBack} v="def">{t('cancel')}</Btn>
+          <Btn onClick={submit} v="primary" icon="✓">{t('resubmit_btn')}</Btn>
         </div>
       </Card>
     </div>
@@ -1389,6 +1537,7 @@ const compareSpecs=(dev,cc)=>{
 
 const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
   const {user,companyInfo}=useContext(Ctx);
+  const t=useT();
   const proxyUrl=(companyInfo?.imeiProxyUrl||CARLCARE_PROXY_FALLBACK).trim();
   const [imei,setImei]=useState(app.imei||'');
   const [phase,setPhase]=useState(app.status===ST.LOCK_PENDING||app.status===ST.ACTIVE?'verified':app.imei&&app.status===ST.APPROVED?'autocheck_resume':'entry');
@@ -1463,7 +1612,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
     const ptId='PT-2026-'+Math.floor(10000+Math.random()*90000);
     const ccDetail=fromAuto&&ccResult?` Carlcare: ${ccResult.model||''} RAM:${ccResult.ram} Storage:${ccResult.rom} · Warranty expires ${ccResult.expiry}.`:'';
     onUpdate(app.id,{imei,ptId,status:ST.LOCK_PENDING,carlcareResult:ccResult||null,tlEntry:{by:user.name,txt:`IMEI ${imei} — Carlcare warranty confirmed, specs match.${ccDetail} Registered in PayTrigger (${ptId})`}});
-    addToast('ok','IMEI verified','Carlcare: warranty valid & specs match');
+    addToast('ok',t('imei_verified_toast'),t('imei_verified_msg'));
     setPhase('verified');setLd(null);
   };
 
@@ -1483,18 +1632,18 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
   const confirmLocked=async()=>{
     setLd('lock');await sleep(2000);
     onUpdate(app.id,{status:ST.ACTIVE,lockedAt:new Date().toISOString(),tlEntry:{by:user.name,txt:'Phone locked — contract activated, payments enabled'}});
-    addToast('ok','Contract activated!','Device locked in PayTrigger. Customer can now make payments.');
+    addToast('ok',t('contract_activated_toast'),t('contract_activated_msg'));
     setLd(null);onBack();
   };
 
-  const STEPS_DEF=[{l:'Enter IMEI',done:phase!=='entry'},{l:'Carlcare check',done:['valid','mismatch','notfound','verified'].includes(phase)},{l:'Lock & activate',done:phase==='verified'&&app.status===ST.ACTIVE}];
+  const STEPS_DEF=[{l:t('imei_step1'),done:phase!=='entry'},{l:t('imei_step2'),done:['valid','mismatch','notfound','verified'].includes(phase)},{l:t('imei_step3'),done:phase==='verified'&&app.status===ST.ACTIVE}];
 
   return(
     <div className="fadeUp" style={{padding:'28px 32px',maxWidth:760}}>
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:22}}>
-        <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
+        <Btn onClick={onBack} v="ghost" icon="←" sz="sm">{t('back')}</Btn>
         <div>
-          <h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>IMEI & warranty check</h1>
+          <h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>{t('imei_check_title')}</h1>
           <p style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>{app.id} · {app.c.name}</p>
         </div>
         {proxyUrl&&<span style={{marginLeft:'auto',fontSize:10,fontWeight:600,padding:'3px 9px',borderRadius:99,background:'var(--okBg)',color:'var(--ok)',border:'1px solid var(--okBorder)'}}>⚡ Auto-check</span>}
@@ -1515,7 +1664,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
 
       {/* Expected device specs */}
       <Card sx={{padding:'13px 16px',marginBottom:16,background:'var(--brandPale)',border:'1.5px solid var(--brandPale2)'}}>
-        <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--brand)',marginBottom:8}}>Expected device (from application)</div>
+        <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--brand)',marginBottom:8}}>{t('imei_expected_device')}</div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:8}}>
           {[['Brand',d.brand],['Model',d.model],['RAM',d.ram||d.RAM],['Storage',d.rom||d.ROM]].map(([k,v])=>(
             <div key={k}><div style={{fontSize:9,color:'var(--brand2)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.5px'}}>{k}</div><div style={{fontWeight:700,fontSize:13,color:'var(--brand)'}}>{v||'—'}</div></div>
@@ -1527,18 +1676,18 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         {/* ── Phase: entry ── */}
         {phase==='entry'&&(
           <div>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:6}}>Enter device IMEI</div>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:6}}>{t('imei_enter_title')}</div>
             <p style={{fontSize:12,color:'var(--textMid)',marginBottom:18,lineHeight:1.7}}>
-              Dial <strong>*#06#</strong> on the <strong>{d.brand} {d.model}</strong> to get its IMEI. Enter it below.{' '}
-              {proxyUrl?<span style={{color:'var(--ok)',fontWeight:600}}>Warranty will be checked automatically.</span>:<span>You will verify it manually on the Carlcare website.</span>}
+              {t('imei_dial_hint',d.brand,d.model)}{' '}
+              {proxyUrl?<span style={{color:'var(--ok)',fontWeight:600}}>{t('imei_auto_warranty')}</span>:<span>{t('imei_manual_verify')}</span>}
             </p>
             <div style={{display:'flex',gap:10,alignItems:'flex-end',flexWrap:'wrap',marginBottom:6}}>
               <div style={{flex:1,minWidth:200}}>
-                <label style={{fontSize:11,fontWeight:600,color:'var(--textLight)',display:'block',marginBottom:5}}>15-digit IMEI</label>
+                <label style={{fontSize:11,fontWeight:600,color:'var(--textLight)',display:'block',marginBottom:5}}>{t('imei_15_lbl')}</label>
                 <input value={imei} onChange={ev=>setImei(ev.target.value.replace(/\D/g,'').slice(0,15))} placeholder="e.g. 352876110123456" style={{fontFamily:'DM Mono,monospace',fontSize:18,letterSpacing:'2px'}} maxLength={15}/>
-                <div style={{fontSize:10,color:'var(--textLight)',marginTop:4}}>{imei.length}/15 digits</div>
+                <div style={{fontSize:10,color:'var(--textLight)',marginTop:4}}>{t('imei_digit_count',imei.length)}</div>
               </div>
-              <Btn v="primary" sz="lg" disabled={imei.length!==15} onClick={proceedToCheck} icon={proxyUrl?'⚡':'→'}>{proxyUrl?'Check warranty automatically':'Proceed to manual check'}</Btn>
+              <Btn v="primary" sz="lg" disabled={imei.length!==15} onClick={proceedToCheck} icon={proxyUrl?'⚡':'→'}>{proxyUrl?t('imei_auto_btn'):t('imei_manual_btn')}</Btn>
             </div>
           </div>
         )}
@@ -1547,9 +1696,9 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         {phase==='autocheck'&&(
           <div style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'32px 0',gap:18}}>
             <Spin size={36}/>
-            <div style={{fontWeight:700,fontSize:15}}>Checking with Carlcare…</div>
+            <div style={{fontWeight:700,fontSize:15}}>{t('imei_checking_title')}</div>
             <div style={{fontFamily:'DM Mono,monospace',fontSize:18,letterSpacing:'2px',color:'var(--brand)',padding:'10px 20px',background:'var(--brandPale)',borderRadius:'var(--r)'}}>{imei}</div>
-            <div style={{fontSize:11,color:'var(--textMid)'}}>Verifying warranty status and device specs automatically</div>
+            <div style={{fontSize:11,color:'var(--textMid)'}}>{t('imei_checking_desc')}</div>
           </div>
         )}
 
@@ -1557,7 +1706,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         {phase==='valid'&&(
           <div>
             <div style={{padding:'16px 18px',background:'var(--okBg)',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',marginBottom:20}}>
-              <div style={{fontWeight:800,fontSize:15,color:'var(--ok)',marginBottom:8}}>✓ Warranty valid — all specs match</div>
+              <div style={{fontWeight:800,fontSize:15,color:'var(--ok)',marginBottom:8}}>{t('imei_valid_title')}</div>
               {ccResult&&(
                 <>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8,marginBottom:10}}>
@@ -1568,15 +1717,15 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
                       </div>
                     ))}
                   </div>
-                  {ccResult.expiry&&<div style={{fontSize:11,color:'var(--ok)',fontWeight:600}}>Warranty valid until: {ccResult.expiry}{ccResult.warrantyClass&&` · ${ccResult.warrantyClass}`}</div>}
+                  {ccResult.expiry&&<div style={{fontSize:11,color:'var(--ok)',fontWeight:600}}>{t('warranty_until')} {ccResult.expiry}{ccResult.warrantyClass&&` · ${ccResult.warrantyClass}`}</div>}
                 </>
               )}
             </div>
             <Btn onClick={()=>confirmValid(true)} v="ok" sz="lg" full loading={ld==='pt'} icon="→">
-              {ld==='pt'?'Registering in PayTrigger…':'Confirm & proceed to PayTrigger'}
+              {ld==='pt'?t('registering_pt'):t('confirm_pt_btn')}
             </Btn>
             <div style={{marginTop:10,textAlign:'center'}}>
-              <Btn v="ghost" sz="sm" onClick={()=>{setCcResult(null);setPhase('entry');}} icon="←">Re-enter IMEI</Btn>
+              <Btn v="ghost" sz="sm" onClick={()=>{setCcResult(null);setPhase('entry');}} icon="←">{t('re_enter_imei')}</Btn>
             </div>
           </div>
         )}
@@ -1585,12 +1734,12 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         {phase==='mismatch'&&(
           <div>
             <div style={{padding:'12px 15px',background:'var(--warnBg)',border:'1.5px solid var(--warnBorder)',borderRadius:'var(--r2)',marginBottom:18}}>
-              <div style={{fontWeight:700,fontSize:13,color:'var(--warn)',marginBottom:4}}>⚠ Specs mismatch — action required</div>
-              <div style={{fontSize:11,color:'var(--warn)',lineHeight:1.6}}>{ccResult?'Carlcare confirmed the IMEI is in warranty, but the device specs do not match the application.':'The device found on Carlcare does not match the application specs.'} Record the actual specs found and choose how to proceed.</div>
+              <div style={{fontWeight:700,fontSize:13,color:'var(--warn)',marginBottom:4}}>{t('mismatch_title')}</div>
+              <div style={{fontSize:11,color:'var(--warn)',lineHeight:1.6}}>{ccResult?t('mismatch_carlcare'):t('mismatch_no_carlcare')}</div>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:18}}>
               <div style={{padding:'12px 14px',background:'var(--bg)',borderRadius:'var(--r)',border:'1px solid var(--border)'}}>
-                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--textLight)',marginBottom:8}}>Application says</div>
+                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--textLight)',marginBottom:8}}>{t('app_says')}</div>
                 {[['Brand',d.brand||'—'],['Model',d.model||'—'],['RAM',(d.ram||d.RAM)||'—'],['Storage',(d.rom||d.ROM)||'—']].map(([k,v])=>(
                   <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:5}}>
                     <span style={{color:'var(--textMid)'}}>{k}</span>
@@ -1600,7 +1749,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
               </div>
               <div style={{padding:'12px 14px',background:'var(--warnBg)',borderRadius:'var(--r)',border:'1.5px solid var(--warnBorder)'}}>
                 <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'var(--warn)',marginBottom:8}}>
-                  Carlcare shows {ccResult?<span style={{fontWeight:400,textTransform:'none',fontSize:10}}>(auto-detected — read only)</span>:<span style={{fontWeight:400,textTransform:'none',fontSize:10}}>(enter manually)</span>}
+                  {t('carlcare_shows')} {ccResult?<span style={{fontWeight:400,textTransform:'none',fontSize:10}}>{t('auto_detected')}</span>:<span style={{fontWeight:400,textTransform:'none',fontSize:10}}>{t('enter_manually')}</span>}
                 </div>
                 {[['Brand','brand'],['Model','model'],['RAM','ram'],['Storage','rom']].map(([label,key])=>(
                   ccResult
@@ -1609,12 +1758,12 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
                 ))}
               </div>
             </div>
-            <FF label="Note — describe the mismatch"><textarea value={mismatchNote} onChange={e=>setMismatchNote(e.target.value)} rows={2} placeholder="e.g. Carlcare shows 8GB RAM but application states 4GB RAM" style={{resize:'vertical'}}/></FF>
+            <FF label={t('note_mismatch')}><textarea value={mismatchNote} onChange={e=>setMismatchNote(e.target.value)} rows={2} placeholder="e.g. Carlcare shows 8GB RAM but application states 4GB RAM" style={{resize:'vertical'}}/></FF>
             <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:14}}>
-              <Btn v="ok" full icon="←" onClick={retryImei}>Try a different IMEI</Btn>
+              <Btn v="ok" full icon="←" onClick={retryImei}>{t('try_diff_imei')}</Btn>
               <div style={{height:1,background:'var(--border)',margin:'2px 0'}}/>
-              <Btn v="warn" full icon="↩" onClick={()=>sendBackFromImei(`Specs mismatch at IMEI check. ${mismatchNote||''} Carlcare shows: ${Object.entries(actualSpecs).map(([k,v])=>v?`${k}=${v}`:'').filter(Boolean).join(', ')}.`)}>Send back to underwriter for review</Btn>
-              <Btn v="def" full icon="⬆" onClick={()=>escalateFromImei(`Specs mismatch — escalated. ${mismatchNote||''} IMEI: ${imei}. Carlcare: ${Object.entries(actualSpecs).map(([k,v])=>v?`${k}=${v}`:'').filter(Boolean).join(', ')}.`)}>Escalate to ops</Btn>
+              <Btn v="warn" full icon="↩" onClick={()=>sendBackFromImei(`Specs mismatch at IMEI check. ${mismatchNote||''} Carlcare shows: ${Object.entries(actualSpecs).map(([k,v])=>v?`${k}=${v}`:'').filter(Boolean).join(', ')}.`)}>{t('send_back_uw')}</Btn>
+              <Btn v="def" full icon="⬆" onClick={()=>escalateFromImei(`Specs mismatch — escalated. ${mismatchNote||''} IMEI: ${imei}. Carlcare: ${Object.entries(actualSpecs).map(([k,v])=>v?`${k}=${v}`:'').filter(Boolean).join(', ')}.`)}>{t('escalate_ops_btn')}</Btn>
             </div>
           </div>
         )}
@@ -1623,19 +1772,19 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         {phase==='notfound'&&(
           <div>
             <div style={{padding:'12px 15px',background:'var(--errBg)',border:'1.5px solid var(--errBorder)',borderRadius:'var(--r2)',marginBottom:18}}>
-              <div style={{fontWeight:700,fontSize:13,color:'var(--err)',marginBottom:4}}>✕ {ccResult&&!ccResult.warrantyValid?'Warranty expired or not valid':'IMEI not found on Carlcare'}</div>
-              <div style={{fontSize:11,color:'var(--err)',lineHeight:1.6}}>{ccResult&&!ccResult.warrantyValid?`The device was found but the warranty is no longer valid (expired: ${ccResult.expiry||'unknown'}). Do not proceed with activation.`:'Carlcare could not find this IMEI. The device may not be genuine, may not be a supported brand (TECNO/itel/Infinix), or the warranty has expired.'}</div>
+              <div style={{fontWeight:700,fontSize:13,color:'var(--err)',marginBottom:4}}>✕ {ccResult&&!ccResult.warrantyValid?t('warranty_expired_title'):t('notfound_title')}</div>
+              <div style={{fontSize:11,color:'var(--err)',lineHeight:1.6}}>{ccResult&&!ccResult.warrantyValid?t('notfound_exp_msg',ccResult.expiry):t('notfound_gen_msg')}</div>
             </div>
             <div style={{padding:'11px 14px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6,marginBottom:18}}>
-              <strong>What to check:</strong> Confirm the IMEI was entered correctly (dial *#06# again). Try the second IMEI if dual-SIM. If still not found or expired, send back to underwriter.
+              <strong>{t('what_to_check')}</strong> {t('what_to_check_desc')}
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
-              <Btn v="ok" full icon="←" onClick={retryImei}>Try a different IMEI</Btn>
+              <Btn v="ok" full icon="←" onClick={retryImei}>{t('try_diff_imei')}</Btn>
               <div style={{height:1,background:'var(--border)',margin:'4px 0'}}/>
-              <div style={{fontSize:11,color:'var(--textMid)',marginBottom:2}}>If the issue can't be resolved by retrying, send back to underwriter or escalate:</div>
-              <FF label="Note for underwriter / ops"><textarea value={mismatchNote} onChange={e=>setMismatchNote(e.target.value)} rows={2} placeholder="Describe what was tried…" style={{resize:'vertical'}}/></FF>
-              <Btn v="warn" full icon="↩" onClick={()=>sendBackFromImei(`IMEI ${imei} — ${ccResult&&!ccResult.warrantyValid?'warranty expired/invalid':'not found on Carlcare'}. ${mismatchNote||''}`)}>Send back to underwriter</Btn>
-              <Btn v="def" full icon="⬆" onClick={()=>escalateFromImei(`IMEI ${imei} — ${ccResult&&!ccResult.warrantyValid?'warranty issue':'unverifiable'}. ${mismatchNote||''} — escalated from IMEI check.`)}>Escalate to ops</Btn>
+              <div style={{fontSize:11,color:'var(--textMid)',marginBottom:2}}>{t('imei_manual_verify')}</div>
+              <FF label={t('note_uw_ops')}><textarea value={mismatchNote} onChange={e=>setMismatchNote(e.target.value)} rows={2} placeholder="Describe what was tried…" style={{resize:'vertical'}}/></FF>
+              <Btn v="warn" full icon="↩" onClick={()=>sendBackFromImei(`IMEI ${imei} — ${ccResult&&!ccResult.warrantyValid?'warranty expired/invalid':'not found on Carlcare'}. ${mismatchNote||''}`)}>{t('send_back_uw_btn')}</Btn>
+              <Btn v="def" full icon="⬆" onClick={()=>escalateFromImei(`IMEI ${imei} — ${ccResult&&!ccResult.warrantyValid?'warranty issue':'unverifiable'}. ${mismatchNote||''} — escalated from IMEI check.`)}>{t('escalate_ops_btn')}</Btn>
             </div>
           </div>
         )}
@@ -1644,37 +1793,37 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         {phase==='checking'&&(
           <div>
             {autoError&&<div style={{padding:'9px 12px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',marginBottom:14}}>{autoError}</div>}
-            <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Check warranty on Carlcare</div>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>{t('manual_check_title')}</div>
             <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 18px',background:'var(--bg)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',marginBottom:18}}>
               <div style={{flex:1}}>
-                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:3}}>IMEI to check</div>
+                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:3}}>{t('imei_to_check_lbl')}</div>
                 <div style={{fontFamily:'DM Mono,monospace',fontSize:22,fontWeight:700,letterSpacing:'2.5px',color:'var(--brand)'}}>{imei}</div>
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                <Btn v="def" sz="sm" onClick={copyImei} icon={copied?'✓':'⎘'}>{copied?'Copied!':'Copy IMEI'}</Btn>
-                <Btn v="primary" sz="sm" onClick={()=>window.open(CARLCARE_MANUAL_URL,'_blank','noopener')} icon="↗">Open Carlcare</Btn>
+                <Btn v="def" sz="sm" onClick={copyImei} icon={copied?'✓':'⎘'}>{copied?t('copied_btn'):t('copy_imei_btn')}</Btn>
+                <Btn v="primary" sz="sm" onClick={()=>window.open(CARLCARE_MANUAL_URL,'_blank','noopener')} icon="↗">{t('open_carlcare_btn')}</Btn>
               </div>
             </div>
             <div style={{padding:'10px 14px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--info)',marginBottom:20,lineHeight:1.6}}>
-              <strong>Instructions:</strong> Click "Open Carlcare" → paste the IMEI → check the result. Confirm brand, model, RAM and storage match the expected device above. Then select the outcome below.
+              {t('manual_instructions')}
             </div>
-            <div style={{fontSize:12,fontWeight:700,color:'var(--text)',marginBottom:12}}>What did Carlcare show?</div>
+            <div style={{fontSize:12,fontWeight:700,color:'var(--text)',marginBottom:12}}>{t('what_carlcare_show')}</div>
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               <button type="button" onClick={()=>confirmValid(false)} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',background:'var(--okBg)',cursor:'pointer',textAlign:'left'}}>
                 <div style={{width:36,height:36,borderRadius:18,background:'var(--ok)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>✓</div>
-                <div><div style={{fontWeight:700,fontSize:13,color:'var(--ok)'}}>Warranty valid — specs match</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>IMEI found, in warranty, all specs match the application</div></div>
+                <div><div style={{fontWeight:700,fontSize:13,color:'var(--ok)'}}>{t('valid_match_title')}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{t('valid_match_sub')}</div></div>
               </button>
               <button type="button" onClick={()=>{setActualSpecs({brand:d.brand||'',model:d.model||'',ram:d.ram||'',rom:d.rom||''});setPhase('mismatch');}} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',background:'var(--warnBg)',cursor:'pointer',textAlign:'left'}}>
                 <div style={{width:36,height:36,borderRadius:18,background:'var(--warn)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>⚠</div>
-                <div><div style={{fontWeight:700,fontSize:13,color:'var(--warn)'}}>Device found but specs don't match</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>IMEI found and in warranty, but specs differ from the application</div></div>
+                <div><div style={{fontWeight:700,fontSize:13,color:'var(--warn)'}}>{t('specs_differ_title')}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{t('specs_differ_sub')}</div></div>
               </button>
               <button type="button" onClick={()=>setPhase('notfound')} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',border:'2px solid var(--errBorder)',borderRadius:'var(--r)',background:'var(--errBg)',cursor:'pointer',textAlign:'left'}}>
                 <div style={{width:36,height:36,borderRadius:18,background:'var(--err)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>✕</div>
-                <div><div style={{fontWeight:700,fontSize:13,color:'var(--err)'}}>IMEI not found or out of warranty</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>Carlcare did not recognise this IMEI or the warranty has expired</div></div>
+                <div><div style={{fontWeight:700,fontSize:13,color:'var(--err)'}}>{t('not_found_btn_title')}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{t('not_found_btn_sub')}</div></div>
               </button>
             </div>
             <div style={{marginTop:14,textAlign:'right'}}>
-              <Btn v="ghost" sz="sm" onClick={()=>setPhase('entry')} icon="←">Re-enter IMEI</Btn>
+              <Btn v="ghost" sz="sm" onClick={()=>setPhase('entry')} icon="←">{t('re_enter_imei')}</Btn>
             </div>
           </div>
         )}
@@ -1683,14 +1832,14 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
         {phase==='verified'&&(
           <div>
             <div style={{padding:'13px 15px',background:'var(--okBg)',border:'1.5px solid var(--okBorder)',borderRadius:'var(--r2)',marginBottom:20}}>
-              <div style={{fontWeight:700,fontSize:13,color:'var(--ok)',marginBottom:4}}>✓ Carlcare warranty confirmed — IMEI verified</div>
+              <div style={{fontWeight:700,fontSize:13,color:'var(--ok)',marginBottom:4}}>{t('verified_cc_title')}</div>
               <div style={{fontSize:11,color:'var(--ok)',lineHeight:1.6}}>IMEI: <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{app.imei||imei}</span>{app.ptId&&<span> · PayTrigger: <span style={{fontFamily:'DM Mono,monospace'}}>{app.ptId}</span></span>}</div>
             </div>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:6}}>Lock the phone in PayTrigger</div>
-            <p style={{fontSize:12,color:'var(--textMid)',lineHeight:1.7,marginBottom:14}}>Open the PayTrigger portal, find this device by IMEI, and lock it. Once the customer's screen shows the PAYGO lock, confirm below to activate the contract.</p>
-            <div style={{padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6,marginBottom:18}}><strong>Only confirm once</strong> the lock screen is visible on the customer's phone.</div>
-            <a href="https://paytrigger.shalltry.com/pay-trigger/" target="_blank" rel="noopener noreferrer" style={{display:'inline-flex',alignItems:'center',gap:6,padding:'9px 14px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',color:'var(--info)',fontSize:12,fontWeight:600,textDecoration:'none',marginBottom:16}}>↗ Open PayTrigger portal</a>
-            <Btn onClick={confirmLocked} v="ok" sz="lg" full loading={ld==='lock'} disabled={!!ld} icon="🔒">{ld==='lock'?'Activating contract…':'Confirm phone is locked — activate contract'}</Btn>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:6}}>{t('lock_pt_title')}</div>
+            <p style={{fontSize:12,color:'var(--textMid)',lineHeight:1.7,marginBottom:14}}>{t('lock_pt_desc')}</p>
+            <div style={{padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6,marginBottom:18}}>{t('lock_only_once')}</div>
+            <a href="https://paytrigger.shalltry.com/pay-trigger/" target="_blank" rel="noopener noreferrer" style={{display:'inline-flex',alignItems:'center',gap:6,padding:'9px 14px',background:'var(--infoBg)',border:'1px solid var(--infoBorder)',borderRadius:'var(--r2)',color:'var(--info)',fontSize:12,fontWeight:600,textDecoration:'none',marginBottom:16}}>{t('open_pt_portal')}</a>
+            <Btn onClick={confirmLocked} v="ok" sz="lg" full loading={ld==='lock'} disabled={!!ld} icon="🔒">{ld==='lock'?t('activating_contract'):t('confirm_lock_activate')}</Btn>
           </div>
         )}
       </Card>
@@ -1701,6 +1850,7 @@ const IMEIFlow=({app,onUpdate,addToast,onBack})=>{
 // ── APP DETAIL ────────────────────────────────────────────────
 const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const {user,companyInfo}=useContext(Ctx);
+  const t=useT();
   const [note,setNote]=useState(app.notes||'');
   const [ld,setLd]=useState(null);
   const [showRej,setShowRej]=useState(false);
@@ -1786,7 +1936,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
     <div className="fadeUp" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,padding:'28px 32px'}}>
       <div className="detail-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22,flexWrap:'wrap',gap:12,flexShrink:0}}>
         <div style={{display:'flex',alignItems:'center',gap:12,minWidth:0}}>
-          <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
+          <Btn onClick={onBack} v="ghost" icon="←" sz="sm">{t('back')}</Btn>
           <div style={{minWidth:0}}>
             <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:3,flexWrap:'wrap'}}>
               <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>{app.id}</span>
@@ -1805,47 +1955,47 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
             const discLabel=term===3?'Pay off in 3 months (30% early discount)':term===6?'Pay off in 6 months (20% early discount)':'Standard 12 months';
             const contractData={id:app.id,createdAt:app.createdAt,repName:app.rep||'',co:companyInfo||defaultCompanyInfo,f:{name:ap.fullName||'',nid:ap.nationalIdNumber||'',idType:ap.idType||'nid',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kn:ap.guarantorName||'',kp:ap.guarantorPhone||'',kr:'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},dev:{brand:deal.manufacturer||'',model:deal.deviceModel||'',ram:deal.RAM||'',rom:deal.ROM||'',retail:deal.cogs||0,markupRate:deal.markupRate||0},term,pricing:tp,date:new Date(app.createdAt||Date.now()).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),discLabel,app:{fullName:ap.fullName||'',nationalIdNumber:ap.nationalIdNumber||'',idType:ap.idType||'nid',phoneNumber:ap.phoneNumber||'',address:ap.address||'',employmentType:ap.employmentType||'',monthlyIncomeRwf:ap.monthlyIncomeRwf||0,guarantorName:ap.guarantorName||'',guarantorPhone:ap.guarantorPhone||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},deal};
             generateContractPDF(contractData,companyInfo||defaultCompanyInfo,ap.customerSignature||null);
-          }}>Download contract PDF</Btn>
+          }}>{t('dl_contract_pdf')}</Btn>
         </div>
       </div>
       <div style={{flex:1,overflow:'auto',minHeight:0}}>
       <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
         <Card sx={{padding:'16px 18px'}}>
-          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:13}}>Customer</div>
+          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:13}}>{t('customer_lbl')}</div>
           {(isUnderwriter&&reviewable?[
-            ['name','Full name',c.name],['nid',(c.idType==='passport'?'Passport number':'National ID'),c.nid],['phone','Phone',c.phone],['addr','Address',c.addr],['occ','Occupation',c.occ],['income','Monthly income',fmtRWF(c.income)]
-          ]:[['Full name',c.name],[(c.idType==='passport'?'Passport number':'National ID'),c.nid],['Phone',c.phone],['Address',c.addr],['Occupation',c.occ],['Monthly income',fmtRWF(c.income)]]).map((arr)=>{
+            ['name',t('full_name'),c.name],['nid',(c.idType==='passport'?t('passport_number'):t('national_id')),c.nid],['phone',t('phone_number'),c.phone],['addr',t('address_loc'),c.addr],['occ',t('occupation'),c.occ],['income',t('monthly_income'),fmtRWF(c.income)]
+          ]:[[ t('full_name'),c.name],[(c.idType==='passport'?t('passport_number'):t('national_id')),c.nid],[t('phone_number'),c.phone],[t('address_loc'),c.addr],[t('occupation'),c.occ],[t('monthly_income'),fmtRWF(c.income)]]).map((arr)=>{
             if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
             return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
           })}
           <div style={{borderTop:'1.5px solid var(--border)',paddingTop:11,marginTop:4}}>
-            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Next of kin</div>
+            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>{t('next_of_kin')}</div>
             {(isUnderwriter&&reviewable?[
-              ['kin_name','Name',c.kin.name],['kin_phone','Phone',c.kin.phone],['kin_rel','Relationship',c.kin.rel]
-            ]:[['Name',c.kin.name],['Phone',c.kin.phone],['Relationship',c.kin.rel]]).map((arr)=>{
+              ['kin_name',t('kin_name'),c.kin.name],['kin_phone',t('kin_phone'),c.kin.phone],['kin_rel',t('relationship'),c.kin.rel]
+            ]:[[ t('kin_name'),c.kin.name],[t('kin_phone'),c.kin.phone],[t('relationship'),c.kin.rel]]).map((arr)=>{
               if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
               return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
             })}
           </div>
           {(app.customerPhoto||app.idPhoto||app.incomeProof)&&(
             <div style={{borderTop:'1.5px solid var(--border)',paddingTop:11,marginTop:4}}>
-              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Documents</div>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>{t('documents_lbl')}</div>
               <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                {app.customerPhoto&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>Customer photo</span><a href={app.customerPhoto} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>View</a><img src={app.customerPhoto} alt="Customer" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/></div>}
-                {app.idPhoto&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>ID document</span><a href={app.idPhoto} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>View</a><img src={app.idPhoto} alt="ID" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/></div>}
-                {app.incomeProof&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>Proof of income</span><a href={app.incomeProof} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>View</a>{app.incomeProof.startsWith('data:application/pdf')?<span style={{fontSize:10,background:'var(--surface)',padding:'2px 6px',borderRadius:4}}>PDF</span>:<img src={app.incomeProof} alt="Income" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/>}</div>}
+                {app.customerPhoto&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>{t('customer_photo')}</span><a href={app.customerPhoto} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>{t('view_lnk')}</a><img src={app.customerPhoto} alt="Customer" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/></div>}
+                {app.idPhoto&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>{t('id_document')}</span><a href={app.idPhoto} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>{t('view_lnk')}</a><img src={app.idPhoto} alt="ID" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/></div>}
+                {app.incomeProof&&<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:12,color:'var(--textMid)'}}>{t('proof_of_income')}</span><a href={app.incomeProof} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'var(--brand2)'}}>{t('view_lnk')}</a>{app.incomeProof.startsWith('data:application/pdf')?<span style={{fontSize:10,background:'var(--surface)',padding:'2px 6px',borderRadius:4}}>PDF</span>:<img src={app.incomeProof} alt="Income" style={{width:40,height:40,objectFit:'cover',borderRadius:6}}/>}</div>}
               </div>
             </div>
           )}
         </Card>
         <div style={{display:'flex',flexDirection:'column',gap:12}}>
           <Card sx={{padding:'16px 18px'}}>
-            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
+            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>{t('device_lbl')}</div>
             {!(isUnderwriter&&reviewable)&&<div style={{fontWeight:700,fontSize:15,marginBottom:1}}>{d.brand} {d.model}</div>}
             {!(isUnderwriter&&reviewable)&&<div style={{fontSize:11,color:'var(--textLight)',marginBottom:13}}>{d.specs}</div>}
             {(isUnderwriter&&reviewable?[
-              ['device_id','Device',`${d.brand} ${d.model}`],['dep','Deposit',fmtRWF(d.dep)],['weekly',`Monthly × ${termMonths}`,fmtRWF(d.weekly)],['tot','Total price',fmtRWF(tot)]
-            ]:[['Deposit',fmtRWF(d.dep)],[`Monthly × ${termMonths}`,fmtRWF(d.weekly)],['Total price',fmtRWF(tot)]]).map((arr)=>{
+              ['device_id',t('device_lbl'),`${d.brand} ${d.model}`],['dep',t('deposit'),fmtRWF(d.dep)],['weekly',t('monthly_x12',termMonths),fmtRWF(d.weekly)],['tot',t('total_price'),fmtRWF(tot)]
+            ]:[[ t('deposit'),fmtRWF(d.dep)],[t('monthly_x12',termMonths),fmtRWF(d.weekly)],[t('total_price'),fmtRWF(tot)]]).map((arr)=>{
               if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
               return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
             })}
@@ -1853,15 +2003,15 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
             {app.ptId&&<Fld label="PayTrigger ID" val={app.ptId} mono/>}
           </Card>
           <Card sx={{padding:'14px 16px'}}>
-            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Affordability check</div>
+            <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>{t('affordability_lbl')}</div>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:8}}>
-              <span style={{fontSize:12,color:'var(--textMid)'}}>Monthly repayment / income</span>
+              <span style={{fontSize:12,color:'var(--textMid)'}}>{t('monthly_ratio_lbl')}</span>
               <span style={{fontFamily:'DM Mono,monospace',fontWeight:700,fontSize:16}}>{c.income>0?ratio.toFixed(1):'—'}%</span>
             </div>
             <div style={{height:7,background:'var(--bg)',borderRadius:4,overflow:'hidden',marginBottom:8}}>
               <div style={{height:'100%',borderRadius:4,width:`${Math.min(100,ratio)}%`,background:affordOk?'var(--ok)':'var(--err)',transition:'width .5s'}}/>
             </div>
-            <div style={{fontSize:11,fontWeight:600,padding:'6px 10px',borderRadius:'var(--r2)',background:affordOk?'var(--okBg)':'var(--errBg)',color:affordOk?'var(--ok)':'var(--err)'}}>{affordOk?'✓ Within policy (< 30% of income)':'⚠ Exceeds policy limit (> 30% of income)'}</div>
+            <div style={{fontSize:11,fontWeight:600,padding:'6px 10px',borderRadius:'var(--r2)',background:affordOk?'var(--okBg)':'var(--errBg)',color:affordOk?'var(--ok)':'var(--err)'}}>{affordOk?t('within_policy'):t('exceeds_policy')}</div>
           </Card>
         </div>
       </div>
@@ -1908,51 +2058,51 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
       {/* Draft — action for rep */}
       {isRep&&app.status===ST.DRAFT&&(
         <Card sx={{padding:'18px',marginBottom:14,background:'var(--infoBg)',border:'2px solid var(--infoBorder)'}}>
-          <div style={{fontSize:13,fontWeight:700,color:'var(--info)',marginBottom:6}}>📝 Draft application</div>
-          <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>This application was saved as a draft. Review the details and submit for underwriter review when ready.</div>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--info)',marginBottom:6}}>{t('draft_banner_title')}</div>
+          <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>{t('draft_banner_desc')}</div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            <Btn onClick={()=>{onUpdate(app.id,{status:ST.PENDING_APPROVAL,tlEntry:{by:user.name,txt:'Draft submitted for approval'}});addToast('ok','Submitted','Sent to underwriter for review');onBack();}} v="primary" icon="→">Submit for review</Btn>
-            <Btn onClick={()=>{onUpdate(app.id,{status:ST.ARCHIVED,tlEntry:{by:user.name,txt:'Draft deleted'}});addToast('info','Draft deleted','');onBack();}} v="ghost" icon="✕">Delete draft</Btn>
+            <Btn onClick={()=>{onUpdate(app.id,{status:ST.PENDING_APPROVAL,tlEntry:{by:user.name,txt:'Draft submitted for approval'}});addToast('ok',t('submitted_toast'),t('submitted_toast_msg'));onBack();}} v="primary" icon="→">{t('submit_for_review')}</Btn>
+            <Btn onClick={()=>{onUpdate(app.id,{status:ST.ARCHIVED,tlEntry:{by:user.name,txt:'Draft deleted'}});addToast('info',t('draft_deleted_toast'),'');onBack();}} v="ghost" icon="✕">{t('delete_draft_btn')}</Btn>
           </div>
         </Card>
       )}
       {/* Rejection notice for rep */}
       {isRep&&app.mboDecision==='REJECTED'&&(
         <Card sx={{padding:'14px 16px',marginBottom:14,background:'var(--errBg)',border:'2px solid var(--errBorder)'}}>
-          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--err)',marginBottom:5}}>✕ Application rejected</div>
-          <div style={{fontSize:12,color:'var(--err)',marginBottom:4}}>This application was rejected and cannot be resubmitted.</div>
-          {app.mboRejectionReason&&<div style={{fontSize:12,color:'var(--err)',fontStyle:'italic'}}>Reason: {app.mboRejectionReason}</div>}
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--err)',marginBottom:5}}>{t('rejected_banner_title')}</div>
+          <div style={{fontSize:12,color:'var(--err)',marginBottom:4}}>{t('rejected_banner_desc')}</div>
+          {app.mboRejectionReason&&<div style={{fontSize:12,color:'var(--err)',fontStyle:'italic'}}>{t('reason_lbl')} {app.mboRejectionReason}</div>}
         </Card>
       )}
       {/* Changes requested — banner for rep */}
       {isRep&&app.status===ST.UNDER_REVIEW&&pendingCorrections.length>0&&(
         <Card sx={{padding:'14px 16px',marginBottom:14,background:'var(--warnBg)',border:'2px solid var(--warnBorder)'}}>
-          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:5}}>↩ Changes requested by underwriter</div>
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:5}}>{t('changes_banner_title')}</div>
           {app.notes&&<div style={{fontSize:12,color:'var(--warn)',marginBottom:10,fontStyle:'italic'}}>"{app.notes}"</div>}
-          <div style={{fontSize:11,fontWeight:600,color:'var(--warn)',marginBottom:6}}>Fields to correct:</div>
+          <div style={{fontSize:11,fontWeight:600,color:'var(--warn)',marginBottom:6}}>{t('fields_to_correct')}</div>
           <ul style={{margin:0,paddingLeft:18}}>
             {pendingCorrections.map((r,i)=><li key={i} style={{fontSize:12,color:'var(--warn)',marginBottom:3}}><strong>{r.fieldName}</strong>{r.reason&&r.reason!==app.notes?` — ${r.reason}`:''}</li>)}
           </ul>
-          <div style={{marginTop:12,fontSize:11,color:'var(--textMid)'}}>Use <strong>Edit &amp; resubmit</strong> from your application list to make corrections and send back for review.</div>
+          <div style={{marginTop:12,fontSize:11,color:'var(--textMid)'}} dangerouslySetInnerHTML={{__html:t('edit_resubmit_hint')}}/>
         </Card>
       )}
       {/* Approved — IMEI entry / retry action for rep */}
       {isRep&&app.status===ST.APPROVED&&(
         <Card sx={{padding:'18px',marginBottom:14,background:'var(--okBg)',border:'2px solid var(--okBorder)'}}>
-          <div style={{fontSize:13,fontWeight:700,color:'var(--ok)',marginBottom:6}}>✓ Application approved — action required</div>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--ok)',marginBottom:6}}>{t('approved_banner_title')}</div>
           {app.imei
-            ? <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>Previous IMEI <span style={{fontFamily:'DM Mono,monospace',fontWeight:600}}>{app.imei}</span> was checked but not fully confirmed. You can retry with the same or a different IMEI.</div>
-            : <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>Enter the device IMEI and verify it on Carlcare to proceed to contract activation.</div>
+            ? <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>{t('imei_retry_desc',app.imei)}</div>
+            : <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>{t('imei_enter_desc')}</div>
           }
-          <Btn onClick={()=>setShowImei(true)} v="ok" icon="→">{app.imei?'Retry IMEI verification':'Enter IMEI & verify device'}</Btn>
+          <Btn onClick={()=>setShowImei(true)} v="ok" icon="→">{app.imei?t('retry_imei_btn'):t('enter_imei_verify')}</Btn>
         </Card>
       )}
       {/* Lock pending — reminder */}
       {isRep&&app.status===ST.LOCK_PENDING&&(
         <Card sx={{padding:'14px 16px',marginBottom:14,background:'var(--warnBg)',border:'2px solid var(--warnBorder)'}}>
-          <div style={{fontSize:13,fontWeight:700,color:'var(--warn)',marginBottom:6}}>⏳ Lock phone in PayTrigger</div>
-          <div style={{fontSize:12,color:'var(--textMid)',marginBottom:10}}>IMEI verified. Lock the phone in PayTrigger to activate the contract.</div>
-          <Btn onClick={()=>setShowImei(true)} v="warn" icon="→">Continue IMEI / lock flow</Btn>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--warn)',marginBottom:6}}>{t('lock_banner_title')}</div>
+          <div style={{fontSize:12,color:'var(--textMid)',marginBottom:10}}>{t('lock_banner_desc')}</div>
+          <Btn onClick={()=>setShowImei(true)} v="warn" icon="→">{t('continue_imei_lock')}</Btn>
         </Card>
       )}
       {/* Escalated — ops action panel */}
@@ -1979,7 +2129,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
       {app.notes&&!isRep&&!isUnderwriter&&!isSuperuser&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Underwriter notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
       {app.notes&&isSuperuser&&app.status!==ST.ESCALATED&&<Card sx={{padding:'13px 16px',marginBottom:14,background:'var(--warnBg)',border:'1px solid var(--warnBorder)'}}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--warn)',marginBottom:4}}>Notes</div><div style={{fontSize:12,color:'var(--warn)'}}>{app.notes}</div></Card>}
       <Card sx={{padding:'16px 18px'}}>
-        <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Activity timeline</div>
+        <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>{t('activity_timeline')}</div>
         {(app.tl||[]).map((t,i)=>(
           <div key={i} style={{display:'flex',gap:12,marginBottom:12,alignItems:'flex-start'}}>
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',flexShrink:0,paddingTop:3}}>
