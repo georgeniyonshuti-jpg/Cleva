@@ -329,6 +329,39 @@ const Btn=({children,onClick,v='def',sz='md',disabled=false,loading=false,icon,f
 };
 
 const Card=({children,sx={},className=''})=><div className={className} style={{background:'var(--surface)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',boxShadow:'var(--sh)',...sx}}>{children}</div>;
+
+const CameraModal=({onCapture,onClose,facing='user'})=>{
+  const videoRef=React.useRef(null);
+  const streamRef=React.useRef(null);
+  const [ready,setReady]=React.useState(false);
+  const [err,setErr]=React.useState(null);
+  React.useEffect(()=>{
+    navigator.mediaDevices.getUserMedia({video:{facingMode:facing},audio:false})
+      .then(stream=>{streamRef.current=stream;if(videoRef.current){videoRef.current.srcObject=stream;videoRef.current.play();}setReady(true);})
+      .catch(e=>{setErr('Could not access camera: '+e.message);});
+    return()=>{if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());};
+  },[facing]);
+  const capture=()=>{
+    const v=videoRef.current;if(!v)return;
+    const canvas=document.createElement('canvas');canvas.width=v.videoWidth;canvas.height=v.videoHeight;
+    canvas.getContext('2d').drawImage(v,0,0);
+    canvas.toBlob(blob=>{if(blob){const file=new File([blob],'camera.jpg',{type:'image/jpeg'});onCapture(file);}onClose();},'image/jpeg',0.92);
+  };
+  return ReactDOM.createPortal(
+    <div style={{position:'fixed',inset:0,zIndex:9999,background:'rgba(0,0,0,0.85)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:20}}>
+      {err?<div style={{color:'#fff',fontSize:14,textAlign:'center',maxWidth:320}}>{err}<br/><button onClick={onClose} style={{marginTop:16,padding:'8px 20px',borderRadius:8,border:'none',background:'#fff',cursor:'pointer',fontWeight:600}}>Close</button></div>:(
+        <>
+          <video ref={videoRef} playsInline muted style={{width:'100%',maxWidth:480,maxHeight:'60vh',borderRadius:12,background:'#000',objectFit:'cover'}}/>
+          {!ready&&<div style={{color:'#fff',fontSize:13}}>Starting camera…</div>}
+          <div style={{display:'flex',gap:12}}>
+            <button onClick={onClose} style={{padding:'10px 24px',borderRadius:8,border:'2px solid rgba(255,255,255,0.4)',background:'transparent',color:'#fff',cursor:'pointer',fontWeight:600,fontSize:14}}>Cancel</button>
+            <button onClick={capture} disabled={!ready} style={{padding:'10px 28px',borderRadius:8,border:'none',background:ready?'var(--brand)':'#555',color:'#fff',cursor:ready?'pointer':'not-allowed',fontWeight:700,fontSize:14}}>📷 Capture</button>
+          </div>
+        </>
+      )}
+    </div>,document.body
+  );
+};
 const Fld=({label,val,mono=false})=><div style={{paddingBottom:8,marginBottom:8,borderBottom:'1px solid rgba(0,0,0,0.05)'}}><div style={{fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.6px',color:'var(--textLight)',marginBottom:2}}>{label}</div><div style={{fontSize:13,fontFamily:mono?'DM Mono,monospace':undefined,color:val?'var(--text)':'var(--textLight)'}}>{val||'—'}</div></div>;
 const FldWithRequest=({label,val,fieldKey,requestedFields,onToggle,mono=false})=>{
   const requested=requestedFields.includes(fieldKey);
@@ -919,8 +952,12 @@ const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=1
   const [step,setStep]=useState(1);
   const [f,setF]=useState({name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:preSelDevId||'',term:preSelTerm,sig:null,customerPhoto:null,idPhoto:null,incomeProof:null});
   const [e,setE]=useState({});
+  const [cam,setCam]=useState(null);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const handleFile=(k,file)=>{if(!file)return;readFileAsDataURL(file).then(url=>s(k,url)).catch(()=>{});};
+  const openCam=(field,facing)=>setCam({field,facing});
+  const closeCam=()=>setCam(null);
+  const onCamCapture=(file)=>{if(cam)handleFile(cam.field,file);};
   const v1=()=>{
     const er={};
     if(!f.name.trim())er.name='Required';
@@ -938,6 +975,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=1
   const goStep=(s)=>{if(s<step)setStep(s);else if(s===step){}else if(s===2&&v1())setStep(2);else if(s===3&&v1()&&v2())setStep(3);else if(s===4&&v1()&&v2()&&v3())setStep(4);};
   return(
     <div className="fadeUp new-app-form" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,width:'100%',padding:'0 24px'}}>
+      {cam&&<CameraModal facing={cam.facing} onCapture={onCamCapture} onClose={closeCam}/>}
       <header style={{flexShrink:0,padding:'20px 0 16px',borderBottom:'1.5px solid var(--border)'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
           <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Cancel</Btn>
@@ -975,8 +1013,8 @@ const NewApp=({onSubmit,onBack,onSaveDraft,devices,preSelDevId=null,preSelTerm=1
             <FF label="Monthly income (RWF)" req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder="e.g. 150000" className={e.income?'err':''}/></FF>
             <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Documents</div>
-              <FF label="Customer photo" req err={e.customerPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--brand)',color:'white',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📷 Take photo (camera only)<input type="file" accept="image/*" capture="user" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('customerPhoto',file);ev.target.value='';}}/></label>{f.customerPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ Photo taken</span>}</div></FF>
-              <FF label="ID document (photo)" req err={e.idPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📷 Take picture<input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('idPhoto',file);ev.target.value='';}}/></label><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📤 Upload picture<input type="file" accept="image/*" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('idPhoto',file);ev.target.value='';}}/></label>{f.idPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ ID added</span>}</div></FF>
+              <FF label="Customer photo" req err={e.customerPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><button type="button" onClick={()=>openCam('customerPhoto','user')} style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--brand)',color:'white',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500,border:'none'}}>📷 Take photo (camera only)</button>{f.customerPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ Photo taken</span>}</div></FF>
+              <FF label="ID document (photo)" req err={e.idPhoto}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><button type="button" onClick={()=>openCam('idPhoto','environment')} style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📷 Take picture</button><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📤 Upload picture<input type="file" accept="image/*" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('idPhoto',file);ev.target.value='';}}/></label>{f.idPhoto&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ ID added</span>}</div></FF>
               <FF label="Proof of income" req err={e.incomeProof}><div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><label style={{display:'inline-flex',alignItems:'center',gap:8,padding:'10px 16px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r2)',cursor:'pointer',fontSize:13,fontWeight:500}}>📎 Upload (image or PDF)<input type="file" accept="image/*,.pdf,application/pdf" style={{display:'none'}} onChange={ev=>{const file=ev.target.files?.[0];if(file)handleFile('incomeProof',file);ev.target.value='';}}/></label>{f.incomeProof&&<span style={{fontSize:12,color:'var(--ok)'}}>✓ Document added</span>}</div></FF>
             </div>
             <div style={{borderTop:'1.5px solid var(--border)',paddingTop:14,marginTop:4}}>
