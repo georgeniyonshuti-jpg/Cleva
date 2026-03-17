@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Cleva Credit</title>
+<title>Cleva Credit — Empowering access</title>
 <link rel="icon" type="image/png" href="assets/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -202,10 +202,11 @@ const {useState,useCallback,useContext,createContext,useEffect}=React;
 
 // ── APP CONFIG ────────────────────────────────────────────────
 const APP_NAME='Cleva Credit';
+const APP_SLOGAN='Empowering access';
 const LOGO_URL='assets/logo.png';
 const EMAIL_DOMAIN='leout.rw';
 const LS={MERCHANTS:'cleva_merchants_v1',MERCHANT_GROUPS:'cleva_merchant_groups_v1',SHOPS:'cleva_shops_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1',COMPANY:'cleva_company_v1',EMAIL_TPL:'cleva_email_tpl_v1'};
-const defaultCompanyInfo={name:'Cleva Financial Services Ltd',tagline:'Smart PAYGO Solutions — Empowering Access',address:'KG 15 Avenue, Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevapaygo.rw',website:'www.clevapaygo.rw',regNo:'RDB/2024/CL001',logo:LOGO_URL,signatoryName:'',signatoryTitle:'Authorised Signatory',signatorySig:null,imeiProxyUrl:''};
+const defaultCompanyInfo={name:'Cleva Financial Services Ltd',tagline:'Empowering access',address:'KG 15 Avenue, Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevapaygo.rw',website:'www.clevapaygo.rw',regNo:'RDB/2024/CL001',logo:LOGO_URL,signatoryName:'',signatoryTitle:'Authorised Signatory',signatorySig:null,imeiProxyUrl:''};
 const readLS=(k,fallback)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):fallback;}catch{return fallback;}};
 const writeLS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 const normEmail=s=>(s||'').trim().toLowerCase();
@@ -228,43 +229,43 @@ const DEFAULT_EMAIL_TPLS={
     label:'New user welcome',
     vars:'{{to_name}}, {{to_email}}, {{temp_password}}, {{role}}, {{must_change}}, {{login_url}}',
     subject:'Welcome to Cleva — Your login details',
-    body:`Hi {{to_name}},\n\nYour Cleva account has been created.\n\nRole: {{role}}\nLogin: {{to_email}}\nPassword: {{temp_password}}\n{{must_change}}\n\nLog in here: {{login_url}}\n\n— Cleva Financial Services`,
+    body:`Hi {{to_name}},\n\nYour Cleva account has been created.\n\nRole: {{role}}\nLogin: {{to_email}}\nPassword: {{temp_password}}\n{{must_change}}\n\nLog in here: {{login_url}}\n\n— Cleva Financial Services\nEmpowering access`,
   },
   tempPwd:{
     label:'Password reset',
     vars:'{{to_name}}, {{to_email}}, {{temp_password}}, {{login_url}}',
     subject:'Cleva — Your temporary password',
-    body:`Hi {{to_name}},\n\nYour password was reset by an administrator.\n\nNew temporary password: {{temp_password}}\n\nPlease log in and change it immediately.\n\nLog in here: {{login_url}}\n\n— Cleva Financial Services`,
+    body:`Hi {{to_name}},\n\nYour password was reset by an administrator.\n\nNew temporary password: {{temp_password}}\n\nPlease log in and change it immediately.\n\nLog in here: {{login_url}}\n\n— Cleva Financial Services\nEmpowering access`,
   },
   submitted:{
     label:'Application submitted',
     vars:'{{to_name}}, {{rep_name}}, {{customer_name}}, {{app_id}}',
     subject:'New application pending review — {{customer_name}}',
-    body:`Hi {{to_name}},\n\nA new application is waiting for your review.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nSubmitted by: {{rep_name}}\n\nPlease log in to review it.\n\n— Cleva Financial Services`,
+    body:`Hi {{to_name}},\n\nA new application is waiting for your review.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nSubmitted by: {{rep_name}}\n\nPlease log in to review it.\n\n— Cleva Financial Services\nEmpowering access`,
   },
   approved:{
     label:'Application approved',
     vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{reviewer_name}}',
     subject:'Application approved — {{customer_name}}',
-    body:`Hi {{to_name}},\n\nGood news — the following application has been approved.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nReviewed by: {{reviewer_name}}\n\nPlease proceed with IMEI verification.\n\n— Cleva Financial Services`,
+    body:`Hi {{to_name}},\n\nGood news — the following application has been approved.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nReviewed by: {{reviewer_name}}\n\nPlease proceed with IMEI verification.\n\n— Cleva Financial Services\nEmpowering access`,
   },
   rejected:{
     label:'Application rejected',
     vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{rejection_reason}}',
     subject:'Application rejected — {{customer_name}}',
-    body:`Hi {{to_name}},\n\nThe following application has been rejected.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nReason: {{rejection_reason}}\n\n— Cleva Financial Services`,
+    body:`Hi {{to_name}},\n\nThe following application has been rejected.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nReason: {{rejection_reason}}\n\n— Cleva Financial Services\nEmpowering access`,
   },
   changes:{
     label:'Changes requested',
     vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{fields}}, {{note}}',
     subject:'Changes requested — {{customer_name}}',
-    body:`Hi {{to_name}},\n\nChanges have been requested on an application.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nFields to update: {{fields}}\nNote: {{note}}\n\nPlease log in, make the corrections, and resubmit.\n\n— Cleva Financial Services`,
+    body:`Hi {{to_name}},\n\nChanges have been requested on an application.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nFields to update: {{fields}}\nNote: {{note}}\n\nPlease log in, make the corrections, and resubmit.\n\n— Cleva Financial Services\nEmpowering access`,
   },
   escalated:{
     label:'Escalated to ops',
     vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{escalated_by}}, {{note}}',
     subject:'Application escalated — {{customer_name}}',
-    body:`Hi {{to_name}},\n\nAn application has been escalated and requires your attention.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nEscalated by: {{escalated_by}}\nReason: {{note}}\n\n— Cleva Financial Services`,
+    body:`Hi {{to_name}},\n\nAn application has been escalated and requires your attention.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nEscalated by: {{escalated_by}}\nReason: {{note}}\n\n— Cleva Financial Services\nEmpowering access`,
   },
 };
 const fillTpl=(str,params)=>str.replace(/\{\{(\w+)\}\}/g,(_,k)=>params[k]!=null?String(params[k]):'');
@@ -452,7 +453,7 @@ const elapsedMinutes=(createdAt)=>{const ms=Date.now()-new Date(createdAt).getTi
 // ── TRANSLATIONS ──────────────────────────────────────────────
 const TR={
   en:{
-    app_subtitle:'PAYGO Underwriting Platform',
+    app_subtitle:'PAYGO Underwriting Platform',slogan:'Empowering access',
     sign_in:'Sign in to your account',email_lbl:'Email address',password_lbl:'Password',
     show:'Show',hide:'Hide',signing_in:'Signing in…',sign_in_btn:'Sign in',
     err_creds:'Incorrect email or password',enter_creds:'Enter your email and password',
@@ -585,7 +586,7 @@ const TR={
     activating_contract:'Activating contract…',locking_phone:'Confirming lock…',confirm_lock_activate:'Confirm phone is locked — activate contract',phone_locked_toast:'Phone locked!',phone_locked_msg:'Contract is now awaiting first payment. It will activate automatically once payment is received.',
   },
   rw:{
-    app_subtitle:'Urubuga rw\'isuzuma ry\'inguzanyo',
+    app_subtitle:'Urubuga rw\'isuzuma ry\'inguzanyo',slogan:'Gutanga ubushobozi bwo kubona',
     sign_in:'Injira muri konti yawe',email_lbl:'Aderesi imeri',password_lbl:'Ijambo ry\'ibanga',
     show:'Erekana',hide:'Hisha',signing_in:'Injiramo…',sign_in_btn:'Injira',
     err_creds:'Imeri cyangwa ijambo ry\'ibanga ntabwo ari byo',enter_creds:'Injiza imeri yawe n\'ijambo ry\'ibanga',
@@ -919,7 +920,7 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
         <button type="button" className="sidebar-collapse-btn" onClick={onClose} aria-label="Close menu">{t('hide_menu')}</button>
         <div style={{padding:'16px 18px 12px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
           <LogoBrand iconSize={44} textSize={16} layout="column" style={{alignItems:'flex-start',gap:8}}/>
-          <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:8,textTransform:'uppercase',letterSpacing:'1.5px'}}>{t('app_subtitle')}</div>
+          <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:8,textTransform:'uppercase',letterSpacing:'1.5px'}}>{t('slogan')}</div>
         </div>
         <div style={{padding:'13px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
           <div style={{width:34,height:34,borderRadius:17,background:'rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'white',flexShrink:0}}>{initials}</div>
@@ -974,7 +975,7 @@ const Login=({onLogin,users})=>{
       <div style={{width:'100%',maxWidth:380,position:'relative',padding:'0 8px'}}>
         <div style={{textAlign:'center',marginBottom:44}}>
           <LogoBrand iconSize={180} textSize={42} layout="column" bold style={{alignItems:'center',margin:'0 auto 20px'}}/>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'3px'}}>{t('app_subtitle')}</div>
+          <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'3px'}}>{t('slogan')}</div>
         </div>
         <div className="login-card" style={{background:'rgba(255,255,255,0.06)',backdropFilter:'blur(12px)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'var(--r)',padding:'28px 26px'}}>
           <div style={{fontSize:15,fontWeight:600,color:'white',marginBottom:20}}>{t('sign_in')}</div>
@@ -1331,27 +1332,21 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
   const {co,f,dev,term,pricing,date,discLabel,repName,app,deal}=contractData;
   const logoData=await resolveLogoForPdf(co.logo||LOGO_URL);
 
-  // ── Header ──────────────────────────────────────────────────
-  if(logoData){try{doc.addImage(logoData,'PNG',M,y,22,22);}catch(e){}
-    doc.setFont('helvetica','bold').setFontSize(16).setTextColor(...brand).text(co.name,M+26,y+8);
-    doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...mid).text(co.tagline||'',M+26,y+14);
-    y+=26;}
-  else{
-    doc.setFillColor(...brand);doc.rect(M,y,CW,1,'F');y+=5;
-    doc.setFont('helvetica','bold').setFontSize(18).setTextColor(...brand).text(co.name,M,y);y+=8;
-    doc.setFont('helvetica','normal').setFontSize(9).setTextColor(...mid);
-    if(co.tagline)doc.text(co.tagline,M,y),y+=5;
-    const contact=[co.address,co.phone,co.email].filter(Boolean).join('  |  ');
-    if(contact){doc.setFontSize(8).setTextColor(...light).text(contact,M,y);y+=4;}
-    if(co.regNo){doc.text('Reg: '+co.regNo,M,y);y+=3;}
-    y+=3;
-  }
-  hline(brand,0.6);
-  doc.setFont('helvetica','bold').setFontSize(13).setTextColor(...brand).text('PAYGO DEVICE FINANCING AGREEMENT',PW/2,y,{align:'center'});y+=7;
+  // ── Header (matches ContractDoc preview: centered logo + company info) ──
+  const logoH=20,logoW=20;
+  if(logoData){const fmt=logoData.includes('image/jpeg')||logoData.includes('image/jpg')?'JPEG':'PNG';try{doc.addImage(logoData,fmt,(PW-logoW)/2,y,logoW,logoH);}catch(e){}
+    y+=logoH+4;}
+  doc.setFont('helvetica','bold').setFontSize(18).setTextColor(...brand).text(co.name,PW/2,y,{align:'center'});y+=7;
+  doc.setFont('helvetica','normal').setFontSize(9).setTextColor(...mid);
+  if(co.tagline){doc.text(co.tagline,PW/2,y,{align:'center'});y+=5;}
+  const contact=[co.address,co.phone,co.email].filter(Boolean).join(' · ');
+  if(contact){doc.setFontSize(8).setTextColor(...light).text(contact,PW/2,y,{align:'center'});y+=5;}
+  if(co.regNo){doc.text('Reg No: '+co.regNo,PW/2,y,{align:'center'});y+=4;}
+  y+=2;
+  doc.setFont('helvetica','bold').setFontSize(12).setTextColor(...dark).text('PAYGO DEVICE FINANCING AGREEMENT',PW/2,y,{align:'center'});y+=6;
   doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...light);
-  doc.text('Agreement No: '+(contractData.id||'DRAFT'),PW/2,y,{align:'center'});y+=4;
   doc.text('Date: '+date,PW/2,y,{align:'center'});y+=6;
-  hline();
+  hline(brand,0.6);
 
   // ── Parties ─────────────────────────────────────────────────
   doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text('PARTIES TO THIS AGREEMENT',M,y);y+=6;
@@ -4151,7 +4146,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                 <FF label="Company name" req><input value={coDraft.name} onChange={e=>sco('name',e.target.value)} placeholder="e.g. Cleva Financial Services Ltd"/></FF>
                 <FF label="Registration number"><input value={coDraft.regNo||''} onChange={e=>sco('regNo',e.target.value)} placeholder="e.g. RDB/2024/CL001"/></FF>
               </div>
-              <FF label="Tagline / slogan"><input value={coDraft.tagline||''} onChange={e=>sco('tagline',e.target.value)} placeholder="e.g. Smart PAYGO Solutions — Empowering Access"/></FF>
+              <FF label="Tagline / slogan"><input value={coDraft.tagline||''} onChange={e=>sco('tagline',e.target.value)} placeholder="e.g. Empowering access"/></FF>
               <div style={{marginTop:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <FF label="Address"><input value={coDraft.address||''} onChange={e=>sco('address',e.target.value)} placeholder="e.g. KG 15 Avenue, Kigali"/></FF>
                 <FF label="Phone"><input value={coDraft.phone||''} onChange={e=>sco('phone',e.target.value)} placeholder="+250 788 000 000"/></FF>
