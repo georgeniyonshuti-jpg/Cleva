@@ -187,6 +187,11 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 .uw-footer{flex-shrink:0;border-top:1.5px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .uw-declaration{margin-top:22px;padding:16px 20px;border:2px solid var(--brand3);border-radius:var(--r);background:var(--brandPale)}
 .uw-decl-unchecked{border-color:var(--border);background:white}
+.uw-declaration label{display:flex;align-items:flex-start;gap:12px;cursor:pointer}
+.uw-declaration input[type="checkbox"]{margin-top:3px;width:16px;height:16px;accent-color:var(--brand);flex-shrink:0}
+.uw-decl-text{flex:1;min-width:0}
+.uw-decl-title{font-weight:800;font-size:13px;margin-bottom:3px;line-height:1.25;word-break:break-word}
+.uw-decl-desc{font-size:12px;color:var(--textMid);line-height:1.5;word-break:break-word}
 
 /* Desktop: spacious layout, clear sections */
 @media (min-width:769px){
@@ -233,6 +238,8 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
   .uw-afford-stats{grid-template-columns:1fr 1fr!important;gap:10px}
   .uw-declaration{margin-top:20px;padding:14px 16px}
   .uw-footer button{min-height:44px}
+  .uw-decl-title{font-size:12px}
+  .uw-decl-desc{font-size:12px}
 }
 @media (max-width:480px){
   .uw-body{padding:16px 14px 110px}
@@ -977,9 +984,15 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
   const {user,logout}=useContext(Ctx);
   const t=useT();
   const pending=(user.role==='underwriter'?apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)).length:0);
+  const myUnderReviewCount=(user.role==='underwriter'?apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)&&a.reviewLock&&a.reviewLock.by===user.id).length:0);
+  const myCompletedActiveCount=(user.role==='underwriter'?apps.filter(a=>a.status===ST.ACTIVE&&a.mboReviewedBy===user.name).length:0);
   const navItems={
     rep:[{k:'dash',l:t('home'),badge:0},{k:'prices',l:t('price_list')}],
-    underwriter:[{k:'dash',l:'Home',badge:pending},{k:'queue',l:'Review Queue',badge:pending},{k:'all',l:'All Applications'}],
+    underwriter:[
+      {k:'queue',l:'Review Queue',badge:pending},
+      {k:'uw_under_review',l:'Applications under review',badge:myUnderReviewCount},
+      {k:'uw_completed',l:'Completed applications',badge:myCompletedActiveCount},
+    ],
     support:[{k:'dash',l:'Home'},{k:'all',l:'All Applications'}],
     ops:user.superuser?[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},{k:'admin',l:'Admin'}]:[{k:'all',l:'All Applications'}],
     merchant:[{k:'sales',l:'Completed Sales'},{k:'team',l:'My Team'}],
@@ -2307,11 +2320,11 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
     const checked=!!reviewed[n];
     return(
       <div className={`uw-declaration${checked?'':' uw-decl-unchecked'}`} style={{marginTop:22}}>
-        <label style={{display:'flex',alignItems:'flex-start',gap:12,cursor:'pointer'}}>
-          <input type="checkbox" checked={checked} onChange={e=>setReviewed(p=>({...p,[n]:e.target.checked}))} style={{marginTop:3,width:16,height:16,accentColor:'var(--brand)',flexShrink:0}}/>
-          <div style={{flex:1}}>
-            <div style={{fontWeight:700,fontSize:13,color:checked?'var(--brand)':'var(--text)',marginBottom:3}}>{title}</div>
-            <div style={{fontSize:12,color:'var(--textMid)',lineHeight:1.55}}>{desc}</div>
+        <label>
+          <input type="checkbox" checked={checked} onChange={e=>setReviewed(p=>({...p,[n]:e.target.checked}))}/>
+          <div className="uw-decl-text">
+            <div className="uw-decl-title" style={{color:checked?'var(--brand)':'var(--text)'}}>{title}</div>
+            <div className="uw-decl-desc">{desc}</div>
           </div>
         </label>
       </div>
@@ -2377,7 +2390,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
                 <FldWithRequest fieldKey="kin_rel" label="Relationship" val={c.kin.rel} requestedFields={requestedFields} onToggle={toggleRequest}/>
               </div>
             </div>
-            <Declaration n={1} title="Declaration — Customer reviewed" desc="I confirm I reviewed the customer details and next-of-kin information."/>
+            <Declaration n={1} title="Declaration — Customer reviewed" desc="I have reviewed the customer and next-of-kin details."/>
           </div>
         )}
         {/* Step 2: Documents */}
@@ -2425,7 +2438,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
               </div>
             )}
             {!app.customerPhoto&&!app.idPhoto&&!app.incomeProof&&<div className="uw-section" style={{padding:'40px 24px',textAlign:'center',color:'var(--textMid)',fontSize:13}}>No documents uploaded with this application.</div>}
-            <Declaration n={2} title="Declaration — Documents reviewed" desc="I confirm I reviewed the uploaded documents/photos and they are acceptable for underwriting."/>
+            <Declaration n={2} title="Declaration — Documents reviewed" desc="I have reviewed the uploaded documents and photos and they are acceptable."/>
           </div>
         )}
         {/* Step 3: Device & Deal */}
@@ -2466,7 +2479,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
                 </div>
               </div>
             </div>
-            <Declaration n={3} title="Declaration — Deal reviewed" desc="I confirm I reviewed the device, pricing, and affordability checks for this deal."/>
+            <Declaration n={3} title="Declaration — Deal reviewed" desc="I have reviewed the device, pricing, and affordability checks."/>
           </div>
         )}
         {/* Step 4: Decision */}
@@ -2494,7 +2507,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
                 </FF>
               </div>
             )}
-            <Declaration n={4} title="Declaration — Decision confirmed" desc="I confirm I completed the review of Customer, Documents, and Deal and I am ready to record the final decision."/>
+            <Declaration n={4} title="Declaration — Ready to decide" desc="I have completed all review steps and I am ready to record the final decision."/>
             {!reviewedAllCore&&(
               <div style={{marginTop:16,padding:'12px 14px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--warn)',lineHeight:1.6}}>
                 You must complete the declarations in steps 1–3 before making a decision.
@@ -3153,13 +3166,13 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
 // ── UNDERWRITER VIEW ──────────────────────────────────────────
 const UnderwriterView=({apps,onUpdate,addToast})=>{
   const {user}=useContext(Ctx);
-  const [pg,setPg]=useState('dash');
+  const [pg,setPg]=useState('queue');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
+  const [completedFilter,setCompletedFilter]=useState('all'); // all | today | week | month
   const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
-  const goHome=()=>{setPg('dash');setSel(null);};
-  const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:4,border:'none',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}} aria-label="Home"><LogoBrand iconSize={30} textSize={13}/></button>;
+  const HomeBtn=()=><button type="button" onClick={()=>{setPg('queue');setSel(null);}} style={{padding:4,border:'none',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}} aria-label="Home"><LogoBrand iconSize={30} textSize={13}/></button>;
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
@@ -3183,27 +3196,39 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
   const merchantCodes=(user&&user.merchantCodes)||[];
   const queue=apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)&&(!merchantCodes.length||merchantCodes.includes(a.merchantCode)));
   const escalated=apps.filter(a=>a.status===ST.ESCALATED&&(!merchantCodes.length||merchantCodes.includes(a.merchantCode)));
-  const archived=apps.filter(a=>a.status===ST.ARCHIVED&&(!merchantCodes.length||merchantCodes.includes(a.merchantCode)));
-  const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return (a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s);});
+  const underReviewMine=apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)&&a.reviewLock&&a.reviewLock.by===user.id&&(!merchantCodes.length||merchantCodes.includes(a.merchantCode)));
+  const completedActiveMine=apps.filter(a=>a.status===ST.ACTIVE&&a.mboReviewedBy===user.name&&(!merchantCodes.length||merchantCodes.includes(a.merchantCode)));
+  const matchQ=(a)=>{
+    if(!q.trim())return true;
+    const s=q.toLowerCase();
+    return ((a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s)||(a.repName||a.rep||'').toLowerCase().includes(s));
+  };
+  const now=Date.now();
+  const inRange=(iso,days)=>{
+    if(!iso)return false;
+    const t=Date.parse(iso);
+    if(Number.isNaN(t))return false;
+    return (now-t) <= days*24*60*60*1000;
+  };
+  const completedFiltered=completedActiveMine
+    .filter(matchQ)
+    .filter(a=>{
+      if(completedFilter==='today')return inRange(a.updatedAt||a.createdAt,1);
+      if(completedFilter==='week')return inRange(a.updatedAt||a.createdAt,7);
+      if(completedFilter==='month')return inRange(a.updatedAt||a.createdAt,30);
+      return true;
+    });
   const pendingCount=queue.length+escalated.length;
+  const pageTitle=pg==='queue'?'Review queue':pg==='uw_under_review'?'Applications under review':'Completed applications';
 
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={pg==='dash'?'Home':pg==='queue'?'Review queue':'All applications'}/>
-        {pg==='dash'&&(
-          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Underwriter</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
-            <div className="home-actions">
-              <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>setPg('queue')}>📋 Review queue {pendingCount>0&&<span style={{background:'rgba(255,255,255,0.25)',fontSize:13,padding:'2px 10px',borderRadius:99,marginLeft:8}}>{pendingCount}</span>}</button>
-              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('all')}>📄 All applications</button>
-            </div>
-          </div>
-        )}
+        <TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={pageTitle}/>
         {pg==='queue'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{pendingCount} application{pendingCount!==1?'s':''} awaiting attention</p></div></div>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{pendingCount} application{pendingCount!==1?'s':''} awaiting attention</p></div></div>
             {queue.length>0&&(
               <div style={{marginBottom:24}}>
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Pending decision <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{queue.length}</span></div>
@@ -3246,13 +3271,64 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
             {queue.length===0&&escalated.length===0&&<Empty ico="✅" title="Queue is clear" sub="All applications have been reviewed"/>}
           </div>
         )}
-        {pg==='all'&&(
+        {pg==='uw_under_review'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>All applications</h1></div>
-            <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{maxWidth:320,marginBottom:16,width:'100%'}}/>
-            <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{all.length} result{all.length!==1?'s':''}</div>
-            <div style={{display:'flex',flexDirection:'column',gap:8}}>{all.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
-            {all.length===0&&<Empty ico="🔍" title="No results"/>}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:12,flexWrap:'wrap',marginBottom:14}}>
+              <div>
+                <h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Applications under review</h1>
+                <p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{underReviewMine.length} application{underReviewMine.length!==1?'s':''} currently locked by you</p>
+              </div>
+              <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search name, ID, or rep…" style={{maxWidth:320,width:'100%'}}/>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {underReviewMine.filter(matchQ).map(a=>(
+                <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'1.5px solid var(--brandPale2)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:14}}>{a.c?a.c.name:''}</div>
+                    <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev?a.dev.brand:''} {a.dev?a.dev.model:''} · {fmtD(a.createdAt)} · {(a.repName||a.rep||'').split(' ')[0]}</div>
+                    <div style={{fontSize:10,color:'var(--brand)',marginTop:3,fontWeight:700}}>🔒 Locked by you</div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}><Badge st={a.status}/><span style={{color:'var(--textLight)',fontSize:18}}>›</span></div>
+                </div>
+              ))}
+            </div>
+            {underReviewMine.filter(matchQ).length===0&&<Empty ico="🔒" title="No applications" sub="You are not currently reviewing any applications."/>}
+          </div>
+        )}
+        {pg==='uw_completed'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:12,flexWrap:'wrap',marginBottom:14}}>
+              <div>
+                <h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Completed applications</h1>
+                <p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>Active contracts you reviewed (status: Active)</p>
+              </div>
+              <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search name, ID, or rep…" style={{maxWidth:320,width:'100%'}}/>
+            </div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
+              {[
+                {k:'all',l:'All'},
+                {k:'today',l:'Today'},
+                {k:'week',l:'Last 7 days'},
+                {k:'month',l:'Last 30 days'},
+              ].map(f=>(
+                <button key={f.k} type="button" onClick={()=>setCompletedFilter(f.k)} style={{padding:'7px 12px',borderRadius:999,border:'1.5px solid '+(completedFilter===f.k?'var(--brand2)':'var(--border)'),background:completedFilter===f.k?'var(--brandPale)':'white',color:completedFilter===f.k?'var(--brand2)':'var(--textMid)',fontWeight:700,fontSize:12,cursor:'pointer'}}>
+                  {f.l}
+                </button>
+              ))}
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {completedFiltered.map(a=>(
+                <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'1.5px solid var(--border)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:14}}>{a.c?a.c.name:''}</div>
+                    <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev?a.dev.brand:''} {a.dev?a.dev.model:''} · {fmtD(a.updatedAt||a.createdAt)} · {(a.repName||a.rep||'').split(' ')[0]}</div>
+                    <div style={{fontSize:10,color:'var(--ok)',marginTop:3,fontWeight:700}}>✓ Active · reviewed by you</div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}><Badge st={a.status}/><span style={{color:'var(--textLight)',fontSize:18}}>›</span></div>
+                </div>
+              ))}
+            </div>
+            {completedFiltered.length===0&&<Empty ico="✓" title="No results" sub="No active contracts match your filters."/>}
           </div>
         )}
       </div>
