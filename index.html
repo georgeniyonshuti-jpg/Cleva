@@ -178,6 +178,31 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
 @media (max-width:768px){
   .admin-two-col{grid-template-columns:1fr!important}
 }
+/* Admin: add form first on mobile (order) */
+@media (max-width:768px){
+  .admin-two-col.admin-add-first{display:flex!important;flex-direction:column-reverse}
+}
+
+/* Admin data tables */
+.admin-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1.5px solid var(--border);border-radius:var(--r);background:var(--surface)}
+.admin-table{width:100%;border-collapse:collapse;font-size:13px}
+.admin-table th,.admin-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);vertical-align:middle}
+.admin-table th{background:var(--bg);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:var(--textLight);position:sticky;top:0;z-index:5}
+.admin-table tbody tr:hover{background:var(--bg)}
+.admin-table tbody tr:last-child td{border-bottom:none}
+.admin-table .col-name{font-weight:600;color:var(--text)}
+.admin-table .col-mono{font-family:'DM Mono',monospace;font-size:12px}
+.admin-table .col-right{text-align:right}
+.admin-table .col-center{text-align:center}
+.admin-table .row-actions{display:flex;gap:6;flex-wrap:wrap}
+@media (max-width:768px){
+  .admin-table th,.admin-table td{padding:10px 12px;font-size:12px}
+  .admin-table .hide-mobile{display:none!important}
+}
+
+/* Sidebar logo: centered */
+.sidebar-logo-block{display:flex;flex-direction:column;align-items:center;text-align:center;width:100%}
+.sidebar-logo-block .logo-brand-text{margin-top:4px}
 
 /* Application cards: stack meta on small screens */
 @media (max-width:480px){
@@ -1019,8 +1044,8 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
       </div>
       <div className={'sidebar-drawer'+(open?' mobile-open':'')}>
         <button type="button" className="sidebar-collapse-btn" onClick={onClose} aria-label="Close menu">{t('hide_menu')}</button>
-        <div style={{padding:'16px 18px 12px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-          <LogoBrand iconSize={44} textSize={16} layout="column" style={{alignItems:'flex-start',gap:8}}/>
+        <div className="sidebar-logo-block" style={{padding:'16px 18px 12px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+          <LogoBrand iconSize={44} textSize={16} layout="column" style={{alignItems:'center',gap:8}}/>
           <div style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginTop:8,textTransform:'uppercase',letterSpacing:'1.5px'}}>{t('slogan')}</div>
         </div>
         <div style={{padding:'13px 16px',borderBottom:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
@@ -3983,7 +4008,22 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
     };
     const updateGroup=(id,patch)=>{setMgs(mgs.map(x=>x.id===id?{...x,...patch}:x));};
     return(
-      <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:showAdd?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
+      <div className={'admin-two-col'+(showAdd?' admin-add-first':'')} style={{display:'grid',gridTemplateColumns:showAdd?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
+        {showAdd&&(
+        <Card sx={{padding:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <div style={{fontWeight:800}}>New retail group</div>
+            <Btn v="def" sz="sm" onClick={()=>setShowAdd(false)}>Cancel</Btn>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            <FF label="Group name" req><input value={draft.name} onChange={e=>setDraft(p=>({...p,name:e.target.value}))} placeholder="e.g. Kigali Retail Ltd"/></FF>
+            <FF label="Country"><input value={draft.country} onChange={e=>setDraft(p=>({...p,country:e.target.value}))} placeholder="RW"/></FF>
+            <FF label="Contact email"><input type="email" value={draft.contactEmail} onChange={e=>setDraft(p=>({...p,contactEmail:e.target.value}))} placeholder="owner@company.com"/></FF>
+            <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 13px',fontSize:11,color:'var(--textMid)'}}>Group ID: <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{mkGroupId()}</span></div>
+            <Btn v="primary" full icon="＋" onClick={save}>Create group</Btn>
+          </div>
+        </Card>
+        )}
         <Card sx={{padding:16}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
             <div style={{fontWeight:800}}>Retail groups <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({(mgs||[]).length})</span></div>
@@ -4018,23 +4058,6 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
             {(mgs||[]).length===0&&<Empty ico="🏢" title="No retail groups yet"/>}
           </div>
         </Card>
-        {showAdd&&(
-          <Card sx={{padding:16}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-              <div style={{fontWeight:800}}>New retail group</div>
-              <Btn v="def" sz="sm" onClick={()=>setShowAdd(false)}>Cancel</Btn>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              <FF label="Group name" req><input value={draft.name} onChange={e=>setDraft(p=>({...p,name:e.target.value}))} placeholder="e.g. Kigali Retail Ltd"/></FF>
-              <FF label="Country"><input value={draft.country} onChange={e=>setDraft(p=>({...p,country:e.target.value}))} placeholder="RW"/></FF>
-              <FF label="Contact email"><input type="email" value={draft.contactEmail} onChange={e=>setDraft(p=>({...p,contactEmail:e.target.value}))} placeholder="owner@company.com"/></FF>
-              <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 13px',fontSize:11,color:'var(--textMid)'}}>
-                Group ID: <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{mkGroupId()}</span>
-              </div>
-              <Btn v="primary" full icon="＋" onClick={save}>Create group</Btn>
-            </div>
-          </Card>
-        )}
       </div>
     );
   };
@@ -4044,7 +4067,9 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
     const [du,setDu]=useState('');
     const [uu,setUu]=useState('');
     const [showAddDevice,setShowAddDevice]=useState(false);
+    const [editingDeviceId,setEditingDeviceId]=useState(null);
     const [showAddUser,setShowAddUser]=useState(false);
+    const [editingUserId,setEditingUserId]=useState(null);
     const [showAddShop,setShowAddShop]=useState(false);
     const [newDev,setNewDev]=useState({brand:'',model:'',ram:'',rom:'',cash:''});
     const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',shopId:'',merchantGroupId:'',superuser:false});
@@ -4230,48 +4255,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
         )}
 
         {tab==='devices'&&(
-          <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:showAddDevice?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
-            <Card sx={{padding:16}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
-                <div style={{fontWeight:700}}>Devices</div>
-                <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-                  <input value={du} onChange={e=>setDu(e.target.value)} placeholder="Search…" style={{width:160}}/>
-                  <Btn v="def" sz="sm" onClick={downloadCsvTemplate} icon="↓">CSV template</Btn>
-                  <label style={{cursor:'pointer'}}><span style={{display:'inline-flex',alignItems:'center',gap:6,padding:'6px 12px',fontSize:12,fontWeight:600,borderRadius:'var(--r2)',border:'1.5px solid var(--border)',background:'white',color:'var(--text)',whiteSpace:'nowrap'}}>↑ Upload CSV</span><input type="file" accept=".csv,text/csv" style={{display:'none'}} onChange={handleCsvUpload}/></label>
-                  <Btn v="primary" sz="sm" onClick={()=>setShowAddDevice(true)} icon="＋">Add device</Btn>
-                </div>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                {devs.map(d=>{
-                  const deal=calcDealFromDevice(d,cfg);
-                  return(
-                    <Card key={d.id} sx={{padding:14,boxShadow:'none'}}>
-                      <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',marginBottom:10}}>
-                        <div style={{minWidth:0}}>
-                          <div style={{fontWeight:800}}>{d.brand} {d.model} <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({d.id})</span></div>
-                          <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{[d.ram,d.rom].filter(Boolean).join(' / ')}</div>
-                        </div>
-                        <Btn v="err" sz="sm" onClick={()=>rmDev(d.id)}>Remove</Btn>
-                      </div>
-                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-                        <FF label="Brand"><select value={d.brand||''} onChange={e=>upDev(d.id,{brand:e.target.value})}><option value="">Select…</option>{BRAND_ORDER.map(b=><option key={b} value={b}>{b}</option>)}</select></FF>
-                        <FF label="Model"><input value={d.model||''} onChange={e=>upDev(d.id,{model:e.target.value})}/></FF>
-                        <FF label="RAM"><input value={d.ram||''} onChange={e=>upDev(d.id,{ram:e.target.value})} placeholder="e.g. 4GB"/></FF>
-                        <FF label="Storage"><input value={d.rom||''} onChange={e=>upDev(d.id,{rom:e.target.value})} placeholder="e.g. 128GB"/></FF>
-                        <FF label="Cash price (RWF)"><input type="number" value={d.cash||d.cogs||''} onChange={e=>upDev(d.id,{cash:+e.target.value,cogs:+e.target.value})}/></FF>
-                      </div>
-                      <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 12px',fontSize:11,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
-                        {[['Total price',fmtRWF(deal.totalCost)],['Deposit',fmtRWF(deal.upfrontPayment)],['Monthly × 12',fmtRWF(deal.recurrentPayment)]].map(([k,v])=>(
-                          <div key={k}><div style={{color:'var(--textLight)',marginBottom:1}}>{k}</div><div style={{fontFamily:'DM Mono,monospace',fontWeight:700,fontSize:12}}>{v}</div></div>
-                        ))}
-                      </div>
-                    </Card>
-                  );
-                })}
-                {devs.length===0&&<Empty ico="📱" title="No devices found"/>}
-              </div>
-            </Card>
-
+          <div className={'admin-two-col'+(showAddDevice?' admin-add-first':'')} style={{display:'grid',gridTemplateColumns:showAddDevice?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
             {showAddDevice&&(
             <Card sx={{padding:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
@@ -4303,75 +4287,63 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
               </div>
             </Card>
             )}
+            <Card sx={{padding:16}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+                <div style={{fontWeight:700}}>Devices</div>
+                <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                  <input value={du} onChange={e=>setDu(e.target.value)} placeholder="Search…" style={{width:160}}/>
+                  <Btn v="def" sz="sm" onClick={downloadCsvTemplate} icon="↓">CSV template</Btn>
+                  <label style={{cursor:'pointer'}}><span style={{display:'inline-flex',alignItems:'center',gap:6,padding:'6px 12px',fontSize:12,fontWeight:600,borderRadius:'var(--r2)',border:'1.5px solid var(--border)',background:'white',color:'var(--text)',whiteSpace:'nowrap'}}>↑ Upload CSV</span><input type="file" accept=".csv,text/csv" style={{display:'none'}} onChange={handleCsvUpload}/></label>
+                  <Btn v="primary" sz="sm" onClick={()=>setShowAddDevice(true)} icon="＋">Add device</Btn>
+                </div>
+              </div>
+              {devs.length>0?(
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead><tr><th>Device</th><th className="col-right">Price</th><th>Attributes</th><th className="hide-mobile">Total / Deposit</th><th style={{width:120}}>Actions</th></tr></thead>
+                    <tbody>
+                      {devs.map(d=>{
+                        const deal=calcDealFromDevice(d,cfg);
+                        return(
+                          <tr key={d.id}>
+                            <td><div className="col-name">{d.brand} {d.model}</div><div className="col-mono" style={{fontSize:11,color:'var(--textLight)'}}>{d.id}</div></td>
+                            <td className="col-right col-mono">{fmtRWF(d.cash||d.cogs)}</td>
+                            <td style={{fontSize:12,color:'var(--textMid)'}}>{[d.ram,d.rom].filter(Boolean).join(' / ')||'—'}</td>
+                            <td className="hide-mobile" style={{fontSize:11,color:'var(--textMid)'}}>{fmtRWF(deal.totalCost)} / {fmtRWF(deal.upfrontPayment)}</td>
+                            <td><div className="row-actions"><Btn v="def" sz="sm" onClick={()=>{setEditingDeviceId(d.id);}}>Edit</Btn><Btn v="err" sz="sm" onClick={()=>rmDev(d.id)}>Remove</Btn></div></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ):<Empty ico="📱" title="No devices found"/>}
+              {editingDeviceId&&(()=>{
+                const d=(devices||[]).find(x=>x.id===editingDeviceId);
+                if(!d)return null;
+                return ReactDOM.createPortal(
+                  <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'flex-start',justifyContent:'center',zIndex:1100,padding:'max(20px,env(safe-area-inset-top)) 16px 24px',overflow:'auto'}} onClick={()=>setEditingDeviceId(null)}>
+                    <Card sx={{padding:20,maxWidth:480,width:'100%',margin:'0 auto'}} onClick={e=>e.stopPropagation()}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}><div style={{fontWeight:800}}>Edit device — {d.brand} {d.model}</div><Btn v="ghost" sz="sm" onClick={()=>setEditingDeviceId(null)}>✕</Btn></div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                        <FF label="Brand"><select value={d.brand||''} onChange={e=>upDev(d.id,{brand:e.target.value})}><option value="">Select…</option>{BRAND_ORDER.map(b=><option key={b} value={b}>{b}</option>)}</select></FF>
+                        <FF label="Model"><input value={d.model||''} onChange={e=>upDev(d.id,{model:e.target.value})}/></FF>
+                        <FF label="RAM"><input value={d.ram||''} onChange={e=>upDev(d.id,{ram:e.target.value})} placeholder="e.g. 4GB"/></FF>
+                        <FF label="Storage"><input value={d.rom||''} onChange={e=>upDev(d.id,{rom:e.target.value})} placeholder="e.g. 128GB"/></FF>
+                        <FF label="Cash price (RWF)"><input type="number" value={d.cash||d.cogs||''} onChange={e=>upDev(d.id,{cash:+e.target.value,cogs:+e.target.value})}/></FF>
+                      </div>
+                      <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 12px',fontSize:11,marginBottom:14}}>{[['Total',fmtRWF(calcDealFromDevice(d,cfg).totalCost)],['Deposit',fmtRWF(calcDealFromDevice(d,cfg).upfrontPayment)],['Monthly',fmtRWF(calcDealFromDevice(d,cfg).recurrentPayment)]].map(([k,v])=>(<span key={k} style={{marginRight:16}}>{k}: <strong>{v}</strong></span>))}</div>
+                      <Btn v="primary" sz="sm" onClick={()=>setEditingDeviceId(null)}>Done</Btn>
+                    </Card>
+                  </div>,document.body
+                );
+              })()}
+            </Card>
           </div>
         )}
 
         {tab==='users'&&(
-          <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:showAddUser?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
-            <Card sx={{padding:16}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
-                <div style={{fontWeight:800}}>Users</div>
-                <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                  <input value={uu} onChange={e=>setUu(e.target.value)} placeholder="Search users…" style={{width:240}}/>
-                  <Btn v="primary" sz="sm" onClick={()=>setShowAddUser(true)} icon="＋">Add user</Btn>
-                </div>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                {us.map(u=>(
-                  <Card key={u.id} sx={{padding:14,boxShadow:'none'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',marginBottom:10}}>
-                      <div style={{minWidth:0}}>
-                        <div style={{fontWeight:800}}>{u.name} <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({u.id})</span></div>
-                        <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{u.email}</div>
-                      </div>
-                      <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}>
-                        <Btn v="info" sz="sm" onClick={()=>resetPwd(u.id)}>Reset password</Btn>
-                        <Btn v="err" sz="sm" onClick={()=>rmUser(u.id)}>Remove</Btn>
-                      </div>
-                    </div>
-                    {u.role==='rep'&&u.shopId&&<div style={{fontSize:11,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:99,padding:'2px 10px',display:'inline-block',marginBottom:8}}>🏪 {shopName(u.shopId)}</div>}
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                      <FF label="Name"><input value={u.name} onChange={e=>upUser(u.id,{name:e.target.value})}/></FF>
-                      <FF label="Email (any domain)"><input type="email" value={u.email||''} onChange={e=>upUser(u.id,{email:normEmail(e.target.value.trim())})} placeholder="user@domain.com"/></FF>
-                      <FF label="Role">
-                        <select value={u.role} onChange={e=>upUser(u.id,{role:e.target.value,roleLabel:roleLabelFor(e.target.value)})}>
-                          <option value="rep">Sales Representative</option>
-                          <option value="underwriter">Underwriter</option>
-                          <option value="ops">Ops & Support</option>
-                          <option value="merchant">Retail Manager</option>
-                          <option value="groupadmin">Group Admin</option>
-                        </select>
-                      </FF>
-                      {u.role==='rep'&&(
-                        <FF label="Shop">
-                          <select value={u.shopId||''} onChange={e=>upUser(u.id,{shopId:e.target.value})}>
-                            <option value="">No shop assigned</option>
-                            {(shops||[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-                          </select>
-                        </FF>
-                      )}
-                      {u.role==='merchant'&&(
-                        <FF label="Retail group">
-                          <select value={u.merchantGroupId||''} onChange={e=>upUser(u.id,{merchantGroupId:e.target.value||null})}>
-                            <option value="">— Unassigned —</option>
-                            {(merchantGroups||[]).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
-                          </select>
-                        </FF>
-                      )}
-                      <FF label="Superuser (ops only)">
-                        <select value={u.superuser?'yes':'no'} onChange={e=>upUser(u.id,{superuser:e.target.value==='yes'})} disabled={u.role!=='ops'}>
-                          <option value="no">No</option>
-                          <option value="yes">Yes</option>
-                        </select>
-                      </FF>
-                    </div>
-                    {u.mustChangePassword&&<div style={{marginTop:10,fontSize:11,color:'var(--warn)',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',padding:'8px 10px'}}>User must change password on next login</div>}
-                  </Card>
-                ))}
-                {us.length===0&&<Empty ico="👤" title="No users found"/>}
-              </div>
-            </Card>
-
+          <div className={'admin-two-col'+(showAddUser?' admin-add-first':'')} style={{display:'grid',gridTemplateColumns:showAddUser?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
             {showAddUser&&(
             <Card sx={{padding:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
@@ -4422,12 +4394,96 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
               </div>
             </Card>
             )}
+            <Card sx={{padding:16}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+                <div style={{fontWeight:800}}>Users</div>
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <input value={uu} onChange={e=>setUu(e.target.value)} placeholder="Search users…" style={{width:240}}/>
+                  <Btn v="primary" sz="sm" onClick={()=>setShowAddUser(true)} icon="＋">Add user</Btn>
+                </div>
+              </div>
+              {us.length>0?(
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead><tr><th>Name</th><th>Role</th><th>Status</th><th className="hide-mobile">Email</th><th style={{width:140}}>Actions</th></tr></thead>
+                    <tbody>
+                      {us.map(u=>(
+                        <tr key={u.id}>
+                          <td><div className="col-name">{u.name}</div><div className="col-mono" style={{fontSize:11,color:'var(--textLight)'}}>{u.id}</div></td>
+                          <td>{u.roleLabel||roleLabelFor(u.role)}</td>
+                          <td><span style={{fontSize:11,color:'var(--ok)',background:'var(--okBg)',padding:'2px 8px',borderRadius:99}}>Active</span></td>
+                          <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{u.email}</td>
+                          <td><div className="row-actions"><Btn v="def" sz="sm" onClick={()=>setEditingUserId(u.id)}>Edit</Btn><Btn v="info" sz="sm" onClick={()=>resetPwd(u.id)}>Reset pwd</Btn><Btn v="err" sz="sm" onClick={()=>rmUser(u.id)}>Remove</Btn></div></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ):<Empty ico="👤" title="No users found"/>}
+              {editingUserId&&(()=>{
+                const u=(users||[]).find(x=>x.id===editingUserId);
+                if(!u)return null;
+                return ReactDOM.createPortal(
+                  <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'flex-start',justifyContent:'center',zIndex:1100,padding:'max(20px,env(safe-area-inset-top)) 16px 24px',overflow:'auto'}} onClick={()=>setEditingUserId(null)}>
+                    <Card sx={{padding:20,maxWidth:480,width:'100%',margin:'0 auto'}} onClick={e=>e.stopPropagation()}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}><div style={{fontWeight:800}}>Edit user — {u.name}</div><Btn v="ghost" sz="sm" onClick={()=>setEditingUserId(null)}>✕</Btn></div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                        <FF label="Name"><input value={u.name} onChange={e=>upUser(u.id,{name:e.target.value})}/></FF>
+                        <FF label="Email"><input type="email" value={u.email||''} onChange={e=>upUser(u.id,{email:normEmail(e.target.value.trim())})} placeholder="user@domain.com"/></FF>
+                        <FF label="Role">
+                          <select value={u.role} onChange={e=>upUser(u.id,{role:e.target.value,roleLabel:roleLabelFor(e.target.value)})}>
+                            <option value="rep">Sales Representative</option>
+                            <option value="underwriter">Underwriter</option>
+                            <option value="ops">Ops & Support</option>
+                            <option value="merchant">Retail Manager</option>
+                            <option value="groupadmin">Group Admin</option>
+                          </select>
+                        </FF>
+                        {u.role==='rep'&&(<FF label="Shop"><select value={u.shopId||''} onChange={e=>upUser(u.id,{shopId:e.target.value})}><option value="">No shop</option>{(shops||[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></FF>)}
+                        {u.role==='merchant'&&(<FF label="Retail group"><select value={u.merchantGroupId||''} onChange={e=>upUser(u.id,{merchantGroupId:e.target.value||null})}><option value="">— Unassigned —</option>{(merchantGroups||[]).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></FF>)}
+                        <FF label="Superuser (ops only)"><select value={u.superuser?'yes':'no'} onChange={e=>upUser(u.id,{superuser:e.target.value==='yes'})} disabled={u.role!=='ops'}><option value="no">No</option><option value="yes">Yes</option></select></FF>
+                      </div>
+                      {u.mustChangePassword&&<div style={{fontSize:11,color:'var(--warn)',background:'var(--warnBg)',borderRadius:'var(--r2)',padding:'8px 10px',marginBottom:10}}>Must change password on next login</div>}
+                      <Btn v="primary" sz="sm" onClick={()=>setEditingUserId(null)}>Done</Btn>
+                    </Card>
+                  </div>,document.body
+                );
+              })()}
+            </Card>
           </div>
         )}
         {tab==='groups'&&user.superuser&&<RetailGroupsTab/>}
 
         {tab==='shops'&&user.superuser&&(
-          <div className="admin-two-col" style={{display:'grid',gridTemplateColumns:showAddShop?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
+          <div className={'admin-two-col'+(showAddShop?' admin-add-first':'')} style={{display:'grid',gridTemplateColumns:showAddShop?'1.1fr .9fr':'1fr',gap:14,alignItems:'start'}}>
+            {showAddShop&&(
+              <Card sx={{padding:16}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                  <div style={{fontWeight:800}}>Add shop</div>
+                  <Btn v="def" sz="sm" onClick={()=>{setShowAddShop(false);setNewShop({name:'',location:'',merchantGroupId:''});}}>Cancel</Btn>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                  <FF label="Shop name" req><input value={newShop.name} onChange={e=>setNewShop(p=>({...p,name:e.target.value}))} placeholder="e.g. Remera Branch"/></FF>
+                  <FF label="Location"><input value={newShop.location} onChange={e=>setNewShop(p=>({...p,location:e.target.value}))} placeholder="e.g. Remera, Kigali"/></FF>
+                  <FF label="Retail group">
+                    <select value={newShop.merchantGroupId||''} onChange={e=>setNewShop(p=>({...p,merchantGroupId:e.target.value||null}))}>
+                      <option value="">— Unassigned —</option>
+                      {(merchantGroups||[]).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
+                  </FF>
+                  <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 13px',fontSize:11,color:'var(--textMid)'}}>
+                    Shop ID will be auto-generated (e.g. <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{mkShopId()}</span>)
+                  </div>
+                  <Btn v="primary" full icon="＋" onClick={()=>{
+                    if(!newShop.name.trim()){addToast('err','Shop name required','');return;}
+                    const id=mkShopId();
+                    setShops([...(shops||[]),{id,name:newShop.name.trim(),location:newShop.location.trim(),merchantGroupId:newShop.merchantGroupId||null,createdAt:new Date().toISOString()}]);
+                    setNewShop({name:'',location:'',merchantGroupId:''});setShowAddShop(false);
+                    addToast('ok','Shop added',`${newShop.name.trim()} (${id})`);
+                  }}>Create shop</Btn>
+                </div>
+              </Card>
+            )}
             <Card sx={{padding:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
                 <div style={{fontWeight:800}}>Shops <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({(shops||[]).length})</span></div>
@@ -4470,34 +4526,6 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                 {(shops||[]).length===0&&<Empty ico="🏪" title="No shops yet"/>}
               </div>
             </Card>
-            {showAddShop&&(
-              <Card sx={{padding:16}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                  <div style={{fontWeight:800}}>Add shop</div>
-                  <Btn v="def" sz="sm" onClick={()=>{setShowAddShop(false);setNewShop({name:'',location:''});}}>Cancel</Btn>
-                </div>
-                <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                  <FF label="Shop name" req><input value={newShop.name} onChange={e=>setNewShop(p=>({...p,name:e.target.value}))} placeholder="e.g. Remera Branch"/></FF>
-                  <FF label="Location"><input value={newShop.location} onChange={e=>setNewShop(p=>({...p,location:e.target.value}))} placeholder="e.g. Remera, Kigali"/></FF>
-                  <FF label="Retail group">
-                    <select value={newShop.merchantGroupId||''} onChange={e=>setNewShop(p=>({...p,merchantGroupId:e.target.value||null}))}>
-                      <option value="">— Unassigned —</option>
-                      {(merchantGroups||[]).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
-                  </FF>
-                  <div style={{background:'var(--bg)',borderRadius:'var(--r2)',padding:'10px 13px',fontSize:11,color:'var(--textMid)'}}>
-                    Shop ID will be auto-generated (e.g. <span style={{fontFamily:'DM Mono,monospace',fontWeight:700}}>{mkShopId()}</span>)
-                  </div>
-                  <Btn v="primary" full icon="＋" onClick={()=>{
-                    if(!newShop.name.trim()){addToast('err','Shop name required','');return;}
-                    const id=mkShopId();
-                    setShops([...(shops||[]),{id,name:newShop.name.trim(),location:newShop.location.trim(),merchantGroupId:newShop.merchantGroupId||null,createdAt:new Date().toISOString()}]);
-                    setNewShop({name:'',location:'',merchantGroupId:''});setShowAddShop(false);
-                    addToast('ok','Shop added',`${newShop.name.trim()} (${id})`);
-                  }}>Create shop</Btn>
-                </div>
-              </Card>
-            )}
           </div>
         )}
         {tab==='company'&&user.superuser&&(
@@ -4660,13 +4688,26 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                 {(q||fst||fGroup||fShop||fRep||fDateFrom||fDateTo)&&<Btn v="ghost" sz="sm" onClick={()=>{setQ('');setFst('');setFGroup('');setFShop('');setFRep('');setFDateFrom('');setFDateTo('');}}>Clear filters</Btn>}
               </div>
             </Card>
-            <div style={{display:'flex',flexDirection:'column',gap:8}}>{filtered.map(a=>{
-              const sn=shopName(a.shopId);
-              const gid=groupOfShop(a.shopId);
-              const gn=(merchantGroups||[]).find(g=>g.id===gid)?.name;
-              return <div key={a.id}><ACard app={a} onClick={()=>setSel(a.id)}/>{(a.shopId||a.rep||gn)&&<div style={{display:'flex',gap:8,paddingLeft:8,marginTop:-4,marginBottom:4,flexWrap:'wrap'}}>{gn&&<span style={{fontSize:10,color:'var(--pur)',background:'var(--purBg)',padding:'1px 7px',borderRadius:99,border:'1px solid var(--purBorder)'}}>🏢 {gn}</span>}{a.shopId&&<span style={{fontSize:10,color:'var(--brand2)',background:'var(--brandPale)',padding:'1px 7px',borderRadius:99,border:'1px solid var(--brandPale2)'}}>🏪 {sn}</span>}{a.rep&&<span style={{fontSize:10,color:'var(--textMid)',background:'var(--bg)',padding:'1px 7px',borderRadius:99,border:'1px solid var(--border)'}}>👤 {a.rep}</span>}</div>}</div>;
-            })}</div>
-            {filtered.length===0&&<Empty ico="🔍" title="No results found"/>}
+            {filtered.length>0?(
+              <div className="admin-table-wrap" style={{maxHeight:'calc(100vh - 320px)',overflow:'auto'}}>
+                <table className="admin-table">
+                  <thead><tr><th>Application</th><th>Owner / Rep</th><th>Status</th><th className="hide-mobile">Device</th><th>Created</th><th className="hide-mobile">Updated</th><th style={{width:60}}></th></tr></thead>
+                  <tbody>
+                    {filtered.map(a=>(
+                      <tr key={a.id} onClick={()=>setSel(a.id)} style={{cursor:'pointer'}}>
+                        <td><div className="col-name">{a.c?.name||'—'}</div><div className="col-mono" style={{fontSize:11,color:'var(--textLight)'}}>{a.id}</div></td>
+                        <td style={{fontSize:12}}>{a.rep||'—'}</td>
+                        <td><Badge st={a.status}/></td>
+                        <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{a.dev?.brand} {a.dev?.model}</td>
+                        <td style={{fontSize:12,color:'var(--textMid)'}}>{fmtD(a.createdAt)}</td>
+                        <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{fmtD(a.updatedAt)}</td>
+                        <td><span style={{color:'var(--textLight)',fontSize:16}}>›</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ):<Empty ico="🔍" title="No results found"/>}
           </div>
         )}
         {pg==='admin'&&user.superuser&&(
