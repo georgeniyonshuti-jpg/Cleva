@@ -180,6 +180,66 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
   .app-card-meta{flex-wrap:wrap!important}
 }
 
+/* ── Underwriter review layout ─────────────────────────────── */
+.uw-shell{display:flex;flex-direction:column;flex:1;min-height:0;height:100%}
+.uw-header{flex-shrink:0;border-bottom:1.5px solid var(--border);background:var(--surface)}
+.uw-body{flex:1;overflow:auto;min-height:0;-webkit-overflow-scrolling:touch}
+.uw-footer{flex-shrink:0;border-top:1.5px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.uw-declaration{margin-top:22px;padding:16px 20px;border:2px solid var(--brand3);border-radius:var(--r);background:var(--brandPale)}
+.uw-decl-unchecked{border-color:var(--border);background:white}
+
+/* Desktop: spacious layout, clear sections */
+@media (min-width:769px){
+  .uw-header{padding:20px 32px 18px}
+  .uw-body{padding:32px 40px 140px}
+  .uw-footer{padding:16px 32px;gap:12px}
+  .uw-content{max-width:880px;margin:0 auto}
+  .uw-content h2{font-size:18px;font-weight:800;margin-bottom:6px;letter-spacing:-0.2px}
+  .uw-content .uw-intro{font-size:13px;color:var(--textMid);margin-bottom:28px;line-height:1.6}
+  .uw-steps{display:flex;align-items:center;gap:0;margin-top:18px;overflow-x:auto;padding-bottom:2px}
+  .uw-step-label{font-size:13px;white-space:nowrap}
+  .uw-section{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:24px 28px;margin-bottom:24px}
+  .uw-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--textLight);margin-bottom:16px}
+  .uw-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .uw-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+  .uw-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .uw-fld{padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid rgba(0,0,0,0.06)}
+  .uw-fld-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--textLight);margin-bottom:4px}
+  .uw-fld-val{font-size:14px}
+  .uw-docs-grid{display:grid;grid-template-columns:1fr 1.8fr;gap:24px}
+  .uw-doc-block{margin-bottom:24px}
+  .uw-afford{padding:22px 24px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r)}
+  .uw-afford-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+}
+
+/* Mobile: stacked, touch-friendly */
+@media (max-width:768px){
+  .uw-header{padding:14px 16px 14px}
+  .uw-body{padding:20px 16px 120px}
+  .uw-footer{padding:14px 16px;gap:10px;padding-bottom:max(14px,env(safe-area-inset-bottom))}
+  .uw-content{max-width:none}
+  .uw-content h2{font-size:17px;font-weight:800;margin-bottom:6px}
+  .uw-content .uw-intro{font-size:12px;color:var(--textMid);margin-bottom:20px;line-height:1.55}
+  .uw-steps{display:flex;align-items:center;gap:0;margin-top:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;padding-right:4px}
+  .uw-step-label{display:none}
+  .uw-section{padding:18px 16px;margin-bottom:18px}
+  .uw-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--textLight);margin-bottom:12px}
+  .uw-grid-2,.uw-grid-3,.uw-docs-grid{grid-template-columns:1fr!important;gap:14px}
+  .uw-stats{grid-template-columns:1fr 1fr!important;gap:10px}
+  .uw-fld{padding-bottom:10px;margin-bottom:10px}
+  .uw-docs-grid{grid-template-columns:1fr!important;gap:18px}
+  .uw-doc-block{margin-bottom:18px}
+  .uw-afford{padding:16px 18px}
+  .uw-afford-stats{grid-template-columns:1fr 1fr!important;gap:10px}
+  .uw-declaration{margin-top:20px;padding:14px 16px}
+  .uw-footer button{min-height:44px}
+}
+@media (max-width:480px){
+  .uw-body{padding:16px 14px 110px}
+  .uw-stats{grid-template-columns:1fr!important}
+  .uw-afford-stats{grid-template-columns:1fr!important}
+}
+
 /* Home action buttons (first page – big, touch-friendly) */
 .home-actions{display:flex;flex-direction:column;gap:12px;max-width:400px;margin:0 auto}
 .home-action-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:18px 24px;min-height:56px;font-size:16px;font-weight:600;border-radius:var(--r);border:2px solid transparent;cursor:pointer;transition:all .15s;text-align:center;text-decoration:none;color:inherit;box-sizing:border-box}
@@ -2243,67 +2303,75 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
   const requestChanges=async()=>{if(requestedFields.length===0){addToast('err','Select fields','Flag at least one field using the Flag buttons');return;}if(!note.trim()){addToast('err','Note required','Explain what the rep needs to fix');return;}setLd('ch');await sleep(700);const ap=app.application||{};const reqs=ap.fieldCorrectionRequests||[];const added=requestedFields.filter(f=>!reqs.some(r=>r.fieldName===f&&!r.resolvedAt));const newReqs=[...reqs,...added.map(fieldName=>({fieldName,reason:note,resolvedAt:null}))];onUpdate(app.id,{status:ST.UNDER_REVIEW,notes:note,application:{...ap,fieldCorrectionRequests:newReqs},reviewLock:null,tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});sendEmail('changes',{to_email:_repEmail(),to_name:_repName(),customer_name:ap.fullName||app.id,app_id:app.id,fields:requestedFields.join(', '),note});addToast('warn','Changes requested','Application returned to rep for correction');setLd(null);onBack();};
   const escalate=async()=>{if(!note.trim()){addToast('err','Note required','Explain why you are escalating.');return;}setLd('esc');await sleep(700);onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Escalated to ops: ${note}`}});const opsEmails=(users||[]).filter(u=>u.role==='ops').map(u=>u.email).join(',');sendEmail('escalated',{to_email:opsEmails||'',to_name:'Operations Team',customer_name:app.application?.fullName||app.id,app_id:app.id,escalated_by:user.name,note});addToast('warn','Escalated to ops','Awaiting action from operations team');setLd(null);onBack();};
   const STEPS=['Customer','Documents','Device & Deal','Decision'];
-  const Declaration=({n,title,desc})=>(
-    <div style={{marginTop:20,padding:'14px 16px',border:'1.5px solid var(--border)',borderRadius:'var(--r)',background:'white'}}>
-      <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
-        <input type="checkbox" checked={!!reviewed[n]} onChange={e=>setReviewed(p=>({...p,[n]:e.target.checked}))} style={{marginTop:3}}/>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:800,fontSize:13,marginBottom:3}}>{title}</div>
-          <div style={{fontSize:11,color:'var(--textMid)',lineHeight:1.55}}>{desc}</div>
-        </div>
+  const Declaration=({n,title,desc})=>{
+    const checked=!!reviewed[n];
+    return(
+      <div className={`uw-declaration${checked?'':' uw-decl-unchecked'}`} style={{marginTop:22}}>
+        <label style={{display:'flex',alignItems:'flex-start',gap:12,cursor:'pointer'}}>
+          <input type="checkbox" checked={checked} onChange={e=>setReviewed(p=>({...p,[n]:e.target.checked}))} style={{marginTop:3,width:16,height:16,accentColor:'var(--brand)',flexShrink:0}}/>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:13,color:checked?'var(--brand)':'var(--text)',marginBottom:3}}>{title}</div>
+            <div style={{fontSize:12,color:'var(--textMid)',lineHeight:1.55}}>{desc}</div>
+          </div>
+        </label>
       </div>
-    </div>
-  );
+    );
+  };
   const StepRow=()=>(
-    <div style={{display:'flex',alignItems:'center',gap:0}}>
+    <div className="uw-steps">
       {STEPS.map((s,i)=>{
         const n=i+1;const done=n<step;const active=n===step;
         return(
           <React.Fragment key={n}>
-            <div onClick={()=>{if(n<step)setStep(n);}} style={{display:'flex',alignItems:'center',gap:6,cursor:n<step?'pointer':'default',opacity:n>step?0.4:1,flexShrink:0}}>
-              <div style={{width:22,height:22,borderRadius:11,background:done?'var(--ok)':active?'var(--brand)':'var(--border)',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,flexShrink:0}}>{done?'✓':n}</div>
-              <span style={{fontSize:11,fontWeight:active?700:500,color:active?'var(--brand)':done?'var(--ok)':'var(--textLight)',whiteSpace:'nowrap'}}>{s}</span>
+            <div onClick={()=>{if(n<step)setStep(n);}} style={{display:'flex',alignItems:'center',gap:7,cursor:n<step?'pointer':'default',opacity:n>step?0.4:1,flexShrink:0}}>
+              <div style={{width:24,height:24,borderRadius:12,background:done?'var(--ok)':active?'var(--brand)':'var(--border)',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,flexShrink:0,boxShadow:active?'0 0 0 3px var(--brandPale2)':'none',transition:'box-shadow .15s'}}>{done?'✓':n}</div>
+              <span className="uw-step-label" style={{fontWeight:active?700:500,color:active?'var(--brand)':done?'var(--ok)':'var(--textLight)'}}>{s}</span>
             </div>
-            {i<STEPS.length-1&&<div style={{flex:1,height:1,background:'var(--border)',margin:'0 8px',minWidth:8}}/>}
+            {i<STEPS.length-1&&<div style={{flex:1,height:1.5,background:done?'var(--ok)':'var(--border)',margin:'0 10px',minWidth:16,transition:'background .3s'}}/>}
           </React.Fragment>
         );
       })}
     </div>
   );
   return(
-    <div style={{display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
+    <div className="uw-shell">
       {/* Header */}
-      <div style={{flexShrink:0,padding:'16px 24px',borderBottom:'1.5px solid var(--border)',background:'var(--surface)'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+      <div className="uw-header">
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:0}}>
           <Btn onClick={onBack} v="ghost" icon="←" sz="sm">Back</Btn>
-          <div style={{flex:1,minWidth:0}}><div style={{fontWeight:800,fontSize:17,letterSpacing:'-0.3px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:1}}>{app.id} · {app.rep} · {fmtD(app.createdAt)}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontWeight:800,fontSize:17,letterSpacing:'-0.3px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{app.id} · {app.rep} · {fmtD(app.createdAt)}</div></div>
           <Badge st={app.status}/>
         </div>
         <StepRow/>
       </div>
       {/* Scrollable content */}
-      <div style={{flex:1,overflow:'auto',minHeight:0,padding:'24px 28px 120px'}}>
+      <div className="uw-body">
         {lockedByOther&&step!==4&&(
-          <div style={{padding:'12px 16px',marginBottom:20,border:'2px solid var(--warnBorder)',background:'var(--warnBg)',borderRadius:'var(--r)',fontSize:12}}>
-            🔒 <strong>Under review by {app.reviewLock.byName}</strong> — you can review details but cannot make a decision.
+          <div className="uw-content" style={{marginBottom:24}}>
+            <div className="uw-section" style={{background:'var(--warnBg)',border:'2px solid var(--warnBorder)'}}>
+              🔒 <strong>Under review by {app.reviewLock.byName}</strong> — you can review details but cannot make a decision.
+            </div>
           </div>
         )}
         {/* Step 1: Customer */}
         {step===1&&(
-          <div style={{maxWidth:720}}>
-            <h2 style={{fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:'-0.2px'}}>Customer information</h2>
-            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:22}}>Review customer details. Use the <strong>Flag</strong> button on any field to request a correction.</p>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <FldWithRequest fieldKey="name" label="Full name" val={c.name} requestedFields={requestedFields} onToggle={toggleRequest}/>
-              <FldWithRequest fieldKey="nid" label={c.idType==='passport'?'Passport number':'National ID'} val={c.nid} requestedFields={requestedFields} onToggle={toggleRequest} mono/>
-              <FldWithRequest fieldKey="phone" label="Phone" val={c.phone} requestedFields={requestedFields} onToggle={toggleRequest}/>
-              <FldWithRequest fieldKey="occ" label="Occupation" val={c.occ} requestedFields={requestedFields} onToggle={toggleRequest}/>
-              <FldWithRequest fieldKey="addr" label="Address" val={c.addr} requestedFields={requestedFields} onToggle={toggleRequest}/>
-              <FldWithRequest fieldKey="income" label="Monthly income" val={fmtRWF(c.income)} requestedFields={requestedFields} onToggle={toggleRequest}/>
+          <div className="uw-content">
+            <h2>Customer information</h2>
+            <p className="uw-intro">Review customer details. Use the <strong>Flag</strong> button on any field to request a correction.</p>
+            <div className="uw-section">
+              <div className="uw-section-title">Personal details</div>
+              <div className="uw-grid-2">
+                <FldWithRequest fieldKey="name" label="Full name" val={c.name} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="nid" label={c.idType==='passport'?'Passport number':'National ID'} val={c.nid} requestedFields={requestedFields} onToggle={toggleRequest} mono/>
+                <FldWithRequest fieldKey="phone" label="Phone" val={c.phone} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="occ" label="Occupation" val={c.occ} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="addr" label="Address" val={c.addr} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="income" label="Monthly income" val={fmtRWF(c.income)} requestedFields={requestedFields} onToggle={toggleRequest}/>
+              </div>
             </div>
-            <div style={{marginTop:18,paddingTop:14,borderTop:'1.5px solid var(--border)'}}>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Next of kin / Guarantor</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
+            <div className="uw-section">
+              <div className="uw-section-title">Next of kin / Guarantor</div>
+              <div className="uw-grid-3">
                 <FldWithRequest fieldKey="kin_name" label="Name" val={c.kin.name} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="kin_phone" label="Phone" val={c.kin.phone} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="kin_rel" label="Relationship" val={c.kin.rel} requestedFields={requestedFields} onToggle={toggleRequest}/>
@@ -2314,14 +2382,14 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
         )}
         {/* Step 2: Documents */}
         {step===2&&(
-          <div style={{maxWidth:820}}>
-            <h2 style={{fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:'-0.2px'}}>Documents & photos</h2>
-            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:22}}>Verify the customer photo, ID document, and proof of income. Use <strong>Flag</strong> to request a re-upload.</p>
+          <div className="uw-content">
+            <h2>Documents & photos</h2>
+            <p className="uw-intro">Verify the customer photo, ID document, and proof of income. Use <strong>Flag</strong> to request a re-upload.</p>
             {(app.customerPhoto||app.idPhoto)&&(
-              <div style={{display:'grid',gridTemplateColumns:app.customerPhoto&&app.idPhoto?'1fr 1.9fr':'1fr',gap:18,marginBottom:app.incomeProof?24:0}}>
+              <div className="uw-docs-grid uw-section">
                 {app.customerPhoto&&(
-                  <div>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><span style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',color:'var(--textLight)'}}>Customer photo</span><FlagBtn fieldKey="customerPhoto" requestedFields={requestedFields} onToggle={toggleRequest}/></div>
+                  <div className="uw-doc-block">
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span className="uw-section-title" style={{marginBottom:0}}>Customer photo</span><FlagBtn fieldKey="customerPhoto" requestedFields={requestedFields} onToggle={toggleRequest}/></div>
                     <div style={{position:'relative',borderRadius:10,overflow:'hidden',border:`2px solid ${requestedFields.includes('customerPhoto')?'var(--warn)':'var(--border)'}`,cursor:'pointer'}} onClick={()=>window.open(app.customerPhoto,'_blank','noopener')}>
                       <img src={app.customerPhoto} alt="Customer" style={{width:'100%',maxHeight:340,objectFit:'cover',display:'block'}}/>
                       <div style={{position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.5)',color:'white',fontSize:10,fontWeight:600,padding:'3px 9px',borderRadius:99}}>↗ Full size</div>
@@ -2329,8 +2397,8 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
                   </div>
                 )}
                 {app.idPhoto&&(
-                  <div>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><span style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',color:'var(--textLight)'}}>ID document</span><FlagBtn fieldKey="idPhoto" requestedFields={requestedFields} onToggle={toggleRequest}/></div>
+                  <div className="uw-doc-block">
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span className="uw-section-title" style={{marginBottom:0}}>ID document</span><FlagBtn fieldKey="idPhoto" requestedFields={requestedFields} onToggle={toggleRequest}/></div>
                     <div style={{position:'relative',borderRadius:10,overflow:'hidden',border:`2px solid ${requestedFields.includes('idPhoto')?'var(--warn)':'var(--border)'}`,cursor:'pointer'}} onClick={()=>window.open(app.idPhoto,'_blank','noopener')}>
                       <img src={app.idPhoto} alt="ID" style={{width:'100%',maxHeight:340,objectFit:'contain',display:'block',background:'var(--bg)'}}/>
                       <div style={{position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.5)',color:'white',fontSize:10,fontWeight:600,padding:'3px 9px',borderRadius:99}}>↗ Full size</div>
@@ -2340,8 +2408,8 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
               </div>
             )}
             {app.incomeProof&&(
-              <div>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}><span style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.5px',color:'var(--textLight)'}}>Proof of income</span><FlagBtn fieldKey="incomeProof" requestedFields={requestedFields} onToggle={toggleRequest}/></div>
+              <div className="uw-section">
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span className="uw-section-title" style={{marginBottom:0}}>Proof of income</span><FlagBtn fieldKey="incomeProof" requestedFields={requestedFields} onToggle={toggleRequest}/></div>
                 {app.incomeProof.startsWith('data:application/pdf')?(
                   <div style={{display:'flex',alignItems:'center',gap:14,padding:'18px 20px',background:'var(--bg)',border:`2px solid ${requestedFields.includes('incomeProof')?'var(--warn)':'var(--border)'}`,borderRadius:10}}>
                     <span style={{fontSize:32}}>📄</span>
@@ -2356,34 +2424,34 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
                 )}
               </div>
             )}
-            {!app.customerPhoto&&!app.idPhoto&&!app.incomeProof&&<div style={{padding:'40px 24px',textAlign:'center',color:'var(--textMid)',fontSize:13}}>No documents uploaded with this application.</div>}
+            {!app.customerPhoto&&!app.idPhoto&&!app.incomeProof&&<div className="uw-section" style={{padding:'40px 24px',textAlign:'center',color:'var(--textMid)',fontSize:13}}>No documents uploaded with this application.</div>}
             <Declaration n={2} title="Declaration — Documents reviewed" desc="I confirm I reviewed the uploaded documents/photos and they are acceptable for underwriting."/>
           </div>
         )}
         {/* Step 3: Device & Deal */}
         {step===3&&(
-          <div style={{maxWidth:700}}>
-            <h2 style={{fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:'-0.2px'}}>Device & deal</h2>
-            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:22}}>Review the device and payment terms. Check the affordability ratio.</p>
-            <div style={{marginBottom:24}}>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <div className="uw-content">
+            <h2>Device & deal</h2>
+            <p className="uw-intro">Review the device and payment terms. Check the affordability ratio.</p>
+            <div className="uw-section">
+              <div className="uw-section-title">Device</div>
+              <div className="uw-grid-2">
                 <FldWithRequest fieldKey="device_id" label="Device" val={`${d.brand} ${d.model}`} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <Fld label="Storage / RAM" val={d.specs}/>
               </div>
             </div>
-            <div style={{marginBottom:24}}>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Payment terms</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            <div className="uw-section">
+              <div className="uw-section-title">Payment terms</div>
+              <div className="uw-grid-2">
                 <FldWithRequest fieldKey="dep" label="Upfront deposit" val={fmtRWF(d.dep)} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="weekly" label={`Monthly × ${termMonths}`} val={fmtRWF(d.weekly)} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="tot" label="Total price" val={fmtRWF(tot)} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <Fld label="Term" val={`${termMonths} months`}/>
               </div>
             </div>
-            <div>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Affordability check</div>
-              <div style={{padding:'18px 20px',background:'var(--surface)',border:'1.5px solid var(--border)',borderRadius:'var(--r)'}}>
+            <div className="uw-section">
+              <div className="uw-section-title">Affordability check</div>
+              <div className="uw-afford">
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:12}}>
                   <span style={{fontSize:13,color:'var(--textMid)'}}>Monthly repayment / income</span>
                   <span style={{fontFamily:'DM Mono,monospace',fontWeight:800,fontSize:24,color:affordOk?'var(--ok)':'var(--err)'}}>{c.income>0?ratio.toFixed(1):'—'}%</span>
@@ -2391,10 +2459,10 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
                 <div style={{height:8,background:'var(--bg)',borderRadius:4,overflow:'hidden',marginBottom:12}}>
                   <div style={{height:'100%',borderRadius:4,width:`${Math.min(100,ratio)}%`,background:affordOk?'var(--ok)':'var(--err)',transition:'width .6s'}}/>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
-                  <div style={{padding:'9px 12px',background:'var(--bg)',borderRadius:'var(--r2)'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:2}}>Income</div><div style={{fontWeight:700,fontSize:13}}>{fmtRWF(c.income)}</div></div>
-                  <div style={{padding:'9px 12px',background:'var(--bg)',borderRadius:'var(--r2)'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:2}}>Monthly payment</div><div style={{fontWeight:700,fontSize:13}}>{fmtRWF(d.weekly)}</div></div>
-                  <div style={{padding:'9px 12px',background:affordOk?'var(--okBg)':'var(--errBg)',border:`1px solid ${affordOk?'var(--okBorder)':'var(--errBorder)'}`,borderRadius:'var(--r2)'}}><div style={{fontSize:10,fontWeight:600,color:affordOk?'var(--ok)':'var(--err)',marginBottom:2}}>Policy (max 30%)</div><div style={{fontWeight:700,fontSize:13,color:affordOk?'var(--ok)':'var(--err)'}}>{affordOk?'✓ Within limit':'✗ Exceeds limit'}</div></div>
+                <div className="uw-afford-stats">
+                  <div style={{padding:'10px 14px',background:'var(--bg)',borderRadius:'var(--r2)'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:2}}>Income</div><div style={{fontWeight:700,fontSize:14}}>{fmtRWF(c.income)}</div></div>
+                  <div style={{padding:'10px 14px',background:'var(--bg)',borderRadius:'var(--r2)'}}><div style={{fontSize:10,color:'var(--textLight)',marginBottom:2}}>Monthly payment</div><div style={{fontWeight:700,fontSize:14}}>{fmtRWF(d.weekly)}</div></div>
+                  <div style={{padding:'10px 14px',background:affordOk?'var(--okBg)':'var(--errBg)',border:`1px solid ${affordOk?'var(--okBorder)':'var(--errBorder)'}`,borderRadius:'var(--r2)'}}><div style={{fontSize:10,fontWeight:600,color:affordOk?'var(--ok)':'var(--err)',marginBottom:2}}>Policy (max 30%)</div><div style={{fontWeight:700,fontSize:14,color:affordOk?'var(--ok)':'var(--err)'}}>{affordOk?'✓ Within limit':'✗ Exceeds limit'}</div></div>
                 </div>
               </div>
             </div>
@@ -2403,30 +2471,32 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
         )}
         {/* Step 4: Decision */}
         {step===4&&(
-          <div style={{maxWidth:600}}>
-            <h2 style={{fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:'-0.2px'}}>Decision</h2>
-            <p style={{fontSize:12,color:'var(--textMid)',marginBottom:22}}>Make your credit decision. A note is required for Request changes, Escalate, and Reject.</p>
+          <div className="uw-content">
+            <h2>Decision</h2>
+            <p className="uw-intro">Make your credit decision. A note is required for Request changes, Escalate, and Reject.</p>
             {lockedByOther&&(
-              <div style={{padding:'16px 18px',background:'var(--warnBg)',border:'2px solid var(--warnBorder)',borderRadius:'var(--r)',marginBottom:20}}>
+              <div className="uw-section" style={{background:'var(--warnBg)',borderColor:'var(--warnBorder)'}}>
                 <div style={{fontWeight:700,fontSize:14,color:'var(--warn)',marginBottom:4}}>🔒 Under review by {app.reviewLock.byName}</div>
-                <div style={{fontSize:12,color:'var(--warn)'}}>Only {app.reviewLock.byName} or a superuser can make a credit decision on this application.</div>
+                <div style={{fontSize:12,color:'var(--warn)',lineHeight:1.5}}>Only {app.reviewLock.byName} or a superuser can make a credit decision on this application.</div>
               </div>
             )}
             {hasFlags&&(
-              <div style={{marginBottom:18,padding:'12px 16px',background:'var(--warnBg)',border:'1.5px solid var(--warnBorder)',borderRadius:'var(--r2)'}}>
+              <div className="uw-section" style={{background:'var(--warnBg)',borderColor:'var(--warnBorder)'}}>
                 <div style={{fontWeight:700,fontSize:12,color:'var(--warn)',marginBottom:4}}>⚑ {requestedFields.length} field{requestedFields.length!==1?'s':''} flagged for correction</div>
                 <div style={{fontSize:11,color:'var(--warn)',marginBottom:4}}>{requestedFields.join(' · ')}</div>
-                <div style={{fontSize:11,color:'var(--textMid)'}}>Approve is not available — use <strong>Request changes</strong> or <strong>Escalate to ops</strong>.</div>
+                <div style={{fontSize:11,color:'var(--textMid)',lineHeight:1.5}}>Approve is not available — use <strong>Request changes</strong> or <strong>Escalate to ops</strong>.</div>
               </div>
             )}
             {!lockedByOther&&(
-              <FF label="Note (required for Request changes, Escalate, and Reject)">
-                <textarea value={note} onChange={ev=>setNote(ev.target.value)} placeholder="Explain your decision or what the rep needs to fix..." rows={5} style={{resize:'vertical'}}/>
-              </FF>
+              <div className="uw-section">
+                <FF label="Note (required for Request changes, Escalate, and Reject)">
+                  <textarea value={note} onChange={ev=>setNote(ev.target.value)} placeholder="Explain your decision or what the rep needs to fix..." rows={5} style={{resize:'vertical'}}/>
+                </FF>
+              </div>
             )}
             <Declaration n={4} title="Declaration — Decision confirmed" desc="I confirm I completed the review of Customer, Documents, and Deal and I am ready to record the final decision."/>
             {!reviewedAllCore&&(
-              <div style={{marginTop:14,padding:'10px 12px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6}}>
+              <div style={{marginTop:16,padding:'12px 14px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--warn)',lineHeight:1.6}}>
                 You must complete the declarations in steps 1–3 before making a decision.
               </div>
             )}
@@ -2434,7 +2504,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
         )}
       </div>
       {/* Sticky footer */}
-      <div style={{flexShrink:0,padding:'12px 24px',borderTop:'1.5px solid var(--border)',background:'var(--surface)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
+      <div className="uw-footer">
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           {step>1&&<Btn onClick={()=>setStep(s=>s-1)} v="ghost" icon="←" sz="sm">Back</Btn>}
           {hasFlags&&<div style={{fontSize:11,fontWeight:600,color:'var(--warn)',padding:'3px 10px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:99}}>⚑ {requestedFields.length} flag{requestedFields.length!==1?'s':''}</div>}
