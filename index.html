@@ -307,7 +307,7 @@ const APP_SLOGAN='Empowering access';
 const LOGO_URL='assets/logo.png';
 const EMAIL_DOMAIN='leout.rw';
 const LS={MERCHANTS:'cleva_merchants_v1',MERCHANT_GROUPS:'cleva_merchant_groups_v1',SHOPS:'cleva_shops_v1',USERS:'cleva_users_v1',CONTRACTS:'cleva_contracts_v1',DEVICES:'cleva_devices_v1',PRICING_CONFIG:'cleva_pricing_config_v1',AUDIT_LOG:'cleva_audit_log_v1',COMPANY:'cleva_company_v1',EMAIL_TPL:'cleva_email_tpl_v1'};
-const defaultCompanyInfo={name:'Cleva Financial Services Ltd',tagline:'Empowering access',address:'KG 15 Avenue, Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevapaygo.rw',website:'www.clevapaygo.rw',regNo:'RDB/2024/CL001',logo:LOGO_URL,signatoryName:'',signatoryTitle:'Authorised Signatory',signatorySig:null,imeiProxyUrl:''};
+const defaultCompanyInfo={name:'Tech Land Limited',tagline:'Empowering access',address:'Kigali, Rwanda',phone:'+250 788 000 000',email:'info@clevacredit.com',website:'www.clevacredit.rw',regNo:'120632791',logo:LOGO_URL,signatoryName:'',signatoryTitle:'Authorised Signatory',signatorySig:null,imeiProxyUrl:''};
 const readLS=(k,fallback)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):fallback;}catch{return fallback;}};
 const writeLS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 const normEmail=s=>(s||'').trim().toLowerCase();
@@ -330,43 +330,43 @@ const DEFAULT_EMAIL_TPLS={
     label:'New user welcome',
     vars:'{{to_name}}, {{to_email}}, {{temp_password}}, {{role}}, {{must_change}}, {{login_url}}',
     subject:'Welcome to Cleva — Your login details',
-    body:`Hi {{to_name}},\n\nYour Cleva account has been created.\n\nRole: {{role}}\nLogin: {{to_email}}\nPassword: {{temp_password}}\n{{must_change}}\n\nLog in here: {{login_url}}\n\n— Cleva Financial Services\nEmpowering access`,
+    body:`Hi {{to_name}},\n\nYour Cleva account has been created.\n\nRole: {{role}}\nLogin: {{to_email}}\nPassword: {{temp_password}}\n{{must_change}}\n\nLog in here: {{login_url}}\n\n— Cleva Credit\nEmpowering access`,
   },
   tempPwd:{
     label:'Password reset',
     vars:'{{to_name}}, {{to_email}}, {{temp_password}}, {{login_url}}',
     subject:'Cleva — Your temporary password',
-    body:`Hi {{to_name}},\n\nYour password was reset by an administrator.\n\nNew temporary password: {{temp_password}}\n\nPlease log in and change it immediately.\n\nLog in here: {{login_url}}\n\n— Cleva Financial Services\nEmpowering access`,
+    body:`Hi {{to_name}},\n\nYour password was reset by an administrator.\n\nNew temporary password: {{temp_password}}\n\nPlease log in and change it immediately.\n\nLog in here: {{login_url}}\n\n— Cleva Credit\nEmpowering access`,
   },
   submitted:{
     label:'Application submitted',
     vars:'{{to_name}}, {{rep_name}}, {{customer_name}}, {{app_id}}',
     subject:'New application pending review — {{customer_name}}',
-    body:`Hi {{to_name}},\n\nA new application is waiting for your review.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nSubmitted by: {{rep_name}}\n\nPlease log in to review it.\n\n— Cleva Financial Services\nEmpowering access`,
+    body:`Hi {{to_name}},\n\nA new application is waiting for your review.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nSubmitted by: {{rep_name}}\n\nPlease log in to review it.\n\n— Cleva Credit\nEmpowering access`,
   },
   approved:{
     label:'Application approved',
     vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{reviewer_name}}',
     subject:'Application approved — {{customer_name}}',
-    body:`Hi {{to_name}},\n\nGood news — the following application has been approved.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nReviewed by: {{reviewer_name}}\n\nPlease proceed with IMEI verification.\n\n— Cleva Financial Services\nEmpowering access`,
+    body:`Hi {{to_name}},\n\nGood news — the following application has been approved.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nReviewed by: {{reviewer_name}}\n\nPlease proceed with IMEI verification.\n\n— Cleva Credit\nEmpowering access`,
   },
   rejected:{
     label:'Application rejected',
     vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{rejection_reason}}',
     subject:'Application rejected — {{customer_name}}',
-    body:`Hi {{to_name}},\n\nThe following application has been rejected.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nReason: {{rejection_reason}}\n\n— Cleva Financial Services\nEmpowering access`,
+    body:`Hi {{to_name}},\n\nThe following application has been rejected.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nReason: {{rejection_reason}}\n\n— Cleva Credit\nEmpowering access`,
   },
   changes:{
     label:'Changes requested',
     vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{fields}}, {{note}}',
     subject:'Changes requested — {{customer_name}}',
-    body:`Hi {{to_name}},\n\nChanges have been requested on an application.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nFields to update: {{fields}}\nNote: {{note}}\n\nPlease log in, make the corrections, and resubmit.\n\n— Cleva Financial Services\nEmpowering access`,
+    body:`Hi {{to_name}},\n\nChanges have been requested on an application.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nFields to update: {{fields}}\nNote: {{note}}\n\nPlease log in, make the corrections, and resubmit.\n\n— Cleva Credit\nEmpowering access`,
   },
   escalated:{
     label:'Escalated to ops',
     vars:'{{to_name}}, {{customer_name}}, {{app_id}}, {{escalated_by}}, {{note}}',
     subject:'Application escalated — {{customer_name}}',
-    body:`Hi {{to_name}},\n\nAn application has been escalated and requires your attention.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nEscalated by: {{escalated_by}}\nReason: {{note}}\n\n— Cleva Financial Services\nEmpowering access`,
+    body:`Hi {{to_name}},\n\nAn application has been escalated and requires your attention.\n\nCustomer: {{customer_name}}\nApplication ID: {{app_id}}\nEscalated by: {{escalated_by}}\nReason: {{note}}\n\n— Cleva Credit\nEmpowering access`,
   },
 };
 const fillTpl=(str,params)=>str.replace(/\{\{(\w+)\}\}/g,(_,k)=>params[k]!=null?String(params[k]):'');
@@ -482,7 +482,7 @@ const sendEmail=(tplKey,params)=>{
     to_name:params.to_name||'',
     subject:fillTpl(tpl.subject,params),
     message:fillTpl(tpl.body,params),
-    from_name:'Cleva Financial Services',
+    from_name:'Cleva Credit',
   }).catch(e=>console.warn('[Email send failed]',e));
 };
 
@@ -4744,12 +4744,12 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
             <Card sx={{padding:'16px 18px'}}>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:14}}>Company identity — appears on all contracts</div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-                <FF label="Company name" req><input value={coDraft.name} onChange={e=>sco('name',e.target.value)} placeholder="e.g. Cleva Financial Services Ltd"/></FF>
-                <FF label="Registration number"><input value={coDraft.regNo||''} onChange={e=>sco('regNo',e.target.value)} placeholder="e.g. RDB/2024/CL001"/></FF>
+                <FF label="Company name" req><input value={coDraft.name} onChange={e=>sco('name',e.target.value)} placeholder="e.g. Tech Land Limited"/></FF>
+                <FF label="Registration number"><input value={coDraft.regNo||''} onChange={e=>sco('regNo',e.target.value)} placeholder="e.g. 120632791"/></FF>
               </div>
               <FF label="Tagline / slogan"><input value={coDraft.tagline||''} onChange={e=>sco('tagline',e.target.value)} placeholder="e.g. Empowering access"/></FF>
               <div style={{marginTop:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                <FF label="Address"><input value={coDraft.address||''} onChange={e=>sco('address',e.target.value)} placeholder="e.g. KG 15 Avenue, Kigali"/></FF>
+                <FF label="Address"><input value={coDraft.address||''} onChange={e=>sco('address',e.target.value)} placeholder="e.g. Kigali, Rwanda"/></FF>
                 <PhoneInput label="Phone" value={coDraft.phone||''} onChange={v=>sco('phone',v)} placeholder="7XXXXXXXX"/>
                 <FF label="Email"><input type="email" value={coDraft.email||''} onChange={e=>sco('email',e.target.value)} placeholder="info@company.rw"/></FF>
                 <FF label="Website"><input value={coDraft.website||''} onChange={e=>sco('website',e.target.value)} placeholder="www.company.rw"/></FF>
