@@ -365,6 +365,46 @@ const DEFAULT_EMAIL_TPLS={
   },
 };
 const fillTpl=(str,params)=>str.replace(/\{\{(\w+)\}\}/g,(_,k)=>params[k]!=null?String(params[k]):'');
+
+// ── RWANDA LOCATION HIERARCHY (Province → District → Sector) ─────
+const RW_LOCATIONS={
+  provinces:[{id:'kigali',name:'City of Kigali'},{id:'northern',name:'Northern Province'},{id:'southern',name:'Southern Province'},{id:'eastern',name:'Eastern Province'},{id:'western',name:'Western Province'}],
+  districts:[
+    {id:'nyarugenge',name:'Nyarugenge',provinceId:'kigali'},{id:'gasabo',name:'Gasabo',provinceId:'kigali'},{id:'kicukiro',name:'Kicukiro',provinceId:'kigali'},
+    {id:'musanze',name:'Musanze',provinceId:'northern'},{id:'gicumbi',name:'Gicumbi',provinceId:'northern'},{id:'rulindo',name:'Rulindo',provinceId:'northern'},{id:'gakenke',name:'Gakenke',provinceId:'northern'},{id:'burera',name:'Burera',provinceId:'northern'},
+    {id:'nyanza',name:'Nyanza',provinceId:'southern'},{id:'huye',name:'Huye',provinceId:'southern'},{id:'muhanga',name:'Muhanga',provinceId:'southern'},{id:'kamonyi',name:'Kamonyi',provinceId:'southern'},{id:'nyamagabe',name:'Nyamagabe',provinceId:'southern'},
+    {id:'nyagatare',name:'Nyagatare',provinceId:'eastern'},{id:'rwamagana',name:'Rwamagana',provinceId:'eastern'},{id:'kayonza',name:'Kayonza',provinceId:'eastern'},{id:'gatsibo',name:'Gatsibo',provinceId:'eastern'},{id:'bugesera',name:'Bugesera',provinceId:'eastern'},{id:'ngoma',name:'Ngoma',provinceId:'eastern'},
+    {id:'rubavu',name:'Rubavu',provinceId:'western'},{id:'rusizi',name:'Rusizi',provinceId:'western'},{id:'karongi',name:'Karongi',provinceId:'western'},{id:'nyamasheke',name:'Nyamasheke',provinceId:'western'},{id:'nyabihu',name:'Nyabihu',provinceId:'western'}
+  ],
+  sectors:[
+    {id:'gitega',name:'Gitega',districtId:'nyarugenge'},{id:'kanyinya',name:'Kanyinya',districtId:'nyarugenge'},{id:'kimisagara',name:'Kimisagara',districtId:'nyarugenge'},{id:'nyarugenge_s',name:'Nyarugenge',districtId:'nyarugenge'},
+    {id:'kimironko',name:'Kimironko',districtId:'gasabo'},{id:'remera',name:'Remera',districtId:'gasabo'},{id:'gasabo_s',name:'Gasabo',districtId:'gasabo'},{id:'kacyiru',name:'Kacyiru',districtId:'gasabo'},{id:'gisozi',name:'Gisozi',districtId:'gasabo'},
+    {id:'gikondo',name:'Gikondo',districtId:'kicukiro'},{id:'kicukiro_s',name:'Kicukiro',districtId:'kicukiro'},{id:'masaka',name:'Masaka',districtId:'kicukiro'},{id:'nyarugunga',name:'Nyarugunga',districtId:'kicukiro'},
+    {id:'muhoza',name:'Muhoza',districtId:'musanze'},{id:'nyange',name:'Nyange',districtId:'musanze'},{id:'kinigi',name:'Kinigi',districtId:'musanze'},{id:'busogo',name:'Busogo',districtId:'musanze'},
+    {id:'manyagiro',name:'Manyagiro',districtId:'gicumbi'},{id:'rubaya',name:'Rubaya',districtId:'gicumbi'},{id:'mutete',name:'Mutete',districtId:'gicumbi'},
+    {id:'base',name:'Base',districtId:'rulindo'},{id:'burega',name:'Burega',districtId:'rulindo'},{id:'buyoga',name:'Buyoga',districtId:'rulindo'},
+    {id:'cyabingo',name:'Cyabingo',districtId:'gakenke'},{id:'gakenke_s',name:'Gakenke',districtId:'gakenke'},{id:'mugunga',name:'Mugunga',districtId:'gakenke'},
+    {id:'bungwe',name:'Bungwe',districtId:'burera'},{id:'butaro',name:'Butaro',districtId:'burera'},{id:'cyeru',name:'Cyeru',districtId:'burera'},
+    {id:'busasamana',name:'Busasamana',districtId:'nyanza'},{id:'kigoma',name:'Kigoma',districtId:'nyanza'},{id:'mukingo',name:'Mukingo',districtId:'nyanza'},
+    {id:'ngoma_s',name:'Ngoma',districtId:'huye'},{id:'tumba',name:'Tumba',districtId:'huye'},{id:'huye_s',name:'Huye',districtId:'huye'},
+    {id:'nyamabuye',name:'Nyamabuye',districtId:'muhanga'},{id:'shyogwe',name:'Shyogwe',districtId:'muhanga'},{id:'muhanga_s',name:'Muhanga',districtId:'muhanga'},
+    {id:'gacurabwenge',name:'Gacurabwenge',districtId:'kamonyi'},{id:'karama',name:'Karama',districtId:'kamonyi'},{id:'rudenzi',name:'Rudenzi',districtId:'kamonyi'},
+    {id:'gasaka',name:'Gasaka',districtId:'nyamagabe'},{id:'kaduha',name:'Kaduha',districtId:'nyamagabe'},{id:'kibirizi',name:'Kibirizi',districtId:'nyamagabe'},
+    {id:'gatunda',name:'Gatunda',districtId:'nyagatare'},{id:'karama_e',name:'Karama',districtId:'nyagatare'},{id:'nyagatare_s',name:'Nyagatare',districtId:'nyagatare'},{id:'tabagwe',name:'Tabagwe',districtId:'nyagatare'},
+    {id:'gishari',name:'Gishari',districtId:'rwamagana'},{id:'muyumbu',name:'Muyumbu',districtId:'rwamagana'},{id:'rwamagana_s',name:'Rwamagana',districtId:'rwamagana'},
+    {id:'gahini',name:'Gahini',districtId:'kayonza'},{id:'mukarange',name:'Mukarange',districtId:'kayonza'},{id:'murundi',name:'Murundi',districtId:'kayonza'},
+    {id:'gatsibo_s',name:'Gatsibo',districtId:'gatsibo'},{id:'kiziguro',name:'Kiziguro',districtId:'gatsibo'},{id:'murambi',name:'Murambi',districtId:'gatsibo'},
+    {id:'juru',name:'Juru',districtId:'bugesera'},{id:'kamabuye',name:'Kamabuye',districtId:'bugesera'},{id:'nyamata',name:'Nyamata',districtId:'bugesera'},
+    {id:'gashanda',name:'Gashanda',districtId:'ngoma'},{id:'karembo',name:'Karembo',districtId:'ngoma'},{id:'sake',name:'Sake',districtId:'ngoma'},
+    {id:'bugoyi',name:'Bugoyi',districtId:'rubavu'},{id:'busasamana_w',name:'Busasamana',districtId:'rubavu'},{id:'cyanzarwe',name:'Cyanzarwe',districtId:'rubavu'},
+    {id:'bweyeye',name:'Bweyeye',districtId:'rusizi'},{id:'giheke',name:'Giheke',districtId:'rusizi'},{id:'kamembe',name:'Kamembe',districtId:'rusizi'},
+    {id:'bwishyura',name:'Bwishyura',districtId:'karongi'},{id:'gishyita',name:'Gishyita',districtId:'karongi'},{id:'murambi_k',name:'Murambi',districtId:'karongi'},
+    {id:'busheke',name:'Busheke',districtId:'nyamasheke'},{id:'kagano',name:'Kagano',districtId:'nyamasheke'},{id:'kanjongo',name:'Kanjongo',districtId:'nyamasheke'},
+    {id:'bigogwe',name:'Bigogwe',districtId:'nyabihu'},{id:'jenda',name:'Jenda',districtId:'nyabihu'},{id:'mukamira',name:'Mukamira',districtId:'nyabihu'}
+  ]
+};
+const getDistrictsByProvince=(provinceId)=>RW_LOCATIONS.districts.filter(d=>d.provinceId===provinceId);
+const getSectorsByDistrict=(districtId)=>RW_LOCATIONS.sectors.filter(s=>s.districtId===districtId);
 let _ejsReady=false;
 const sendEmail=(tplKey,params)=>{
   if(!EMAIL_CFG.publicKey||!EMAIL_CFG.templateId||EMAIL_CFG.templateId==='YOUR_TEMPLATE_ID')return;
@@ -571,6 +611,7 @@ const TR={
     national_id_number:'National ID number (16 digits)',passport_number:'Passport number',
     id_ph_nid:'16 digits',id_ph_passport:'e.g. AB1234567',
     phone_number:'Phone number',occupation:'Occupation',select_ph:'Select...',
+    province:'Province',district:'District',sector:'Sector',province_ph:'Select province',district_ph:'Select district',sector_ph:'Select sector',
     address_loc:'Address / location',address_ph:'e.g. Kimironko, Gasabo',
     monthly_income:'Monthly income (RWF)',income_ph:'e.g. 150000',
     documents:'Documents',customer_photo:'Customer photo',id_document:'ID document (photo)',proof_of_income:'Proof of income',
@@ -713,6 +754,7 @@ const TR={
     national_id_number:'Numero ya indangamuntu (imibare 16)',passport_number:'Numero ya pasiporo',
     id_ph_nid:'Imibare 16',id_ph_passport:'urugero: AB1234567',
     phone_number:'Numero ya telefoni',occupation:'Akazi',select_ph:'Hitamo...',
+    province:'Intara',district:'Akarere',sector:'Umurenge',province_ph:'Hitamo intara',district_ph:'Hitamo akarere',sector_ph:'Hitamo umurenge',
     address_loc:'Aderesi / ahabana',address_ph:'urugero: Kimironko, Gasabo',
     monthly_income:'Inyungu za buri kwezi (RWF)',income_ph:'urugero: 150000',
     documents:'Impapuro',customer_photo:'Ifoto y\'umukiriya',id_document:'Ifoto y\'indangamuntu',proof_of_income:'Icyemezo cy\'inyungu',
@@ -1236,21 +1278,22 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
   const pendingReqs=(app.application?.fieldCorrectionRequests||[]).filter(r=>!r.resolvedAt);
   const requested=pendingReqs.map(r=>r.fieldName);
   const highlight=(key)=>requested.includes(key)?{borderLeft:'3px solid var(--warn)',background:'var(--warnBg)',padding:'8px 10px',margin:'0 -10px 8px -10px',borderRadius:'var(--r2)'}:{};
-  const [f,setF]=useState({name:app.c.name,idType:app.c.idType||'nid',nid:app.c.nid,phone:app.c.phone,addr:app.c.addr,occ:app.c.occ,income:String(app.c.income||''),kn:app.c.kin.name,kp:app.c.kin.phone,kr:app.c.kin.rel,did:app.dev.id});
+  const [f,setF]=useState({name:app.c.name,idType:app.c.idType||'nid',nid:app.c.nid,phone:app.c.phone,province:app.c.province||app.application?.province||'',district:app.c.district||app.application?.district||'',sector:app.c.sector||app.application?.sector||'',addr:app.c.addr,occ:app.c.occ,income:String(app.c.income||''),kn:app.c.kin.name,kp:app.c.kin.phone,kr:app.c.kin.rel,did:app.dev.id});
   const [e,setE]=useState({});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const validate=()=>{
     const er={};
     if(!f.name.trim())er.name=t('err_required');
     if(f.idType==='nid'){if(f.nid.replace(/\D/g,'').length!==16)er.nid=t('err_nid_16');}else{if(!f.nid.trim())er.nid=t('err_passport');}
-    if(!f.phone.trim())er.phone=t('err_required');if(!f.addr.trim())er.addr=t('err_required');if(!f.occ)er.occ=t('err_required');if(!f.income||isNaN(f.income)||+f.income<1)er.income=t('err_income');if(!f.kn.trim())er.kn=t('err_required');if(!f.kp.trim())er.kp=t('err_required');if(!f.kr)er.kr=t('err_required');if(!f.did)er.did=t('err_device');
+    if(!f.phone.trim())er.phone=t('err_required');if(!f.province)er.province=t('err_required');if(!f.district)er.district=t('err_required');if(!f.sector)er.sector=t('err_required');if(!f.addr.trim())er.addr=t('err_required');if(!f.occ)er.occ=t('err_required');if(!f.income||isNaN(f.income)||+f.income<1)er.income=t('err_income');if(!f.kn.trim())er.kn=t('err_required');if(!f.kp.trim())er.kp=t('err_required');if(!f.kr)er.kr=t('err_required');if(!f.did)er.did=t('err_device');
     setE(er);return!Object.keys(er).length;
   };
   const submit=()=>{
     if(!validate())return;
     const dev=(devices||[]).find(d=>d.id===f.did);if(!dev){addToast('err','Device required','');return;}
     const ap=app.application||{};
-    const application={...ap,fullName:f.name.trim(),nationalIdNumber:f.nid,phoneNumber:f.phone.trim(),address:f.addr.trim(),employmentType:f.occ,monthlyIncomeRwf:+f.income,guarantorName:f.kn.trim(),guarantorPhone:f.kp.trim(),fieldCorrectionRequests:(ap.fieldCorrectionRequests||[]).map(r=>({...r,resolvedAt:r.resolvedAt||new Date().toISOString()}))};
+    const prov=RW_LOCATIONS.provinces.find(p=>p.id===f.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===f.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===f.sector);
+    const application={...ap,fullName:f.name.trim(),nationalIdNumber:f.nid,phoneNumber:f.phone.trim(),province:f.province,provinceName:prov?.name||'',district:f.district,districtName:dist?.name||'',sector:f.sector,sectorName:sec?.name||'',address:f.addr.trim(),employmentType:f.occ,monthlyIncomeRwf:+f.income,guarantorName:f.kn.trim(),guarantorPhone:f.kp.trim(),fieldCorrectionRequests:(ap.fieldCorrectionRequests||[]).map(r=>({...r,resolvedAt:r.resolvedAt||new Date().toISOString()}))};
     const deal=app.deal?{...app.deal,dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12,cogs:dev.retail}:{dealId:dev.id,manufacturer:dev.brand,deviceModel:dev.model,upfrontPayment:dev.dep,recurrentPayment:dev.weekly,termOption:dev.wks||12,totalCost:dev.totalCost||(dev.dep||0)+(dev.weekly||0)*12,cogs:dev.retail};
     onUpdate(app.id,{application,deal,status:ST.PENDING_APPROVAL,reviewLock:null,tlEntry:{by:user.name,txt:'Resubmitted after changes — returned to reviewer'}});
     addToast('ok',t('toast_resubmitted'),t('toast_resubmitted_msg'));onBack();
@@ -1278,6 +1321,11 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
         <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           <div style={highlight('phone')}><FF label={t('phone_number')} req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF></div>
           <div style={highlight('occ')}><FF label={t('occupation')} req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">{t('select_ph')}</option>{[[t('occ_trader'),'Trader / Business owner'],[t('occ_teacher'),'Teacher'],[t('occ_civil'),'Civil servant'],[t('occ_driver'),'Driver / Transport'],[t('occ_farmer'),'Farmer'],[t('occ_health'),'Healthcare worker'],[t('occ_student'),'Student'],[t('occ_other'),'Other']].map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}</select></FF></div>
+        </div>
+        <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
+          <div style={highlight('province')}><FF label={t('province')} req err={e.province}><select value={f.province} onChange={ev=>{const v=ev.target.value;s('province',v);s('district','');s('sector','');}} className={e.province?'err':''}><option value="">{t('province_ph')}</option>{RW_LOCATIONS.provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></FF></div>
+          <div style={highlight('district')}><FF label={t('district')} req err={e.district}><select value={f.district} onChange={ev=>{const v=ev.target.value;s('district',v);s('sector','');}} className={e.district?'err':''} disabled={!f.province}><option value="">{t('district_ph')}</option>{(f.province?getDistrictsByProvince(f.province):[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF></div>
+          <div style={highlight('sector')}><FF label={t('sector')} req err={e.sector}><select value={f.sector} onChange={ev=>s('sector',ev.target.value)} className={e.sector?'err':''} disabled={!f.district}><option value="">{t('sector_ph')}</option>{(f.district?getSectorsByDistrict(f.district):[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></FF></div>
         </div>
         <div style={highlight('addr')}><FF label={t('address_loc')} req err={e.addr}><input value={f.addr} onChange={ev=>s('addr',ev.target.value)} placeholder={t('address_ph')} className={e.addr?'err':''}/></FF></div>
         <div style={highlight('income')}><FF label={t('monthly_income')} req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder={t('income_ph')} className={e.income?'err':''}/></FF></div>
@@ -1348,8 +1396,9 @@ const buildContractData=(f,dev,term,pricing,user,companyInfo)=>{
   const co={...defaultCompanyInfo,...(companyInfo||{})};
   const date=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
   const discLabel=term===3?'Pay off in 3 months (30% early discount)':term===6?'Pay off in 6 months (20% early discount)':'Standard 12 months';
+  const prov=RW_LOCATIONS.provinces.find(p=>p.id===f.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===f.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===f.sector);
   return {co,f,dev,term,pricing,date,discLabel,repName:user?.name||'',
-    app:{fullName:f.name,nationalIdNumber:f.nid,idType:f.idType,phoneNumber:f.phone,address:f.addr,employmentType:f.occ,monthlyIncomeRwf:+f.income,guarantorName:f.kn,guarantorPhone:f.kp,customerPhoto:f.customerPhoto,idPhoto:f.idPhoto},
+    app:{fullName:f.name,nationalIdNumber:f.nid,idType:f.idType,phoneNumber:f.phone,province:f.province,provinceName:prov?.name||'',district:f.district,districtName:dist?.name||'',sector:f.sector,sectorName:sec?.name||'',address:f.addr,employmentType:f.occ,monthlyIncomeRwf:+f.income,guarantorName:f.kn,guarantorPhone:f.kp,customerPhoto:f.customerPhoto,idPhoto:f.idPhoto},
     deal:{manufacturer:dev.brand,deviceModel:dev.model,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,cogs:dev.retail||dev.cogs||dev.cash,totalCost:pricing.total,upfrontPayment:pricing.dep,recurrentPayment:pricing.monthly,termOption:12,markupRate:dev.markupRate||0,discountPct:pricing.disc}
   };
 };
@@ -1372,7 +1421,7 @@ const ContractDoc=({data,lang='en'})=>{
       custSig:'UMUKONO W’UMUKIRIYA',
       onBehalf:(n)=>`KU BW’${String(n||'KOMPANI').toUpperCase()}`,
       company:'Kompani',
-      address:'Aderesi',
+      province:'Intara',district:'Akarere',sector:'Umurenge',address:'Aderesi',
       phone:'Telefoni',
       email:'Imeri',
       reg:'Icyangombwa',
@@ -1415,7 +1464,7 @@ const ContractDoc=({data,lang='en'})=>{
       custSig:'CUSTOMER SIGNATURE',
       onBehalf:(n)=>`FOR AND ON BEHALF OF ${String(n||'COMPANY').toUpperCase()}`,
       company:'Company',
-      address:'Address',
+      province:'Province',district:'District',sector:'Sector',address:'Address',
       phone:'Phone',
       email:'Email',
       reg:'Registration',
@@ -1465,7 +1514,7 @@ const ContractDoc=({data,lang='en'})=>{
       </div>
       {S(L.parties,<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
         <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>{L.provider}</div><Row k={L.company} v={co.name}/><Row k={L.address} v={co.address}/><Row k={L.phone} v={co.phone}/><Row k={L.email} v={co.email}/><Row k={L.reg} v={co.regNo}/></div>
-        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>{L.customer}</div><Row k={L.fullname} v={f.name}/><Row k={L.id(f.idType)} v={f.nid}/><Row k={L.phone} v={f.phone}/><Row k={L.address} v={f.addr}/><Row k={L.occ} v={f.occ}/><Row k={L.income} v={fmtRWF(+f.income)}/></div>
+        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>{L.customer}</div><Row k={L.fullname} v={f.name}/><Row k={L.id(f.idType)} v={f.nid}/><Row k={L.phone} v={f.phone}/><Row k={L.province} v={RW_LOCATIONS.provinces.find(p=>p.id===f.province)?.name||data.app?.provinceName||'—'}/><Row k={L.district} v={RW_LOCATIONS.districts.find(d=>d.id===f.district)?.name||data.app?.districtName||'—'}/><Row k={L.sector} v={RW_LOCATIONS.sectors.find(s=>s.id===f.sector)?.name||data.app?.sectorName||'—'}/><Row k={L.address} v={f.addr}/><Row k={L.occ} v={f.occ}/><Row k={L.income} v={fmtRWF(+f.income)}/></div>
       </div>)}
       {S(L.deviceFin,<div>
         <Row k={L.device} v={`${dev.brand} ${dev.model} — ${dev.RAM||dev.ram||''} RAM / ${dev.ROM||dev.rom||''} Storage`}/>
@@ -1620,7 +1669,7 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature,lang=
   // Customer col — text only
   doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text(L.customer,colMid,startY);
   let ry=startY+5;
-  [[app.fullName||''],[`${L.idLabel(app.idType)}: ${app.nationalIdNumber||''}`],[`Phone: ${app.phoneNumber||''}`],[`Address: ${app.address||''}`],[`Occupation: ${app.employmentType||''}`],[`Income: RWF ${Number(app.monthlyIncomeRwf||0).toLocaleString()}`]].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);const lines=doc.splitTextToSize(v,CW/2-6);lines.forEach(l=>{doc.text(l,colMid,ry);ry+=4.5;});});
+  [[app.fullName||''],[`${L.idLabel(app.idType)}: ${app.nationalIdNumber||''}`],[`Phone: ${app.phoneNumber||''}`],[`Province: ${app.provinceName||''}`],[`District: ${app.districtName||''}`],[`Sector: ${app.sectorName||''}`],[`Address: ${app.address||''}`],[`Occupation: ${app.employmentType||''}`],[`Income: RWF ${Number(app.monthlyIncomeRwf||0).toLocaleString()}`]].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);const lines=doc.splitTextToSize(v,CW/2-6);lines.forEach(l=>{doc.text(l,colMid,ry);ry+=4.5;});});
   y=Math.max(ly,ry)+5;
   // ── Customer photo (portrait) + ID photo (landscape) side by side ──
   if(app.customerPhoto||app.idPhoto){
@@ -1713,7 +1762,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
   const {user,companyInfo}=useContext(Ctx);
   const t=useT();
   const [step,setStep]=useState(1);
-  const [f,setF]=useState(()=>initialData?{name:initialData.name||'',idType:initialData.idType||'nid',nid:initialData.nid||'',phone:initialData.phone||'',addr:initialData.addr||'',occ:initialData.occ||'',income:initialData.income?String(initialData.income):'',kn:initialData.kn||'',kp:initialData.kp||'',kr:initialData.kr||'',did:initialData.did||preSelDevId||'',term:initialData.term||preSelTerm,customerPhoto:initialData.customerPhoto||null,idPhoto:initialData.idPhoto||null,incomeProof:initialData.incomeProof||null}:{name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:preSelDevId||'',term:preSelTerm,customerPhoto:null,idPhoto:null,incomeProof:null});
+  const [f,setF]=useState(()=>initialData?{name:initialData.name||'',idType:initialData.idType||'nid',nid:initialData.nid||'',phone:initialData.phone||'',province:initialData.province||'',district:initialData.district||'',sector:initialData.sector||'',addr:initialData.addr||'',occ:initialData.occ||'',income:initialData.income?String(initialData.income):'',kn:initialData.kn||'',kp:initialData.kp||'',kr:initialData.kr||'',did:initialData.did||preSelDevId||'',term:initialData.term||preSelTerm,customerPhoto:initialData.customerPhoto||null,idPhoto:initialData.idPhoto||null,incomeProof:initialData.incomeProof||null}:{name:'',idType:'nid',nid:'',phone:'',province:'',district:'',sector:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:preSelDevId||'',term:preSelTerm,customerPhoto:null,idPhoto:null,incomeProof:null});
   const [e,setE]=useState({});
   const [cam,setCam]=useState(null);
   const [selBrand2,setSelBrand2]=useState(()=>{
@@ -1738,7 +1787,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
     if(!f.name.trim())er.name=t('err_required');
     if(f.idType==='nid'){if(f.nid.replace(/\D/g,'').length!==16)er.nid=t('err_nid_16');}
     else{if(!f.nid.trim())er.nid=t('err_passport');}
-    if(!f.phone.trim())er.phone=t('err_required');if(!f.addr.trim())er.addr=t('err_required');if(!f.occ)er.occ=t('err_required');if(!f.income||isNaN(f.income)||+f.income<1)er.income=t('err_income');if(!f.kn.trim())er.kn=t('err_required');if(!f.kp.trim())er.kp=t('err_required');if(!f.kr)er.kr=t('err_required');
+    if(!f.phone.trim())er.phone=t('err_required');if(!f.province)er.province=t('err_required');if(!f.district)er.district=t('err_required');if(!f.sector)er.sector=t('err_required');if(!f.addr.trim())er.addr=t('err_required');if(!f.occ)er.occ=t('err_required');if(!f.income||isNaN(f.income)||+f.income<1)er.income=t('err_income');if(!f.kn.trim())er.kn=t('err_required');if(!f.kp.trim())er.kp=t('err_required');if(!f.kr)er.kr=t('err_required');
     if(!f.customerPhoto)er.customerPhoto=t('err_customer_photo');if(!f.idPhoto)er.idPhoto=t('err_id_photo');if(!f.incomeProof)er.incomeProof=t('err_income_proof');
     setE(er);return!Object.keys(er).length;
   };
@@ -1782,6 +1831,11 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
             <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <FF label={t('phone_number')} req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF>
               <FF label={t('occupation')} req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">{t('select_ph')}</option>{[[t('occ_trader'),'Trader / Business owner'],[t('occ_teacher'),'Teacher'],[t('occ_civil'),'Civil servant'],[t('occ_driver'),'Driver / Transport'],[t('occ_farmer'),'Farmer'],[t('occ_health'),'Healthcare worker'],[t('occ_student'),'Student'],[t('occ_other'),'Other']].map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}</select></FF>
+            </div>
+            <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
+              <FF label={t('province')} req err={e.province}><select value={f.province} onChange={ev=>{const v=ev.target.value;s('province',v);s('district','');s('sector','');}} className={e.province?'err':''}><option value="">{t('province_ph')}</option>{RW_LOCATIONS.provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></FF>
+              <FF label={t('district')} req err={e.district}><select value={f.district} onChange={ev=>{const v=ev.target.value;s('district',v);s('sector','');}} className={e.district?'err':''} disabled={!f.province}><option value="">{t('district_ph')}</option>{(f.province?getDistrictsByProvince(f.province):[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF>
+              <FF label={t('sector')} req err={e.sector}><select value={f.sector} onChange={ev=>s('sector',ev.target.value)} className={e.sector?'err':''} disabled={!f.district}><option value="">{t('sector_ph')}</option>{(f.district?getSectorsByDistrict(f.district):[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></FF>
             </div>
             <FF label={t('address_loc')} req err={e.addr}><input value={f.addr} onChange={ev=>s('addr',ev.target.value)} placeholder={t('address_ph')} className={e.addr?'err':''}/></FF>
             <FF label={t('monthly_income')} req err={e.income}><input type="number" value={f.income} onChange={ev=>s('income',ev.target.value)} placeholder={t('income_ph')} className={e.income?'err':''}/></FF>
@@ -1883,7 +1937,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
             <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:22}}>
               <div>
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Customer</div>
-                {[['Full name',f.name],[f.idType==='nid'?'National ID':'Passport',f.nid],['Phone',f.phone],['Address',f.addr],['Occupation',f.occ],['Monthly income',fmtRWF(+f.income)],['Next of kin',`${f.kn} (${f.kr})`],['Kin phone',f.kp],['Documents','Customer photo ✓ · ID ✓ · Income proof ✓']].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+                {(()=>{const prov=RW_LOCATIONS.provinces.find(p=>p.id===f.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===f.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===f.sector);const loc=[prov?.name,dist?.name,sec?.name].filter(Boolean).join(' → ');return[['Full name',f.name],[f.idType==='nid'?'National ID':'Passport',f.nid],['Phone',f.phone],['Province',prov?.name||'—'],['District',dist?.name||'—'],['Sector',sec?.name||'—'],['Address',f.addr],['Occupation',f.occ],['Monthly income',fmtRWF(+f.income)],['Next of kin',`${f.kn} (${f.kr})`],['Kin phone',f.kp],['Documents','Customer photo ✓ · ID ✓ · Income proof ✓']];})().map(([k,v])=><Fld key={k} label={k} val={v}/>)}
               </div>
               <div>
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device & deal</div>
@@ -2413,6 +2467,9 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
                 <FldWithRequest fieldKey="nid" label={c.idType==='passport'?'Passport number':'National ID'} val={c.nid} requestedFields={requestedFields} onToggle={toggleRequest} mono/>
                 <FldWithRequest fieldKey="phone" label="Phone" val={c.phone} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="occ" label="Occupation" val={c.occ} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="province" label="Province" val={c.provinceName||RW_LOCATIONS.provinces.find(p=>p.id===c.province)?.name||'—'} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="district" label="District" val={c.districtName||RW_LOCATIONS.districts.find(d=>d.id===c.district)?.name||'—'} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="sector" label="Sector" val={c.sectorName||RW_LOCATIONS.sectors.find(s=>s.id===c.sector)?.name||'—'} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="addr" label="Address" val={c.addr} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="income" label="Monthly income" val={fmtRWF(c.income)} requestedFields={requestedFields} onToggle={toggleRequest}/>
               </div>
@@ -2609,7 +2666,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const [editC,setEditC]=useState(()=>({...app.c,kin:app.c.kin?{...app.c.kin}:{name:'',phone:'',rel:''}}));
   const [editNotes,setEditNotes]=useState(app.notes||'');
   const [newTlTxt,setNewTlTxt]=useState('');
-  const saveCustomer=()=>{const c={name:editC.name.trim(),idType:editC.idType||'nid',nid:editC.nid,phone:editC.phone.trim(),addr:editC.addr.trim(),occ:editC.occ,income:+editC.income,kin:{name:editC.kin.name.trim(),phone:editC.kin.phone.trim(),rel:editC.kin.rel}};onUpdate(app.id,{c,tlEntry:{by:user.name,txt:'Customer info updated (superuser)'}});addToast('ok','Customer updated','');setShowEditCustomer(false);};
+  const saveCustomer=()=>{const prov=RW_LOCATIONS.provinces.find(p=>p.id===editC.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===editC.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===editC.sector);const c={name:editC.name.trim(),idType:editC.idType||'nid',nid:editC.nid,phone:editC.phone.trim(),province:editC.province||'',provinceName:prov?.name||'',district:editC.district||'',districtName:dist?.name||'',sector:editC.sector||'',sectorName:sec?.name||'',addr:editC.addr.trim(),occ:editC.occ,income:+editC.income,kin:{name:editC.kin.name.trim(),phone:editC.kin.phone.trim(),rel:editC.kin.rel}};const ap=app.application||{};const application={...ap,fullName:c.name,nationalIdNumber:c.nid,phoneNumber:c.phone,province:c.province,provinceName:c.provinceName,district:c.district,districtName:c.districtName,sector:c.sector,sectorName:c.sectorName,address:c.addr,employmentType:c.occ,monthlyIncomeRwf:c.income,guarantorName:c.kin.name,guarantorPhone:c.kin.phone};onUpdate(app.id,{c,application,tlEntry:{by:user.name,txt:'Customer info updated (superuser)'}});addToast('ok','Customer updated','');setShowEditCustomer(false);};
   const saveNotes=()=>{onUpdate(app.id,{notes:editNotes});addToast('ok','Notes updated','');};
   const addTlEntry=()=>{if(!newTlTxt.trim())return;onUpdate(app.id,{tlEntry:{by:user.name,txt:newTlTxt.trim()}});addToast('ok','Timeline entry added','');setNewTlTxt('');};
   useEffect(()=>{setEditNotes(app.notes||'');},[app.id,app.notes]);
@@ -2716,7 +2773,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
             const tp={total:deal.totalCost||0,dep:deal.upfrontPayment||0,monthly:deal.recurrentPayment||0,disc:deal.discountPct||0,savings:deal.discountPct>0?Math.round(deal.totalCost/(1-deal.discountPct))-deal.totalCost:0,term:deal.termOption||12};
             const term=deal.termOption||12;
             const discLabel=term===3?'Pay off in 3 months (30% early discount)':term===6?'Pay off in 6 months (20% early discount)':'Standard 12 months';
-            const contractData={id:app.id,createdAt:app.createdAt,repName:app.rep||'',co:{...defaultCompanyInfo,...(companyInfo||{})},f:{name:ap.fullName||'',nid:ap.nationalIdNumber||'',idType:ap.idType||'nid',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kn:ap.guarantorName||'',kp:ap.guarantorPhone||'',kr:'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},dev:{brand:deal.manufacturer||'',model:deal.deviceModel||'',ram:deal.RAM||'',rom:deal.ROM||'',retail:deal.cogs||0,markupRate:deal.markupRate||0},term,pricing:tp,date:new Date(app.createdAt||Date.now()).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),discLabel,app:{fullName:ap.fullName||'',nationalIdNumber:ap.nationalIdNumber||'',idType:ap.idType||'nid',phoneNumber:ap.phoneNumber||'',address:ap.address||'',employmentType:ap.employmentType||'',monthlyIncomeRwf:ap.monthlyIncomeRwf||0,guarantorName:ap.guarantorName||'',guarantorPhone:ap.guarantorPhone||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},deal};
+            const contractData={id:app.id,createdAt:app.createdAt,repName:app.rep||'',co:{...defaultCompanyInfo,...(companyInfo||{})},f:{name:ap.fullName||'',nid:ap.nationalIdNumber||'',idType:ap.idType||'nid',phone:ap.phoneNumber||'',province:ap.province||'',district:ap.district||'',sector:ap.sector||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kn:ap.guarantorName||'',kp:ap.guarantorPhone||'',kr:'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},dev:{brand:deal.manufacturer||'',model:deal.deviceModel||'',ram:deal.RAM||'',rom:deal.ROM||'',retail:deal.cogs||0,markupRate:deal.markupRate||0},term,pricing:tp,date:new Date(app.createdAt||Date.now()).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),discLabel,app:{fullName:ap.fullName||'',nationalIdNumber:ap.nationalIdNumber||'',idType:ap.idType||'nid',phoneNumber:ap.phoneNumber||'',province:ap.province||'',provinceName:ap.provinceName||'',district:ap.district||'',districtName:ap.districtName||'',sector:ap.sector||'',sectorName:ap.sectorName||'',address:ap.address||'',employmentType:ap.employmentType||'',monthlyIncomeRwf:ap.monthlyIncomeRwf||0,guarantorName:ap.guarantorName||'',guarantorPhone:ap.guarantorPhone||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},deal};
             // Default to EN download button; signed customers can also download RW from the signing panel
             generateContractPDF(contractData,companyInfo||defaultCompanyInfo,ap.customerSignature||null,'en');
           }}>{t('dl_contract_pdf')}</Btn>
@@ -2727,8 +2784,8 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
         <Card sx={{padding:'16px 18px'}}>
           <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:13}}>{t('customer_lbl')}</div>
           {(isUnderwriter&&reviewable?[
-            ['name',t('full_name'),c.name],['nid',(c.idType==='passport'?t('passport_number'):t('national_id')),c.nid],['phone',t('phone_number'),c.phone],['addr',t('address_loc'),c.addr],['occ',t('occupation'),c.occ],['income',t('monthly_income'),fmtRWF(c.income)]
-          ]:[[ t('full_name'),c.name],[(c.idType==='passport'?t('passport_number'):t('national_id')),c.nid],[t('phone_number'),c.phone],[t('address_loc'),c.addr],[t('occupation'),c.occ],[t('monthly_income'),fmtRWF(c.income)]]).map((arr)=>{
+            ['name',t('full_name'),c.name],['nid',(c.idType==='passport'?t('passport_number'):t('national_id')),c.nid],['phone',t('phone_number'),c.phone],['province',t('province'),c.provinceName||RW_LOCATIONS.provinces.find(p=>p.id===c.province)?.name||'—'],['district',t('district'),c.districtName||RW_LOCATIONS.districts.find(d=>d.id===c.district)?.name||'—'],['sector',t('sector'),c.sectorName||RW_LOCATIONS.sectors.find(s=>s.id===c.sector)?.name||'—'],['addr',t('address_loc'),c.addr],['occ',t('occupation'),c.occ],['income',t('monthly_income'),fmtRWF(c.income)]
+          ]:[[ t('full_name'),c.name],[(c.idType==='passport'?t('passport_number'):t('national_id')),c.nid],[t('phone_number'),c.phone],[t('province'),c.provinceName||RW_LOCATIONS.provinces.find(p=>p.id===c.province)?.name||'—'],[t('district'),c.districtName||RW_LOCATIONS.districts.find(d=>d.id===c.district)?.name||'—'],[t('sector'),c.sectorName||RW_LOCATIONS.sectors.find(s=>s.id===c.sector)?.name||'—'],[t('address_loc'),c.addr],[t('occupation'),c.occ],[t('monthly_income'),fmtRWF(c.income)]]).map((arr)=>{
             if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
             return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
           })}
@@ -2858,7 +2915,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Set status</label><select value={app.status} onChange={ev=>{const v=ev.target.value;onUpdate(app.id,{status:v,tlEntry:{by:user.name,txt:`Status set to ${SM[v]?.label||v} (superuser)`}});addToast('ok','Status updated','');}} style={{padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid var(--border)',minWidth:180}}>{statusOptions.map(([val,label])=><option key={val} value={val}>{label}</option>)}</select></div>
             <div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Notes</label><textarea value={editNotes} onChange={ev=>setEditNotes(ev.target.value)} placeholder="Internal notes..." rows={2} style={{width:'100%',padding:10,borderRadius:'var(--r2)',border:'1.5px solid var(--border)'}}/><div style={{marginTop:6}}><Btn onClick={saveNotes} v="def" sz="sm">Save notes</Btn></div></div>
-            <div><Btn onClick={()=>{setShowEditCustomer(p=>{if(!p)setEditC({...app.c,kin:app.c.kin?{...app.c.kin}:{name:'',phone:'',rel:''}});return !p;});}} v="def" sz="sm">{showEditCustomer?'Cancel edit':'Edit customer info'}</Btn>{showEditCustomer&&(<div style={{marginTop:12,display:'flex',flexDirection:'column',gap:10}}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><FF label="Name"><input value={editC.name} onChange={ev=>setEditC(p=>({...p,name:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="ID type"><select value={editC.idType||'nid'} onChange={ev=>setEditC(p=>({...p,idType:ev.target.value}))}><option value="nid">National ID</option><option value="passport">Passport</option></select></FF></div><FF label={editC.idType==='passport'?'Passport number':'National ID'}><input value={editC.nid} onChange={ev=>setEditC(p=>({...p,nid:ev.target.value}))} style={{padding:'6px 10px',width:'100%',fontFamily:'DM Mono,monospace'}}/></FF><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><FF label="Phone"><input value={editC.phone} onChange={ev=>setEditC(p=>({...p,phone:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Occupation"><select value={editC.occ} onChange={ev=>setEditC(p=>({...p,occ:ev.target.value}))}><option value="">Select</option>{OCCS.map(o=><option key={o} value={o}>{o}</option>)}</select></FF></div><FF label="Address"><input value={editC.addr} onChange={ev=>setEditC(p=>({...p,addr:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Monthly income (RWF)"><input type="number" value={editC.income} onChange={ev=>setEditC(p=>({...p,income:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><div style={{fontSize:11,fontWeight:600,color:'var(--textLight)',marginTop:8}}>Next of kin</div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}><FF label="Name"><input value={editC.kin.name} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,name:ev.target.value}}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Phone"><input value={editC.kin.phone} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,phone:ev.target.value}}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Relationship"><select value={editC.kin.rel} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,rel:ev.target.value}}))}><option value="">Select</option>{RELS.map(r=><option key={r} value={r}>{r}</option>)}</select></FF></div><Btn onClick={saveCustomer} v="ok" sz="sm" style={{marginTop:10}}>Save customer</Btn></div>)}</div>
+            <div><Btn onClick={()=>{setShowEditCustomer(p=>{if(!p)setEditC({...app.c,kin:app.c.kin?{...app.c.kin}:{name:'',phone:'',rel:''}});return !p;});}} v="def" sz="sm">{showEditCustomer?'Cancel edit':'Edit customer info'}</Btn>{showEditCustomer&&(<div style={{marginTop:12,display:'flex',flexDirection:'column',gap:10}}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><FF label="Name"><input value={editC.name} onChange={ev=>setEditC(p=>({...p,name:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="ID type"><select value={editC.idType||'nid'} onChange={ev=>setEditC(p=>({...p,idType:ev.target.value}))}><option value="nid">National ID</option><option value="passport">Passport</option></select></FF></div><FF label={editC.idType==='passport'?'Passport number':'National ID'}><input value={editC.nid} onChange={ev=>setEditC(p=>({...p,nid:ev.target.value}))} style={{padding:'6px 10px',width:'100%',fontFamily:'DM Mono,monospace'}}/></FF><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><FF label="Phone"><input value={editC.phone} onChange={ev=>setEditC(p=>({...p,phone:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Occupation"><select value={editC.occ} onChange={ev=>setEditC(p=>({...p,occ:ev.target.value}))}><option value="">Select</option>{OCCS.map(o=><option key={o} value={o}>{o}</option>)}</select></FF></div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}><FF label="Province"><select value={editC.province||''} onChange={ev=>{const v=ev.target.value;setEditC(p=>({...p,province:v,district:'',sector:''}));}} style={{padding:'6px 10px',width:'100%'}}><option value="">Select</option>{RW_LOCATIONS.provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></FF><FF label="District"><select value={editC.district||''} onChange={ev=>{const v=ev.target.value;setEditC(p=>({...p,district:v,sector:''}));}} disabled={!editC.province} style={{padding:'6px 10px',width:'100%'}}><option value="">Select</option>{(editC.province?getDistrictsByProvince(editC.province):[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF><FF label="Sector"><select value={editC.sector||''} onChange={ev=>setEditC(p=>({...p,sector:ev.target.value}))} disabled={!editC.district} style={{padding:'6px 10px',width:'100%'}}><option value="">Select</option>{(editC.district?getSectorsByDistrict(editC.district):[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></FF></div><FF label="Address"><input value={editC.addr} onChange={ev=>setEditC(p=>({...p,addr:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Monthly income (RWF)"><input type="number" value={editC.income} onChange={ev=>setEditC(p=>({...p,income:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><div style={{fontSize:11,fontWeight:600,color:'var(--textLight)',marginTop:8}}>Next of kin</div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}><FF label="Name"><input value={editC.kin.name} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,name:ev.target.value}}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Phone"><input value={editC.kin.phone} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,phone:ev.target.value}}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Relationship"><select value={editC.kin.rel} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,rel:ev.target.value}}))}><option value="">Select</option>{RELS.map(r=><option key={r} value={r}>{r}</option>)}</select></FF></div><Btn onClick={saveCustomer} v="ok" sz="sm" style={{marginTop:10}}>Save customer</Btn></div>)}</div>
             {devices&&devices.length>0&&<div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Change device</label><select value={app.dev?.id} onChange={ev=>{const dev=(devices||[]).find(d=>d.id===ev.target.value);if(dev){onUpdate(app.id,{dev,tlEntry:{by:user.name,txt:`Device changed to ${dev.brand} ${dev.model} (superuser)`}});addToast('ok','Device updated','');}}} style={{padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid var(--border)',minWidth:200}}>{(devices||[]).map(d=> <option key={d.id} value={d.id}>{d.brand} {d.model} — {d.sku}</option>)}</select></div>}
             <div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Add timeline entry</label><div style={{display:'flex',gap:8,alignItems:'center'}}><input value={newTlTxt} onChange={ev=>setNewTlTxt(ev.target.value)} placeholder="e.g. Data correction applied" style={{flex:1,padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid var(--border)'}}/><Btn onClick={addTlEntry} v="def" sz="sm" disabled={!newTlTxt.trim()}>Add</Btn></div></div>
           </div>
@@ -2909,7 +2966,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
             const tp={total:deal.totalCost||0,dep:deal.upfrontPayment||0,monthly:deal.recurrentPayment||0,disc:deal.discountPct||0,savings:deal.discountPct>0?Math.round(deal.totalCost/(1-deal.discountPct))-deal.totalCost:0,term:deal.termOption||12};
             const term=deal.termOption||12;
             const discLabel=term===3?'Pay off in 3 months (30% early discount)':term===6?'Pay off in 6 months (20% early discount)':'Standard 12 months';
-            const contractData={id:app.id,createdAt:app.createdAt,repName:app.rep||'',co:{...defaultCompanyInfo,...(companyInfo||{})},f:{name:ap.fullName||'',nid:ap.nationalIdNumber||'',idType:ap.idType||'nid',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kn:ap.guarantorName||'',kp:ap.guarantorPhone||'',kr:ap.guarantorRel||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},dev:{brand:deal.manufacturer||'',model:deal.deviceModel||'',ram:deal.RAM||'',rom:deal.ROM||'',retail:deal.cogs||0,markupRate:deal.markupRate||0},term,pricing:tp,date:new Date(app.createdAt||Date.now()).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),discLabel,app:{fullName:ap.fullName||'',nationalIdNumber:ap.nationalIdNumber||'',idType:ap.idType||'nid',phoneNumber:ap.phoneNumber||'',address:ap.address||'',employmentType:ap.employmentType||'',monthlyIncomeRwf:ap.monthlyIncomeRwf||0,guarantorName:ap.guarantorName||'',guarantorPhone:ap.guarantorPhone||'',guarantorRel:ap.guarantorRel||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},deal};
+            const contractData={id:app.id,createdAt:app.createdAt,repName:app.rep||'',co:{...defaultCompanyInfo,...(companyInfo||{})},f:{name:ap.fullName||'',nid:ap.nationalIdNumber||'',idType:ap.idType||'nid',phone:ap.phoneNumber||'',province:ap.province||'',district:ap.district||'',sector:ap.sector||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kn:ap.guarantorName||'',kp:ap.guarantorPhone||'',kr:ap.guarantorRel||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},dev:{brand:deal.manufacturer||'',model:deal.deviceModel||'',ram:deal.RAM||'',rom:deal.ROM||'',retail:deal.cogs||0,markupRate:deal.markupRate||0},term,pricing:tp,date:new Date(app.createdAt||Date.now()).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),discLabel,app:{fullName:ap.fullName||'',nationalIdNumber:ap.nationalIdNumber||'',idType:ap.idType||'nid',phoneNumber:ap.phoneNumber||'',province:ap.province||'',provinceName:ap.provinceName||'',district:ap.district||'',districtName:ap.districtName||'',sector:ap.sector||'',sectorName:ap.sectorName||'',address:ap.address||'',employmentType:ap.employmentType||'',monthlyIncomeRwf:ap.monthlyIncomeRwf||0,guarantorName:ap.guarantorName||'',guarantorPhone:ap.guarantorPhone||'',guarantorRel:ap.guarantorRel||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},deal};
             return(
               <>
                 <div style={{maxHeight:320,overflow:'auto',border:'1.5px solid var(--border)',borderRadius:'var(--r)',marginBottom:14,padding:4,background:'white'}}>
@@ -3012,11 +3069,12 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const buildAppData=(f,dev,term)=>{
     const tp=dev?calcTermPricing(dev,term):{dep:0,monthly:0,total:0,disc:0};
     const deal=dev?{dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc}:null;
-    const application={fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,guarantorRel:f.kr||'',neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:Math.max(0,+f.income||0),pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:null,idType:f.idType,contractSignedAt:null,contractSignedLangs:null};
+    const prov=RW_LOCATIONS.provinces.find(p=>p.id===f.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===f.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===f.sector);
+    const application={fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,province:f.province,provinceName:prov?.name||'',district:f.district,districtName:dist?.name||'',sector:f.sector,sectorName:sec?.name||'',address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,guarantorRel:f.kr||'',neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:Math.max(0,+f.income||0),pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:null,idType:f.idType,contractSignedAt:null,contractSignedLangs:null};
     return{application,deal:deal||{}};
   };
   const draftToInitialData=(app)=>({
-    name:app.c?.name||'',idType:app.c?.idType||'nid',nid:app.c?.nid||'',phone:app.c?.phone||'',addr:app.c?.addr||'',occ:app.c?.occ||'',income:app.c?.income?String(app.c.income):'',
+    name:app.c?.name||'',idType:app.c?.idType||'nid',nid:app.c?.nid||'',phone:app.c?.phone||'',province:app.application?.province||app.c?.province||'',district:app.application?.district||app.c?.district||'',sector:app.application?.sector||app.c?.sector||'',addr:app.c?.addr||'',occ:app.c?.occ||'',income:app.c?.income?String(app.c.income):'',
     kn:app.c?.kin?.name||'',kp:app.c?.kin?.phone||'',kr:app.application?.guarantorRel||app.c?.kin?.rel||'',
     did:app.dev?.id||'',term:app.dev?.wks||12,
     customerPhoto:app.customerPhoto||null,idPhoto:app.idPhoto||null,incomeProof:app.incomeProof||null,
@@ -3024,7 +3082,7 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const startNewApp=(presel=null)=>{
     const id=nextContractId();
     const now=new Date().toISOString();
-    onUpdate(null,null,{id,merchantCode:user.merchantCode||'M01',shopId:user.shopId||null,status:ST.DRAFT,createdAt:now,updatedAt:now,repId:user.id,repName:user.name,application:{fullName:'',dateOfBirth:'',nationalIdNumber:'',phoneNumber:'',address:'',kycStatus:'pending',guarantorName:'',guarantorPhone:'',neighbourName:'',neighbourPhone:'',employerName:'',employmentType:'',monthlyIncomeRwf:0,monthlyExpensesRwf:0,freeCashflowRwf:0,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:null,idPhoto:null,incomeProof:null,customerSignature:null,idType:'nid'},deal:{},dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:now,by:user.name,txt:'Application started — draft auto-created'}]});
+    onUpdate(null,null,{id,merchantCode:user.merchantCode||'M01',shopId:user.shopId||null,status:ST.DRAFT,createdAt:now,updatedAt:now,repId:user.id,repName:user.name,application:{fullName:'',dateOfBirth:'',nationalIdNumber:'',phoneNumber:'',province:'',provinceName:'',district:'',districtName:'',sector:'',sectorName:'',address:'',kycStatus:'pending',guarantorName:'',guarantorPhone:'',neighbourName:'',neighbourPhone:'',employerName:'',employmentType:'',monthlyIncomeRwf:0,monthlyExpensesRwf:0,freeCashflowRwf:0,pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:null,idPhoto:null,incomeProof:null,customerSignature:null,idType:'nid'},deal:{},dealLocked:false,mboDecision:null,mboRejectionReason:null,underwritingChecklist:null,imei:null,riskGroup:1,tl:[{at:now,by:user.name,txt:'Application started — draft auto-created'}]});
     setActiveDraftId(id);
     if(presel)setPreselDev(presel);
     setPg('new');
@@ -3456,13 +3514,14 @@ const GroupAdminView=({apps,addToast,users,setUsers,shops,setShops,merchantGroup
 
   /* ── Shops tab ────────────────────────────────────────────── */
   const [showAddShop,setShowAddShop]=useState(false);
-  const [shopDraft,setShopDraft]=useState({name:'',location:'',merchantGroupId:''});
+  const [shopDraft,setShopDraft]=useState({name:'',province:'',district:'',sector:'',location:'',merchantGroupId:''});
   const mkShopId=()=>{const nums=(shops||[]).map(s=>parseInt(String(s.id).replace(/\D/g,''),10)).filter(n=>!isNaN(n));return 'SH-'+String(((nums.length?Math.max(...nums):0)+1)).padStart(3,'0');};
   const addShop=()=>{
     if(!shopDraft.name.trim()){addToast('err','Name required','');return;}
+    const prov=RW_LOCATIONS.provinces.find(p=>p.id===shopDraft.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===shopDraft.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===shopDraft.sector);
     const id=mkShopId();
-    setShops([...(shops||[]),{id,name:shopDraft.name.trim(),location:shopDraft.location.trim(),merchantGroupId:shopDraft.merchantGroupId||null,createdAt:new Date().toISOString()}]);
-    setShopDraft({name:'',location:'',merchantGroupId:''});setShowAddShop(false);
+    setShops([...(shops||[]),{id,name:shopDraft.name.trim(),province:shopDraft.province||'',provinceName:prov?.name||'',district:shopDraft.district||'',districtName:dist?.name||'',sector:shopDraft.sector||'',sectorName:sec?.name||'',location:shopDraft.location.trim(),merchantGroupId:shopDraft.merchantGroupId||null,createdAt:new Date().toISOString()}]);
+    setShopDraft({name:'',province:'',district:'',sector:'',location:'',merchantGroupId:''});setShowAddShop(false);
     addToast('ok','Shop added',`${shopDraft.name.trim()} (${id})`);
   };
 
@@ -3577,7 +3636,7 @@ const GroupAdminView=({apps,addToast,users,setUsers,shops,setShops,merchantGroup
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,marginBottom:10}}>
                         <div>
                           <div style={{fontWeight:700}}>{s.name} <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({s.id})</span></div>
-                          <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{s.location||'—'}</div>
+                          <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{[s.provinceName,s.districtName,s.sectorName].filter(Boolean).join(' → ')||s.location||'—'}</div>
                           <div style={{display:'flex',gap:10,marginTop:5,fontSize:11,color:'var(--textMid)'}}>
                             <span>👤 {repCount} rep{repCount!==1?'s':''}</span>
                             <span>📋 {appCount} app{appCount!==1?'s':''}</span>
@@ -3591,13 +3650,18 @@ const GroupAdminView=({apps,addToast,users,setUsers,shops,setShops,merchantGroup
                       </div>
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                         <FF label="Shop name"><input value={s.name} onChange={e=>setShops((shops||[]).map(x=>x.id===s.id?{...x,name:e.target.value}:x))}/></FF>
-                        <FF label="Location"><input value={s.location||''} onChange={e=>setShops((shops||[]).map(x=>x.id===s.id?{...x,location:e.target.value}:x))} placeholder="e.g. KG 15 Ave"/></FF>
                         <FF label="Retail group" req>
                           <select value={s.merchantGroupId||''} onChange={e=>setShops((shops||[]).map(x=>x.id===s.id?{...x,merchantGroupId:e.target.value||null}:x))}>
                             <option value="">— Unassigned —</option>
                             {mgs.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
                           </select>
                         </FF>
+                        <div style={{gridColumn:'1/-1',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+                          <FF label="Province"><select value={s.province||''} onChange={e=>{const v=e.target.value;const prov=RW_LOCATIONS.provinces.find(p=>p.id===v);setShops((shops||[]).map(x=>x.id===s.id?{...x,province:v,provinceName:prov?.name||'',district:'',districtName:'',sector:'',sectorName:''}:x));}}><option value="">Select</option>{RW_LOCATIONS.provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></FF>
+                          <FF label="District"><select value={s.district||''} onChange={e=>{const v=e.target.value;const dist=RW_LOCATIONS.districts.find(d=>d.id===v);setShops((shops||[]).map(x=>x.id===s.id?{...x,district:v,districtName:dist?.name||'',sector:'',sectorName:''}:x));}} disabled={!s.province}><option value="">Select</option>{(s.province?getDistrictsByProvince(s.province):[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF>
+                          <FF label="Sector"><select value={s.sector||''} onChange={e=>{const v=e.target.value;const sec=RW_LOCATIONS.sectors.find(sx=>sx.id===v);setShops((shops||[]).map(x=>x.id===s.id?{...x,sector:v,sectorName:sec?.name||''}:x));}} disabled={!s.district}><option value="">Select</option>{(s.district?getSectorsByDistrict(s.district):[]).map(sx=><option key={sx.id} value={sx.id}>{sx.name}</option>)}</select></FF>
+                        </div>
+                        <div style={{gridColumn:'1/-1'}}><FF label="Address / location"><input value={s.location||''} onChange={e=>setShops((shops||[]).map(x=>x.id===s.id?{...x,location:e.target.value}:x))} placeholder="e.g. KG 15 Ave"/></FF></div>
                       </div>
                     </Card>
                   );
@@ -3612,7 +3676,12 @@ const GroupAdminView=({apps,addToast,users,setUsers,shops,setShops,merchantGroup
                   </div>
                   <div style={{display:'flex',flexDirection:'column',gap:10}}>
                     <FF label="Shop name" req><input value={shopDraft.name} onChange={e=>setShopDraft(p=>({...p,name:e.target.value}))} placeholder="e.g. Remera Branch"/></FF>
-                    <FF label="Location"><input value={shopDraft.location} onChange={e=>setShopDraft(p=>({...p,location:e.target.value}))} placeholder="e.g. Remera, Kigali"/></FF>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+                      <FF label="Province"><select value={shopDraft.province} onChange={e=>{const v=e.target.value;setShopDraft(p=>({...p,province:v,district:'',sector:''}));}}><option value="">Select province</option>{RW_LOCATIONS.provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></FF>
+                      <FF label="District"><select value={shopDraft.district} onChange={e=>{const v=e.target.value;setShopDraft(p=>({...p,district:v,sector:''}));}} disabled={!shopDraft.province}><option value="">Select district</option>{(shopDraft.province?getDistrictsByProvince(shopDraft.province):[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF>
+                      <FF label="Sector"><select value={shopDraft.sector} onChange={e=>setShopDraft(p=>({...p,sector:e.target.value}))} disabled={!shopDraft.district}><option value="">Select sector</option>{(shopDraft.district?getSectorsByDistrict(shopDraft.district):[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></FF>
+                    </div>
+                    <FF label="Address / location"><input value={shopDraft.location} onChange={e=>setShopDraft(p=>({...p,location:e.target.value}))} placeholder="e.g. KG 15 Ave, Remera"/></FF>
                     <FF label="Retail group">
                       <select value={shopDraft.merchantGroupId} onChange={e=>setShopDraft(p=>({...p,merchantGroupId:e.target.value}))}>
                         <option value="">— Unassigned —</option>
@@ -4084,7 +4153,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
     const [editingShopId,setEditingShopId]=useState(null);
     const [newDev,setNewDev]=useState({brand:'',model:'',ram:'',rom:'',cash:''});
     const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',shopId:'',merchantGroupId:'',superuser:false});
-    const [newShop,setNewShop]=useState({name:'',location:'',merchantGroupId:''});
+    const [newShop,setNewShop]=useState({name:'',province:'',district:'',sector:'',location:'',merchantGroupId:''});
     const [cfgDraft,setCfgDraft]=useState({markupRate:Math.round(((pricingConfig||defaultPricingConfig).markupRate||0.60)*100),depositPct:Math.round(((pricingConfig||defaultPricingConfig).depositPct||0.20)*100)});
     // Company info — hooks must be at component top level
     const {companyInfo,setCompanyInfo}=useContext(Ctx);
@@ -4471,11 +4540,16 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
               <Card sx={{padding:16}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
                   <div style={{fontWeight:800}}>Add shop</div>
-                  <Btn v="def" sz="sm" onClick={()=>{setShowAddShop(false);setNewShop({name:'',location:'',merchantGroupId:''});}}>Cancel</Btn>
+                  <Btn v="def" sz="sm" onClick={()=>{setShowAddShop(false);setNewShop({name:'',province:'',district:'',sector:'',location:'',merchantGroupId:''});}}>Cancel</Btn>
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:10}}>
                   <FF label="Shop name" req><input value={newShop.name} onChange={e=>setNewShop(p=>({...p,name:e.target.value}))} placeholder="e.g. Remera Branch"/></FF>
-                  <FF label="Location"><input value={newShop.location} onChange={e=>setNewShop(p=>({...p,location:e.target.value}))} placeholder="e.g. Remera, Kigali"/></FF>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+                    <FF label="Province"><select value={newShop.province} onChange={e=>{const v=e.target.value;setNewShop(p=>({...p,province:v,district:'',sector:''}));}}><option value="">Select province</option>{RW_LOCATIONS.provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></FF>
+                    <FF label="District"><select value={newShop.district} onChange={e=>{const v=e.target.value;setNewShop(p=>({...p,district:v,sector:''}));}} disabled={!newShop.province}><option value="">Select district</option>{(newShop.province?getDistrictsByProvince(newShop.province):[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF>
+                    <FF label="Sector"><select value={newShop.sector} onChange={e=>setNewShop(p=>({...p,sector:e.target.value}))} disabled={!newShop.district}><option value="">Select sector</option>{(newShop.district?getSectorsByDistrict(newShop.district):[]).map(sx=><option key={sx.id} value={sx.id}>{sx.name}</option>)}</select></FF>
+                  </div>
+                  <FF label="Address / location"><input value={newShop.location} onChange={e=>setNewShop(p=>({...p,location:e.target.value}))} placeholder="e.g. KG 15 Ave, Remera"/></FF>
                   <FF label="Retail group">
                     <select value={newShop.merchantGroupId||''} onChange={e=>setNewShop(p=>({...p,merchantGroupId:e.target.value||null}))}>
                       <option value="">— Unassigned —</option>
@@ -4487,9 +4561,10 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                   </div>
                   <Btn v="primary" full icon="＋" onClick={()=>{
                     if(!newShop.name.trim()){addToast('err','Shop name required','');return;}
+                    const prov=RW_LOCATIONS.provinces.find(p=>p.id===newShop.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===newShop.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===newShop.sector);
                     const id=mkShopId();
-                    setShops([...(shops||[]),{id,name:newShop.name.trim(),location:newShop.location.trim(),merchantGroupId:newShop.merchantGroupId||null,createdAt:new Date().toISOString()}]);
-                    setNewShop({name:'',location:'',merchantGroupId:''});setShowAddShop(false);
+                    setShops([...(shops||[]),{id,name:newShop.name.trim(),province:newShop.province||'',provinceName:prov?.name||'',district:newShop.district||'',districtName:dist?.name||'',sector:newShop.sector||'',sectorName:sec?.name||'',location:newShop.location.trim(),merchantGroupId:newShop.merchantGroupId||null,createdAt:new Date().toISOString()}]);
+                    setNewShop({name:'',province:'',district:'',sector:'',location:'',merchantGroupId:''});setShowAddShop(false);
                     addToast('ok','Shop added',`${newShop.name.trim()} (${id})`);
                   }}>Create shop</Btn>
                 </div>
@@ -4512,7 +4587,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                         return(
                           <tr key={s.id}>
                             <td><div className="col-name">{s.name}</div><div className="col-mono" style={{fontSize:11,color:'var(--textLight)'}}>{s.id}</div></td>
-                            <td style={{fontSize:12,color:'var(--textMid)'}}>{s.location||'—'}</td>
+                            <td style={{fontSize:12,color:'var(--textMid)'}}>{[s.provinceName,s.districtName,s.sectorName].filter(Boolean).join(' → ')||s.location||'—'}</td>
                             <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{groupName}</td>
                             <td className="col-center"><span style={{fontSize:11,color:'var(--ok)',background:'var(--okBg)',padding:'2px 8px',borderRadius:99}}>Active</span><div style={{fontSize:10,color:'var(--textLight)',marginTop:2}}>{repCount} rep{repCount!==1?'s':''} · {appCount} app{appCount!==1?'s':''}</div></td>
                             <td><div className="row-actions"><Btn v="def" sz="sm" onClick={()=>setEditingShopId(s.id)}>Edit</Btn><Btn v="err" sz="sm" onClick={()=>{if(repCount>0){addToast('err','Cannot remove shop','Remove or reassign all reps first');return;}setShops((shops||[]).filter(sh=>sh.id!==s.id));addToast('ok','Shop removed','');}}>Remove</Btn></div></td>
@@ -4532,13 +4607,18 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}><div style={{fontWeight:800}}>Edit shop — {s.name}</div><Btn v="ghost" sz="sm" onClick={()=>setEditingShopId(null)}>✕</Btn></div>
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
                         <FF label="Shop name"><input value={s.name} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,name:e.target.value}:sh))}/></FF>
-                        <FF label="Location"><input value={s.location||''} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,location:e.target.value}:sh))} placeholder="e.g. KG 15 Ave, Kigali"/></FF>
                         <FF label="Retail group">
                           <select value={s.merchantGroupId||''} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,merchantGroupId:e.target.value||null}:sh))}>
                             <option value="">— Unassigned —</option>
                             {(merchantGroups||[]).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
                           </select>
                         </FF>
+                        <div style={{gridColumn:'1/-1',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+                          <FF label="Province"><select value={s.province||''} onChange={e=>{const v=e.target.value;const prov=RW_LOCATIONS.provinces.find(p=>p.id===v);setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,province:v,provinceName:prov?.name||'',district:'',districtName:'',sector:'',sectorName:''}:sh));}}><option value="">Select</option>{RW_LOCATIONS.provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></FF>
+                          <FF label="District"><select value={s.district||''} onChange={e=>{const v=e.target.value;const dist=RW_LOCATIONS.districts.find(d=>d.id===v);setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,district:v,districtName:dist?.name||'',sector:'',sectorName:''}:sh));}} disabled={!s.province}><option value="">Select</option>{(s.province?getDistrictsByProvince(s.province):[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF>
+                          <FF label="Sector"><select value={s.sector||''} onChange={e=>{const v=e.target.value;const sec=RW_LOCATIONS.sectors.find(sx=>sx.id===v);setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,sector:v,sectorName:sec?.name||''}:sh));}} disabled={!s.district}><option value="">Select</option>{(s.district?getSectorsByDistrict(s.district):[]).map(sx=><option key={sx.id} value={sx.id}>{sx.name}</option>)}</select></FF>
+                        </div>
+                        <div style={{gridColumn:'1/-1'}}><FF label="Address / location"><input value={s.location||''} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,location:e.target.value}:sh))} placeholder="e.g. KG 15 Ave, Kigali"/></FF></div>
                       </div>
                       <Btn v="primary" sz="sm" onClick={()=>setEditingShopId(null)}>Done</Btn>
                     </Card>
@@ -4743,7 +4823,7 @@ function contractToLegacyApp(c){
   const app=c;const ap=c.application||{};const deal=c.deal||{};
   return {
     ...app,
-    c:{name:ap.fullName||ap.name||'',nid:ap.nationalIdNumber||'',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kin:{name:ap.guarantorName||'',phone:ap.guarantorPhone||'',rel:ap.guarantorRel||'Guarantor'},idType:ap.idType||'nid'},
+    c:{name:ap.fullName||ap.name||'',nid:ap.nationalIdNumber||'',phone:ap.phoneNumber||'',addr:ap.address||'',province:ap.province||'',provinceName:ap.provinceName||'',district:ap.district||'',districtName:ap.districtName||'',sector:ap.sector||'',sectorName:ap.sectorName||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kin:{name:ap.guarantorName||'',phone:ap.guarantorPhone||'',rel:ap.guarantorRel||'Guarantor'},idType:ap.idType||'nid'},
     dev:{id:deal.dealId,brand:deal.manufacturer,model:deal.deviceModel,sku:deal.dealId,specs:[deal.RAM,deal.ROM].filter(Boolean).join(' '),ram:deal.RAM||'',rom:deal.ROM||'',dep:deal.upfrontPayment||0,weekly:deal.recurrentPayment||0,wks:deal.termOption||12,retail:deal.cogs,totalCost:deal.totalCost},
     rep:app.repName||'',repId:app.repId,shopId:app.shopId||null,
     notes:app.mboRejectionReason||app.notes||'',reviewer:app.mboReviewedBy||null,upya:app.upya||null,imei:app.imei,ptId:app.ptId,lockedAt:app.lockedAt,
