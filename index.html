@@ -486,6 +486,16 @@ const SM={
 };
 const CC={warn:{bg:'var(--warnBg)',fg:'var(--warn)',bd:'var(--warnBorder)'},info:{bg:'var(--infoBg)',fg:'var(--info)',bd:'var(--infoBorder)'},ok:{bg:'var(--okBg)',fg:'var(--ok)',bd:'var(--okBorder)'},err:{bg:'var(--errBg)',fg:'var(--err)',bd:'var(--errBorder)'},pur:{bg:'var(--purBg)',fg:'var(--pur)',bd:'var(--purBorder)'}};
 
+// Archive helpers
+const ARCHIVE_PERMITTED_ROLES=['ops','support'];
+const canSeeArchived=(user)=>!!(user?.superuser||ARCHIVE_PERMITTED_ROLES.includes(user?.role));
+const isRejected=(app)=>app.mboDecision==='REJECTED';
+const isArchived=(app)=>!!(app.archived_at||app.archivedAt);
+const POST_APPROVED_STATUSES=[ST.APPROVED,ST.LOCK_PENDING,ST.AWAITING_PAYMENT,ST.ACTIVE,ST.COMPLETED];
+const archivedAfterApproved=(app)=>POST_APPROVED_STATUSES.includes(app.archived_at_status||app.archivedAtStatus);
+const canArchive=(app,user)=>canSeeArchived(user)&&!isRejected(app)&&app.status!==ST.ACTIVE&&!isArchived(app);
+const canUnarchive=(app,user)=>canSeeArchived(user)&&isArchived(app)&&!archivedAfterApproved(app);
+
 // Role-based transitions: who can move to what. Sales rep cannot set ACTIVE.
 const ALLOWED_TRANSITIONS={
   rep:{[ST.DRAFT]:[ST.PENDING_APPROVAL],[ST.UNDER_REVIEW]:[ST.PENDING_APPROVAL]},
@@ -1078,6 +1088,22 @@ const Toast=({toasts})=>(
   </div>
 );
 
+const ConfirmModal=({title,message,confirmLabel='Confirm',cancelLabel='Cancel',onConfirm,onCancel,variant='primary'})=>{
+  const v=variant==='err'?'err':'primary';
+  return ReactDOM.createPortal(
+    <div style={{position:'fixed',inset:0,zIndex:9999,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={e=>e.target===e.currentTarget&&onCancel?.()}>
+      <div style={{background:'var(--surface)',borderRadius:'var(--r)',border:'1.5px solid var(--border)',boxShadow:'var(--sh2)',maxWidth:400,width:'100%',padding:24}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontWeight:700,fontSize:16,marginBottom:10}}>{title}</div>
+        <div style={{fontSize:13,color:'var(--textMid)',marginBottom:20,lineHeight:1.5}}>{message}</div>
+        <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+          <Btn v="ghost" sz="sm" onClick={onCancel}>{cancelLabel}</Btn>
+          <Btn v={v} sz="sm" onClick={onConfirm}>{confirmLabel}</Btn>
+        </div>
+      </div>
+    </div>,document.body
+  );
+};
+
 const LogoBrand=({iconSize=32,textSize=14,layout='row',bold=false,style={}})=>{
   const isCol=layout==='column';
   return(
@@ -1116,6 +1142,7 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
   const pending=(user.role==='underwriter'?apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)).length:0);
   const myUnderReviewCount=(user.role==='underwriter'?apps.filter(a=>[ST.PENDING_APPROVAL,ST.UNDER_REVIEW].includes(a.status)&&a.reviewLock&&a.reviewLock.by===user.id).length:0);
   const myCompletedActiveCount=(user.role==='underwriter'?apps.filter(a=>a.status===ST.ACTIVE&&a.mboReviewedBy===user.name).length:0);
+  const archivedCount=canSeeArchived(user)?apps.filter(a=>isArchived(a)).length:0;
   const navItems={
     rep:[{k:'dash',l:t('home'),badge:0},{k:'prices',l:t('price_list')}],
     underwriter:[
@@ -1123,8 +1150,8 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
       {k:'uw_under_review',l:'Applications under review',badge:myUnderReviewCount},
       {k:'uw_completed',l:'Completed applications',badge:myCompletedActiveCount},
     ],
-    support:[{k:'all',l:'Applications'}],
-    ops:user.superuser?[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},{k:'admin',l:'Admin'}]:[{k:'all',l:'All Applications'}],
+    support:[{k:'all',l:'Applications'},{k:'archived',l:'Archived Applications',badge:archivedCount}],
+    ops:user.superuser?[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},{k:'archived',l:'Archived Applications',badge:archivedCount},{k:'admin',l:'Admin'}]:[{k:'all',l:'All Applications'},{k:'archived',l:'Archived Applications',badge:archivedCount}],
     merchant:[{k:'sales',l:'Completed Sales'},{k:'team',l:'My Team'}],
     groupadmin:[{k:'groups',l:'Retail Groups'},{k:'shops',l:'Shops'},{k:'managers',l:'Managers'}],
   }[user.role]||[];
@@ -3494,46 +3521,60 @@ const SupportView=({apps,onUpdate,addToast})=>{
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
+  const [archiveModal,setArchiveModal]=useState(null);
+  const [unarchiveModal,setUnarchiveModal]=useState(null);
   const {user}=useContext(Ctx);
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
+  const baseList=pg==='archived'?apps.filter(a=>isArchived(a)):apps.filter(a=>!isArchived(a));
+  const filtered=baseList.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return (a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s)||(a.rep||'').toLowerCase().includes(s);});
+  const doArchive=(app)=>{const now=new Date().toISOString();onUpdate(app.id,{status:ST.ARCHIVED,archived_at:now,archivedAt:now,archived_by:user.name,archivedBy:user.name,archived_at_status:app.status,archivedAtStatus:app.status});setArchiveModal(null);addToast('ok','Application archived','');};
+  const doUnarchive=(app)=>{const prev=app.archived_at_status||app.archivedAtStatus||ST.DRAFT;onUpdate(app.id,{status:prev,archived_at:null,archivedAt:null,archived_by:null,archivedBy:null,archived_at_status:null,archivedAtStatus:null});setUnarchiveModal(null);addToast('ok','Application unarchived','');};
   if(sel){
     const app=apps.find(a=>a.id===sel);
     if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
-  const filtered=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return (a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s)||(a.rep||'').toLowerCase().includes(s);});
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>Applications</span></div>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{pg==='archived'?'Archived Applications':'Applications'}</span></div>
         <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,flexWrap:'wrap',gap:10}}>
-            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',margin:0}}>Applications</h1>
+            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',margin:0}}>{pg==='archived'?'Archived Applications':'Applications'}</h1>
             <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name, ID, or rep…" style={{maxWidth:320,width:'100%'}}/>
           </div>
           <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{filtered.length} result{filtered.length!==1?'s':''}</div>
           {filtered.length>0?(
             <div className="admin-table-wrap" style={{maxHeight:'calc(100vh - 280px)',overflow:'auto'}}>
               <table className="admin-table">
-                <thead><tr><th>Application</th><th>Customer</th><th>Status</th><th className="hide-mobile">Rep</th><th>Created</th><th className="hide-mobile">Updated</th><th style={{width:60}}></th></tr></thead>
+                <thead><tr><th>Application</th><th>Customer</th><th>Status</th><th className="hide-mobile">Rep</th><th>Created</th><th className="hide-mobile">Updated</th>{canSeeArchived(user)&&<th style={{width:100}}>Actions</th>}<th style={{width:60}}></th></tr></thead>
                 <tbody>
-                  {filtered.map(a=>(
-                    <tr key={a.id} onClick={()=>setSel(a.id)} style={{cursor:'pointer'}}>
-                      <td><div className="col-name">{a.c?.name||'—'}</div><div className="col-mono" style={{fontSize:11,color:'var(--textLight)'}}>{a.id}</div></td>
+                  {filtered.map(a=>{
+                    const archived=isArchived(a);
+                    const rowStyle=archived?{opacity:0.75,background:'var(--bg)'}:{};
+                    return(
+                    <tr key={a.id} onClick={()=>!archiveModal&&!unarchiveModal&&setSel(a.id)} style={{cursor:'pointer',...rowStyle}}>
+                      <td><div className="col-name">{a.c?.name||'—'}</div><div className="col-mono" style={{fontSize:11,color:'var(--textLight)'}}>{a.id}</div>{archived&&<span style={{fontSize:9,fontWeight:700,color:'var(--textLight)',textTransform:'uppercase',letterSpacing:'0.5px',marginTop:2,display:'block'}}>ARCHIVED</span>}</td>
                       <td style={{fontSize:12}}>{a.c?.name||'—'}</td>
                       <td><Badge st={a.status}/></td>
                       <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{a.rep||a.repName||'—'}</td>
                       <td style={{fontSize:12,color:'var(--textMid)'}}>{fmtD(a.createdAt)}</td>
                       <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{fmtD(a.updatedAt)}</td>
+                      {canSeeArchived(user)&&<td onClick={e=>e.stopPropagation()}>
+                        {canArchive(a,user)&&<Btn v="ghost" sz="sm" onClick={()=>setArchiveModal(a)} style={{marginRight:4}}>Archive</Btn>}
+                        {canUnarchive(a,user)&&<Btn v="primary" sz="sm" onClick={()=>setUnarchiveModal(a)}>Unarchive</Btn>}
+                      </td>}
                       <td><span style={{color:'var(--textLight)',fontSize:16}}>›</span></td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>
-          ):<Empty ico="🔍" title="No results"/>}
+          ):<Empty ico="🔍" title={pg==='archived'?'No archived applications':'No results'}/>}
         </div>
       </div>
+      {archiveModal&&<ConfirmModal title="Archive application" message={`Archive application ${archiveModal.id} (${archiveModal.c?.name||'—'})? This will move it to the Archived list.`} confirmLabel="Archive" variant="primary" onConfirm={()=>doArchive(archiveModal)} onCancel={()=>setArchiveModal(null)}/>}
+      {unarchiveModal&&<ConfirmModal title="Unarchive application" message={`Restore application ${unarchiveModal.id} (${unarchiveModal.c?.name||'—'})? It will return to its previous status.`} confirmLabel="Unarchive" onConfirm={()=>doUnarchive(unarchiveModal)} onCancel={()=>setUnarchiveModal(null)}/>}
     </div>
   );
 };
@@ -4083,17 +4124,22 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
   const [fDateTo,setFDateTo]=useState('');
   const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const [adminTab,setAdminTab]=useState('devices');
+  const [archiveModal,setArchiveModal]=useState(null);
+  const [unarchiveModal,setUnarchiveModal]=useState(null);
   const shopName=(id)=>(shops||[]).find(s=>s.id===id)?.name||id||'—';
   const groupOfShop=(shopId)=>(shops||[]).find(s=>s.id===shopId)?.merchantGroupId||null;
   const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
+  const baseList=pg==='archived'?apps.filter(a=>isArchived(a)):pg==='all'?apps.filter(a=>!isArchived(a)):apps;
+  const doArchive=(app)=>{const now=new Date().toISOString();onUpdate(app.id,{status:ST.ARCHIVED,archived_at:now,archivedAt:now,archived_by:user.name,archivedBy:user.name,archived_at_status:app.status,archivedAtStatus:app.status});setArchiveModal(null);addToast('ok','Application archived','');};
+  const doUnarchive=(app)=>{const prev=app.archived_at_status||app.archivedAtStatus||ST.DRAFT;onUpdate(app.id,{status:prev,archived_at:null,archivedAt:null,archived_by:null,archivedBy:null,archived_at_status:null,archivedAtStatus:null});setUnarchiveModal(null);addToast('ok','Application unarchived','');};
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
     if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)} devices={user.superuser?devices:undefined}/></div></div></div>;
   }
 
-  const filtered=apps.filter(a=>{
-    if(q&&!a.c.name.toLowerCase().includes(q.toLowerCase())&&!a.id.toLowerCase().includes(q.toLowerCase())&&!(a.rep||'').toLowerCase().includes(q.toLowerCase()))return false;
+  const filtered=baseList.filter(a=>{
+    if(q&&!(a.c?.name||'').toLowerCase().includes(q.toLowerCase())&&!(a.id||'').toLowerCase().includes(q.toLowerCase())&&!(a.rep||'').toLowerCase().includes(q.toLowerCase()))return false;
     if(fst&&a.status!==fst)return false;
     if(fGroup){const g=groupOfShop(a.shopId);if(fGroup==='__none__'?g!==null:g!==fGroup)return false;}
     if(fShop&&a.shopId!==fShop)return false;
@@ -4767,7 +4813,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
     );
   };
 
-  const mobileTitle=pg==='overview'?'Overview':pg==='all'?'All applications':pg==='admin'?'Admin':APP_NAME;
+  const mobileTitle=pg==='overview'?'Overview':pg==='all'?'All applications':pg==='archived'?'Archived applications':pg==='admin'?'Admin':APP_NAME;
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
@@ -4794,10 +4840,10 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
             <div style={{display:'flex',flexDirection:'column',gap:8}}>{[...apps].sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)).slice(0,8).map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
           </div>
         )}
-        {pg==='all'&&(
+        {(pg==='all'||pg==='archived')&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,flexWrap:'wrap',gap:10}}>
-              <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',margin:0}}>All applications</h1>
+              <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',margin:0}}>{pg==='archived'?'Archived applications':'All applications'}</h1>
               <Btn v="def" sz="sm" icon="⬇" onClick={()=>{
                 const rows=[['ID','Date','Status','Customer','Phone','ID No','Rep','Shop','Device','Total (RWF)','Deposit (RWF)','Monthly (RWF)','IMEI']];
                 filtered.forEach(a=>{
@@ -4846,29 +4892,38 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
             {filtered.length>0?(
               <div className="admin-table-wrap" style={{maxHeight:'calc(100vh - 320px)',overflow:'auto'}}>
                 <table className="admin-table">
-                  <thead><tr><th>Application</th><th>Owner / Rep</th><th>Status</th><th className="hide-mobile">Device</th><th>Created</th><th className="hide-mobile">Updated</th><th style={{width:60}}></th></tr></thead>
+                  <thead><tr><th>Application</th><th>Owner / Rep</th><th>Status</th><th className="hide-mobile">Device</th><th>Created</th><th className="hide-mobile">Updated</th>{canSeeArchived(user)&&<th style={{width:100}}>Actions</th>}<th style={{width:60}}></th></tr></thead>
                   <tbody>
-                    {filtered.map(a=>(
-                      <tr key={a.id} onClick={()=>setSel(a.id)} style={{cursor:'pointer'}}>
-                        <td><div className="col-name">{a.c?.name||'—'}</div><div className="col-mono" style={{fontSize:11,color:'var(--textLight)'}}>{a.id}</div></td>
+                    {filtered.map(a=>{
+                      const archived=isArchived(a);
+                      const rowStyle=archived?{opacity:0.75,background:'var(--bg)'}:{};
+                      return(
+                      <tr key={a.id} onClick={()=>!archiveModal&&!unarchiveModal&&setSel(a.id)} style={{cursor:'pointer',...rowStyle}}>
+                        <td><div className="col-name">{a.c?.name||'—'}</div><div className="col-mono" style={{fontSize:11,color:'var(--textLight)'}}>{a.id}</div>{archived&&<span style={{fontSize:9,fontWeight:700,color:'var(--textLight)',textTransform:'uppercase',letterSpacing:'0.5px',marginTop:2,display:'block'}}>ARCHIVED</span>}</td>
                         <td style={{fontSize:12}}>{a.rep||'—'}</td>
                         <td><Badge st={a.status}/></td>
                         <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{a.dev?.brand} {a.dev?.model}</td>
                         <td style={{fontSize:12,color:'var(--textMid)'}}>{fmtD(a.createdAt)}</td>
                         <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{fmtD(a.updatedAt)}</td>
+                        {canSeeArchived(user)&&<td onClick={e=>e.stopPropagation()}>
+                          {canArchive(a,user)&&<Btn v="ghost" sz="sm" onClick={()=>setArchiveModal(a)} style={{marginRight:4}}>Archive</Btn>}
+                          {canUnarchive(a,user)&&<Btn v="primary" sz="sm" onClick={()=>setUnarchiveModal(a)}>Unarchive</Btn>}
+                        </td>}
                         <td><span style={{color:'var(--textLight)',fontSize:16}}>›</span></td>
                       </tr>
-                    ))}
+                    );})}
                   </tbody>
                 </table>
               </div>
-            ):<Empty ico="🔍" title="No results found"/>}
+            ):<Empty ico="🔍" title={pg==='archived'?'No archived applications':'No results found'}/>}
           </div>
         )}
         {pg==='admin'&&user.superuser&&(
           <Admin/>
         )}
       </div>
+      {archiveModal&&<ConfirmModal title="Archive application" message={`Archive application ${archiveModal.id} (${archiveModal.c?.name||'—'})? This will move it to the Archived list.`} confirmLabel="Archive" variant="primary" onConfirm={()=>doArchive(archiveModal)} onCancel={()=>setArchiveModal(null)}/>}
+      {unarchiveModal&&<ConfirmModal title="Unarchive application" message={`Restore application ${unarchiveModal.id} (${unarchiveModal.c?.name||'—'})? It will return to its previous status.`} confirmLabel="Unarchive" onConfirm={()=>doUnarchive(unarchiveModal)} onCancel={()=>setUnarchiveModal(null)}/>}
     </div>
   );
 };
@@ -4884,6 +4939,9 @@ function contractToLegacyApp(c){
     notes:app.mboRejectionReason||app.notes||'',reviewer:app.mboReviewedBy||null,upya:app.upya||null,imei:app.imei,ptId:app.ptId,lockedAt:app.lockedAt,
     customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto,incomeProof:ap.incomeProof,
     requestedChangeFields:(ap.fieldCorrectionRequests||[]).filter(r=>!r.resolvedAt).map(r=>r.fieldName),
+    archived_at:app.archived_at||app.archivedAt,archivedAt:app.archived_at||app.archivedAt,
+    archived_by:app.archived_by||app.archivedBy,archivedBy:app.archived_by||app.archivedBy,
+    archived_at_status:app.archived_at_status||app.archivedAtStatus,archivedAtStatus:app.archived_at_status||app.archivedAtStatus,
   };
 }
 
@@ -4939,6 +4997,35 @@ const App=()=>{
   const toggleLang=useCallback(()=>setLang(l=>{const nl=l==='en'?'rw':'en';writeLS('cleva_lang_v1',nl);return nl;}),[]);
   const ctx={user,logout:()=>setUser(null),companyInfo,setCompanyInfo,lang,toggleLang,shops,setShops,users,merchantGroups};
 
+  const visibleApps=React.useMemo(()=>{
+    if(!user)return apps;
+    if(canSeeArchived(user))return apps;
+    return apps.filter(a=>!isArchived(a));
+  },[apps,user]);
+
+  useEffect(()=>{
+    const FIVE_DAYS_MS=5*24*60*60*1000;
+    const runAutoArchive=()=>{
+      setContracts(prev=>{
+        const now=Date.now();
+        const toArchive=(prev||[]).filter(c=>{
+          if(c.status!==ST.DRAFT||c.archived_at||c.archivedAt)return false;
+          const created=new Date(c.createdAt||0).getTime();
+          return created+FIVE_DAYS_MS<=now;
+        });
+        if(toArchive.length===0)return prev;
+        return prev.map(c=>{
+          if(!toArchive.some(t=>t.id===c.id))return c;
+          const ts=new Date().toISOString();
+          return{...c,status:ST.ARCHIVED,archived_at:ts,archivedAt:ts,archived_by:'system',archivedBy:'system',archived_at_status:ST.DRAFT,archivedAtStatus:ST.DRAFT,updatedAt:ts};
+        });
+      });
+    };
+    runAutoArchive();
+    const dailyCheck=setInterval(runAutoArchive,24*60*60*1000);
+    return ()=>clearInterval(dailyCheck);
+  },[]);
+
   if(!user) return(
     <Ctx.Provider value={ctx}>
       <Login onLogin={setUser} users={users}/>
@@ -4949,11 +5036,11 @@ const App=()=>{
   return(
     <Ctx.Provider value={ctx}>
       <div className="app-layout" style={{display:'flex',minHeight:'100vh',height:'100vh'}}>
-        {user.role==='rep'&&<SalesRepView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} pricingConfig={pricingConfig} companyInfo={companyInfo}/>}
-        {user.role==='underwriter'&&<UnderwriterView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
+        {user.role==='rep'&&<SalesRepView apps={visibleApps} onUpdate={updateApp} addToast={addToast} devices={devices} pricingConfig={pricingConfig} companyInfo={companyInfo}/>}
+        {user.role==='underwriter'&&<UnderwriterView apps={visibleApps} onUpdate={updateApp} addToast={addToast}/>}
         {user.role==='support'&&<SupportView apps={apps} onUpdate={updateApp} addToast={addToast}/>}
-        {user.role==='groupadmin'&&<GroupAdminView apps={apps} addToast={addToast} users={users} setUsers={setUsers} shops={shops} setShops={setShops} merchantGroups={merchantGroups} setMerchantGroups={setMerchantGroups}/>}
-        {user.role==='merchant'&&<MerchantView apps={apps} addToast={addToast} users={users} setUsers={setUsers} shops={shops}/>}
+        {user.role==='groupadmin'&&<GroupAdminView apps={visibleApps} addToast={addToast} users={users} setUsers={setUsers} shops={shops} setShops={setShops} merchantGroups={merchantGroups} setMerchantGroups={setMerchantGroups}/>}
+        {user.role==='merchant'&&<MerchantView apps={visibleApps} addToast={addToast} users={users} setUsers={setUsers} shops={shops}/>}
         {user.role==='ops'&&<OpsView apps={apps} onUpdate={updateApp} addToast={addToast} devices={devices} setDevices={setDevices} users={users} setUsers={setUsers} shops={shops} setShops={setShops} setContracts={setContracts} pricingConfig={pricingConfig} setPricingConfig={setPricingConfig} merchantGroups={merchantGroups} setMerchantGroups={setMerchantGroups}/>}
       </div>
       <Toast toasts={toasts}/>
