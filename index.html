@@ -289,6 +289,11 @@ textarea{resize:vertical;min-height:80px;line-height:1.5}
   .imei-row{flex-direction:column!important;align-items:stretch!important}
   .imei-row .btn-wrap{width:100%!important}
 }
+/* Phone input: stack on small screens */
+@media (max-width:480px){
+  .phone-input-row{flex-direction:column!important}
+  .phone-input-row select,.phone-input-row input{min-width:100%!important}
+}
 </style>
 </head>
 <body>
@@ -405,6 +410,56 @@ const RW_LOCATIONS={
 };
 const getDistrictsByProvince=(provinceId)=>RW_LOCATIONS.districts.filter(d=>d.provinceId===provinceId);
 const getSectorsByDistrict=(districtId)=>RW_LOCATIONS.sectors.filter(s=>s.districtId===districtId);
+
+// ── PHONE INPUT (Country code + number, Rwanda default) ───────────
+const COUNTRY_CODES=[{code:'+250',country:'Rwanda',flag:'🇷🇼'},{code:'+256',country:'Uganda',flag:'🇺🇬'},{code:'+254',country:'Kenya',flag:'🇰🇪'},{code:'+255',country:'Tanzania',flag:'🇹🇿'},{code:'+257',country:'Burundi',flag:'🇧🇮'},{code:'+243',country:'DRC',flag:'🇨🇩'}];
+const parsePhoneValue=(v)=>{
+  if(!v||typeof v!=='string')return{code:'+250',num:''};
+  const s=v.trim().replace(/\s/g,'');
+  if(s.startsWith('+')){const m=s.match(/^(\+\d{1,4})([\d]*)$/);if(m)return{code:m[1],num:(m[2]||'').replace(/\D/g,'').slice(0,12)};}
+  const digits=s.replace(/\D/g,'');
+  if(digits.startsWith('0')&&digits.length>=9)return{code:'+250',num:digits.slice(1).slice(0,9)};
+  if(digits.length>=9)return{code:'+250',num:digits.slice(0,9)};
+  return{code:'+250',num:digits.slice(0,9)};
+};
+const formatPhoneForStorage=(code,num)=>code+(num||'');
+const formatPhoneForDisplay=(v)=>{if(!v)return'—';const p=parsePhoneValue(v);if(!p.num)return v;return p.num.length>=9?`${p.code} ${p.num.replace(/(\d{2})(\d{3})(\d{4})/,'$1 $2 $3')}`:v;}
+const isValidRwandaPhone=(num)=>/^7\d{8}$/.test(String(num||'').replace(/\D/g,''));
+const isValidPhoneByCode=(code,num)=>{
+  const n=String(num||'').replace(/\D/g,'');
+  if(code==='+250')return/^7\d{8}$/.test(n);
+  return n.length>=9&&n.length<=12;
+};
+const PhoneInput=({value,onChange,err,placeholder='7XXXXXXXX',req,label,id,className,disabled})=>{
+  const parsed=React.useMemo(()=>parsePhoneValue(value),[value]);
+  const [code,setCode]=React.useState(parsed.code);
+  const [num,setNum]=React.useState(parsed.num);
+  React.useEffect(()=>{const p=parsePhoneValue(value);setCode(p.code);setNum(p.num);},[value]);
+  const handleCodeChange=(e)=>{const v=e.target.value;setCode(v);onChange(formatPhoneForStorage(v,num));};
+  const handleNumChange=(e)=>{
+    const raw=e.target.value.replace(/\D/g,'').slice(0,9);
+    setNum(raw);
+    onChange(formatPhoneForStorage(code,raw));
+  };
+  const invalid=num.length>0&&!isValidPhoneByCode(code,num);
+  const showErr=!!err||invalid;
+  const errMsg=err||(invalid&&code==='+250'?'Must be 9 digits starting with 7 (e.g. 78XXXXXXX)':invalid?'Invalid phone format':'');
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:3}}>
+      {label&&<label style={{fontSize:11,fontWeight:600,color:'var(--textMid)'}}>{label}{req&&<span style={{color:'var(--err)',marginLeft:2}}>*</span>}</label>}
+      <div className="phone-input-row" style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'stretch'}}>
+        <select value={code} onChange={handleCodeChange} disabled={disabled} style={{minWidth:90,padding:'8px 10px',borderRadius:'var(--r2)',border:`1.5px solid ${showErr?'var(--errBorder)':'var(--border)'}`,background:'white',fontSize:13,fontFamily:'DM Mono,monospace'}}>
+          {COUNTRY_CODES.map(c=><option key={c.code} value={c.code}>{c.flag} {c.code}</option>)}
+        </select>
+        <input type="tel" inputMode="numeric" pattern="[0-9]*" value={num} onChange={handleNumChange} disabled={disabled} placeholder={placeholder} maxLength={12}
+          className={className||''} id={id}
+          style={{flex:1,minWidth:120,padding:'8px 12px',borderRadius:'var(--r2)',border:`1.5px solid ${showErr?'var(--errBorder)':'var(--border)'}`,fontSize:13,fontFamily:'DM Mono,monospace'}}/>
+      </div>
+      {errMsg&&<span style={{fontSize:11,color:'var(--err)'}}>{errMsg}</span>}
+      {num.length>=9&&!invalid&&<span style={{fontSize:10,color:'var(--ok)'}}>✓ {code} {num.replace(/(\d{2})(\d{3})(\d{4})/,'$1 $2 $3')}</span>}
+    </div>
+  );
+};
 let _ejsReady=false;
 const sendEmail=(tplKey,params)=>{
   if(!EMAIL_CFG.publicKey||!EMAIL_CFG.templateId||EMAIL_CFG.templateId==='YOUR_TEMPLATE_ID')return;
@@ -619,7 +674,7 @@ const TR={
     upload_picture:'📤 Upload picture',upload_income:'📎 Upload (image or PDF)',
     photo_taken:'✓ Photo taken',id_added:'✓ ID added',doc_added:'✓ Document added',
     next_of_kin:'Next of kin',kin_name:'Full name',kin_phone:'Phone',relationship:'Relationship',
-    err_required:'Required',err_nid_16:'National ID must be 16 digits',err_passport:'Passport number required',
+    err_required:'Required',err_phone_format:'Must be 9 digits starting with 7 (e.g. 78XXXXXXX)',err_nid_16:'National ID must be 16 digits',err_passport:'Passport number required',
     err_income:'Enter a valid amount',err_customer_photo:'Take customer photo (camera)',
     err_id_photo:'Add ID document (photo or upload)',err_income_proof:'Add proof of income (upload image or PDF)',
     err_device:'Please select a device',
@@ -762,7 +817,7 @@ const TR={
     upload_picture:'📤 Ohereza ifoto',upload_income:'📎 Ohereza (ifoto cyangwa PDF)',
     photo_taken:'✓ Ifoto yafashwe',id_added:'✓ Indangamuntu yongeweho',doc_added:'✓ Inyandiko yongeweho',
     next_of_kin:'Inshuti cyangwa uwo mu muryango',kin_name:'Amazina yose',kin_phone:'Telefoni',relationship:'Isano',
-    err_required:'Birasabwa',err_nid_16:'Indangamuntu igomba kugira imibare 16',err_passport:'Numero ya pasiporo irasabwa',
+    err_required:'Birasabwa',err_phone_format:'Igomba kugira imibare 9 itangira na 7 (urugero: 78XXXXXXX)',err_nid_16:'Indangamuntu igomba kugira imibare 16',err_passport:'Numero ya pasiporo irasabwa',
     err_income:'Injiza amafaranga nyayo',err_customer_photo:'Fata ifoto y\'umukiriya (kamera)',
     err_id_photo:'Ongeraho ifoto y\'indangamuntu',err_income_proof:'Ongeraho icyemezo cy\'inyungu',
     err_device:'Hitamo telefoni',
@@ -1285,7 +1340,7 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
     const er={};
     if(!f.name.trim())er.name=t('err_required');
     if(f.idType==='nid'){if(f.nid.replace(/\D/g,'').length!==16)er.nid=t('err_nid_16');}else{if(!f.nid.trim())er.nid=t('err_passport');}
-    if(!f.phone.trim())er.phone=t('err_required');if(!f.province)er.province=t('err_required');if(!f.district)er.district=t('err_required');if(!f.sector)er.sector=t('err_required');if(!f.addr.trim())er.addr=t('err_required');if(!f.occ)er.occ=t('err_required');if(!f.income||isNaN(f.income)||+f.income<1)er.income=t('err_income');if(!f.kn.trim())er.kn=t('err_required');if(!f.kp.trim())er.kp=t('err_required');if(!f.kr)er.kr=t('err_required');if(!f.did)er.did=t('err_device');
+    const ph=parsePhoneValue(f.phone);if(!f.phone.trim())er.phone=t('err_required');else if(!isValidPhoneByCode(ph.code,ph.num))er.phone=t('err_phone_format');const kph=parsePhoneValue(f.kp);if(!f.kp.trim())er.kp=t('err_required');else if(!isValidPhoneByCode(kph.code,kph.num))er.kp=t('err_phone_format');if(!f.province)er.province=t('err_required');if(!f.district)er.district=t('err_required');if(!f.sector)er.sector=t('err_required');if(!f.addr.trim())er.addr=t('err_required');if(!f.occ)er.occ=t('err_required');if(!f.income||isNaN(f.income)||+f.income<1)er.income=t('err_income');if(!f.kn.trim())er.kn=t('err_required');if(!f.kr)er.kr=t('err_required');if(!f.did)er.did=t('err_device');
     setE(er);return!Object.keys(er).length;
   };
   const submit=()=>{
@@ -1319,7 +1374,7 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
         </div>
         <div style={highlight('nid')}><FF label={f.idType==='nid'?t('national_id_number'):t('passport_number')} req err={e.nid}><input value={f.nid} onChange={ev=>s('nid',f.idType==='nid'?ev.target.value.replace(/\D/g,'').slice(0,16):ev.target.value)} placeholder={f.idType==='nid'?t('id_ph_nid'):t('id_ph_passport')} className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/></FF></div>
         <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-          <div style={highlight('phone')}><FF label={t('phone_number')} req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF></div>
+          <div style={highlight('phone')}><PhoneInput label={t('phone_number')} req value={f.phone} onChange={v=>s('phone',v)} err={e.phone} placeholder="7XXXXXXXX"/></div>
           <div style={highlight('occ')}><FF label={t('occupation')} req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">{t('select_ph')}</option>{[[t('occ_trader'),'Trader / Business owner'],[t('occ_teacher'),'Teacher'],[t('occ_civil'),'Civil servant'],[t('occ_driver'),'Driver / Transport'],[t('occ_farmer'),'Farmer'],[t('occ_health'),'Healthcare worker'],[t('occ_student'),'Student'],[t('occ_other'),'Other']].map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}</select></FF></div>
         </div>
         <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
@@ -1333,7 +1388,7 @@ const EditAndResubmit=({app,devices,onUpdate,addToast,onBack})=>{
           <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>{t('next_of_kin')}</div>
           <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 160px',gap:12}}>
             <div style={highlight('kin_name')}><FF label={t('kin_name')} req err={e.kn}><input value={f.kn} onChange={ev=>s('kn',ev.target.value)} placeholder={t('kin_name')} className={e.kn?'err':''}/></FF></div>
-            <div style={highlight('kin_phone')}><FF label={t('kin_phone')} req err={e.kp}><input value={f.kp} onChange={ev=>s('kp',ev.target.value)} placeholder="07XXXXXXXX" className={e.kp?'err':''}/></FF></div>
+            <div style={highlight('kin_phone')}><PhoneInput label={t('kin_phone')} req value={f.kp} onChange={v=>s('kp',v)} err={e.kp} placeholder="7XXXXXXXX"/></div>
             <div style={highlight('kin_rel')}><FF label={t('relationship')} req err={e.kr}><select value={f.kr} onChange={ev=>s('kr',ev.target.value)} className={e.kr?'err':''}><option value="">{t('select_ph')}</option>{[[t('rel_parent'),'Parent'],[t('rel_sibling'),'Sibling'],[t('rel_spouse'),'Spouse'],[t('rel_child'),'Child'],[t('rel_friend'),'Friend'],[t('rel_other'),'Other']].map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}</select></FF></div>
           </div>
         </div>
@@ -1513,8 +1568,8 @@ const ContractDoc=({data,lang='en'})=>{
         <div style={{fontSize:10,color:'var(--textMid)',marginTop:3}}>{L.date}: {date}</div>
       </div>
       {S(L.parties,<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>{L.provider}</div><Row k={L.company} v={co.name}/><Row k={L.address} v={co.address}/><Row k={L.phone} v={co.phone}/><Row k={L.email} v={co.email}/><Row k={L.reg} v={co.regNo}/></div>
-        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>{L.customer}</div><Row k={L.fullname} v={f.name}/><Row k={L.id(f.idType)} v={f.nid}/><Row k={L.phone} v={f.phone}/><Row k={L.province} v={RW_LOCATIONS.provinces.find(p=>p.id===f.province)?.name||data.app?.provinceName||'—'}/><Row k={L.district} v={RW_LOCATIONS.districts.find(d=>d.id===f.district)?.name||data.app?.districtName||'—'}/><Row k={L.sector} v={RW_LOCATIONS.sectors.find(s=>s.id===f.sector)?.name||data.app?.sectorName||'—'}/><Row k={L.address} v={f.addr}/><Row k={L.occ} v={f.occ}/><Row k={L.income} v={fmtRWF(+f.income)}/></div>
+        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>{L.provider}</div><Row k={L.company} v={co.name}/><Row k={L.address} v={co.address}/><Row k={L.phone} v={formatPhoneForDisplay(co.phone)}/><Row k={L.email} v={co.email}/><Row k={L.reg} v={co.regNo}/></div>
+        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>{L.customer}</div><Row k={L.fullname} v={f.name}/><Row k={L.id(f.idType)} v={f.nid}/><Row k={L.phone} v={formatPhoneForDisplay(f.phone)}/><Row k={L.province} v={RW_LOCATIONS.provinces.find(p=>p.id===f.province)?.name||data.app?.provinceName||'—'}/><Row k={L.district} v={RW_LOCATIONS.districts.find(d=>d.id===f.district)?.name||data.app?.districtName||'—'}/><Row k={L.sector} v={RW_LOCATIONS.sectors.find(s=>s.id===f.sector)?.name||data.app?.sectorName||'—'}/><Row k={L.address} v={f.addr}/><Row k={L.occ} v={f.occ}/><Row k={L.income} v={fmtRWF(+f.income)}/></div>
       </div>)}
       {S(L.deviceFin,<div>
         <Row k={L.device} v={`${dev.brand} ${dev.model} — ${dev.RAM||dev.ram||''} RAM / ${dev.ROM||dev.rom||''} Storage`}/>
@@ -1525,7 +1580,7 @@ const ContractDoc=({data,lang='en'})=>{
         <Row k={L.payoff} v={discLabel}/>
         {pricing.disc>0&&<Row k={L.saving} v={`${Math.round(pricing.disc*100)}% — ${fmtRWF(pricing.savings)}`}/>}
       </div>)}
-      {S(L.kin,<div><Row k={L.name} v={f.kn}/><Row k={L.phone} v={f.kp}/><Row k={L.rel} v={L.relationship(f.kr)}/></div>)}
+      {S(L.kin,<div><Row k={L.name} v={f.kn}/><Row k={L.phone} v={formatPhoneForDisplay(f.kp)}/><Row k={L.rel} v={L.relationship(f.kr)}/></div>)}
       {S(L.terms,L.termsArr(co,pricing).map(([heading,text])=>(
         <div key={heading} style={{marginBottom:10}}>
           <div style={{fontSize:10,fontWeight:700,color:'var(--text)',marginBottom:3}}>{heading}</div>
@@ -1669,7 +1724,7 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature,lang=
   // Customer col — text only
   doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text(L.customer,colMid,startY);
   let ry=startY+5;
-  [[app.fullName||''],[`${L.idLabel(app.idType)}: ${app.nationalIdNumber||''}`],[`Phone: ${app.phoneNumber||''}`],[`Province: ${app.provinceName||''}`],[`District: ${app.districtName||''}`],[`Sector: ${app.sectorName||''}`],[`Address: ${app.address||''}`],[`Occupation: ${app.employmentType||''}`],[`Income: RWF ${Number(app.monthlyIncomeRwf||0).toLocaleString()}`]].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);const lines=doc.splitTextToSize(v,CW/2-6);lines.forEach(l=>{doc.text(l,colMid,ry);ry+=4.5;});});
+  [[app.fullName||''],[`${L.idLabel(app.idType)}: ${app.nationalIdNumber||''}`],[`Phone: ${formatPhoneForDisplay(app.phoneNumber||'')}`],[`Province: ${app.provinceName||''}`],[`District: ${app.districtName||''}`],[`Sector: ${app.sectorName||''}`],[`Address: ${app.address||''}`],[`Occupation: ${app.employmentType||''}`],[`Income: RWF ${Number(app.monthlyIncomeRwf||0).toLocaleString()}`]].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);const lines=doc.splitTextToSize(v,CW/2-6);lines.forEach(l=>{doc.text(l,colMid,ry);ry+=4.5;});});
   y=Math.max(ly,ry)+5;
   // ── Customer photo (portrait) + ID photo (landscape) side by side ──
   if(app.customerPhoto||app.idPhoto){
@@ -1787,7 +1842,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
     if(!f.name.trim())er.name=t('err_required');
     if(f.idType==='nid'){if(f.nid.replace(/\D/g,'').length!==16)er.nid=t('err_nid_16');}
     else{if(!f.nid.trim())er.nid=t('err_passport');}
-    if(!f.phone.trim())er.phone=t('err_required');if(!f.province)er.province=t('err_required');if(!f.district)er.district=t('err_required');if(!f.sector)er.sector=t('err_required');if(!f.addr.trim())er.addr=t('err_required');if(!f.occ)er.occ=t('err_required');if(!f.income||isNaN(f.income)||+f.income<1)er.income=t('err_income');if(!f.kn.trim())er.kn=t('err_required');if(!f.kp.trim())er.kp=t('err_required');if(!f.kr)er.kr=t('err_required');
+    const ph=parsePhoneValue(f.phone);if(!f.phone.trim())er.phone=t('err_required');else if(!isValidPhoneByCode(ph.code,ph.num))er.phone=t('err_phone_format');const kph=parsePhoneValue(f.kp);if(!f.kp.trim())er.kp=t('err_required');else if(!isValidPhoneByCode(kph.code,kph.num))er.kp=t('err_phone_format');if(!f.province)er.province=t('err_required');if(!f.district)er.district=t('err_required');if(!f.sector)er.sector=t('err_required');if(!f.addr.trim())er.addr=t('err_required');if(!f.occ)er.occ=t('err_required');if(!f.income||isNaN(f.income)||+f.income<1)er.income=t('err_income');if(!f.kn.trim())er.kn=t('err_required');if(!f.kr)er.kr=t('err_required');
     if(!f.customerPhoto)er.customerPhoto=t('err_customer_photo');if(!f.idPhoto)er.idPhoto=t('err_id_photo');if(!f.incomeProof)er.incomeProof=t('err_income_proof');
     setE(er);return!Object.keys(er).length;
   };
@@ -1829,7 +1884,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
               <input value={f.nid} onChange={ev=>s('nid',f.idType==='nid'?ev.target.value.replace(/\D/g,'').slice(0,16):ev.target.value)} placeholder={f.idType==='nid'?t('id_ph_nid'):t('id_ph_passport')} className={e.nid?'err':''} style={{fontFamily:'DM Mono,monospace'}}/>
             </FF>
             <div className="form-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <FF label={t('phone_number')} req err={e.phone}><input value={f.phone} onChange={ev=>s('phone',ev.target.value)} placeholder="07XXXXXXXX" className={e.phone?'err':''}/></FF>
+              <PhoneInput label={t('phone_number')} req value={f.phone} onChange={v=>s('phone',v)} err={e.phone} placeholder="7XXXXXXXX"/>
               <FF label={t('occupation')} req err={e.occ}><select value={f.occ} onChange={ev=>s('occ',ev.target.value)} className={e.occ?'err':''}><option value="">{t('select_ph')}</option>{[[t('occ_trader'),'Trader / Business owner'],[t('occ_teacher'),'Teacher'],[t('occ_civil'),'Civil servant'],[t('occ_driver'),'Driver / Transport'],[t('occ_farmer'),'Farmer'],[t('occ_health'),'Healthcare worker'],[t('occ_student'),'Student'],[t('occ_other'),'Other']].map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}</select></FF>
             </div>
             <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
@@ -1849,7 +1904,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>{t('next_of_kin')}</div>
               <div className="form-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 160px',gap:12}}>
                 <FF label={t('kin_name')} req err={e.kn}><input value={f.kn} onChange={ev=>s('kn',ev.target.value)} placeholder={t('kin_name')} className={e.kn?'err':''}/></FF>
-                <FF label={t('kin_phone')} req err={e.kp}><input value={f.kp} onChange={ev=>s('kp',ev.target.value)} placeholder="07XXXXXXXX" className={e.kp?'err':''}/></FF>
+                <PhoneInput label={t('kin_phone')} req value={f.kp} onChange={v=>s('kp',v)} err={e.kp} placeholder="7XXXXXXXX"/>
                 <FF label={t('relationship')} req err={e.kr}><select value={f.kr} onChange={ev=>s('kr',ev.target.value)} className={e.kr?'err':''}><option value="">{t('select_ph')}</option>{[[t('rel_parent'),'Parent'],[t('rel_sibling'),'Sibling'],[t('rel_spouse'),'Spouse'],[t('rel_child'),'Child'],[t('rel_friend'),'Friend'],[t('rel_other'),'Other']].map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}</select></FF>
               </div>
             </div>
@@ -1937,7 +1992,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
             <div className="detail-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:22}}>
               <div>
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Customer</div>
-                {(()=>{const prov=RW_LOCATIONS.provinces.find(p=>p.id===f.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===f.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===f.sector);const loc=[prov?.name,dist?.name,sec?.name].filter(Boolean).join(' → ');return[['Full name',f.name],[f.idType==='nid'?'National ID':'Passport',f.nid],['Phone',f.phone],['Province',prov?.name||'—'],['District',dist?.name||'—'],['Sector',sec?.name||'—'],['Address',f.addr],['Occupation',f.occ],['Monthly income',fmtRWF(+f.income)],['Next of kin',`${f.kn} (${f.kr})`],['Kin phone',f.kp],['Documents','Customer photo ✓ · ID ✓ · Income proof ✓']];})().map(([k,v])=><Fld key={k} label={k} val={v}/>)}
+                {(()=>{const prov=RW_LOCATIONS.provinces.find(p=>p.id===f.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===f.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===f.sector);return[['Full name',f.name],[f.idType==='nid'?'National ID':'Passport',f.nid],['Phone',formatPhoneForDisplay(f.phone)],['Province',prov?.name||'—'],['District',dist?.name||'—'],['Sector',sec?.name||'—'],['Address',f.addr],['Occupation',f.occ],['Monthly income',fmtRWF(+f.income)],['Next of kin',`${f.kn} (${f.kr})`],['Kin phone',formatPhoneForDisplay(f.kp)],['Documents','Customer photo ✓ · ID ✓ · Income proof ✓']];})().map(([k,v])=><Fld key={k} label={k} val={v}/>)}
               </div>
               <div>
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device & deal</div>
@@ -2465,7 +2520,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
               <div className="uw-grid-2">
                 <FldWithRequest fieldKey="name" label="Full name" val={c.name} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="nid" label={c.idType==='passport'?'Passport number':'National ID'} val={c.nid} requestedFields={requestedFields} onToggle={toggleRequest} mono/>
-                <FldWithRequest fieldKey="phone" label="Phone" val={c.phone} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="phone" label="Phone" val={formatPhoneForDisplay(c.phone)} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="occ" label="Occupation" val={c.occ} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="province" label="Province" val={c.provinceName||RW_LOCATIONS.provinces.find(p=>p.id===c.province)?.name||'—'} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="district" label="District" val={c.districtName||RW_LOCATIONS.districts.find(d=>d.id===c.district)?.name||'—'} requestedFields={requestedFields} onToggle={toggleRequest}/>
@@ -2478,7 +2533,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
               <div className="uw-section-title">Next of kin / Guarantor</div>
               <div className="uw-grid-3">
                 <FldWithRequest fieldKey="kin_name" label="Name" val={c.kin.name} requestedFields={requestedFields} onToggle={toggleRequest}/>
-                <FldWithRequest fieldKey="kin_phone" label="Phone" val={c.kin.phone} requestedFields={requestedFields} onToggle={toggleRequest}/>
+                <FldWithRequest fieldKey="kin_phone" label="Phone" val={formatPhoneForDisplay(c.kin.phone)} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="kin_rel" label="Relationship" val={c.kin.rel} requestedFields={requestedFields} onToggle={toggleRequest}/>
               </div>
             </div>
@@ -2666,7 +2721,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const [editC,setEditC]=useState(()=>({...app.c,kin:app.c.kin?{...app.c.kin}:{name:'',phone:'',rel:''}}));
   const [editNotes,setEditNotes]=useState(app.notes||'');
   const [newTlTxt,setNewTlTxt]=useState('');
-  const saveCustomer=()=>{const prov=RW_LOCATIONS.provinces.find(p=>p.id===editC.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===editC.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===editC.sector);const c={name:editC.name.trim(),idType:editC.idType||'nid',nid:editC.nid,phone:editC.phone.trim(),province:editC.province||'',provinceName:prov?.name||'',district:editC.district||'',districtName:dist?.name||'',sector:editC.sector||'',sectorName:sec?.name||'',addr:editC.addr.trim(),occ:editC.occ,income:+editC.income,kin:{name:editC.kin.name.trim(),phone:editC.kin.phone.trim(),rel:editC.kin.rel}};const ap=app.application||{};const application={...ap,fullName:c.name,nationalIdNumber:c.nid,phoneNumber:c.phone,province:c.province,provinceName:c.provinceName,district:c.district,districtName:c.districtName,sector:c.sector,sectorName:c.sectorName,address:c.addr,employmentType:c.occ,monthlyIncomeRwf:c.income,guarantorName:c.kin.name,guarantorPhone:c.kin.phone};onUpdate(app.id,{c,application,tlEntry:{by:user.name,txt:'Customer info updated (superuser)'}});addToast('ok','Customer updated','');setShowEditCustomer(false);};
+  const saveCustomer=()=>{const ph=parsePhoneValue(editC.phone);const kph=parsePhoneValue(editC.kin.phone);if(editC.phone.trim()&&!isValidPhoneByCode(ph.code,ph.num)){addToast('err','Invalid phone',t('err_phone_format'));return;}if(editC.kin.phone.trim()&&!isValidPhoneByCode(kph.code,kph.num)){addToast('err','Invalid kin phone',t('err_phone_format'));return;}const prov=RW_LOCATIONS.provinces.find(p=>p.id===editC.province);const dist=RW_LOCATIONS.districts.find(d=>d.id===editC.district);const sec=RW_LOCATIONS.sectors.find(s=>s.id===editC.sector);const c={name:editC.name.trim(),idType:editC.idType||'nid',nid:editC.nid,phone:editC.phone.trim(),province:editC.province||'',provinceName:prov?.name||'',district:editC.district||'',districtName:dist?.name||'',sector:editC.sector||'',sectorName:sec?.name||'',addr:editC.addr.trim(),occ:editC.occ,income:+editC.income,kin:{name:editC.kin.name.trim(),phone:editC.kin.phone.trim(),rel:editC.kin.rel}};const ap=app.application||{};const application={...ap,fullName:c.name,nationalIdNumber:c.nid,phoneNumber:c.phone,province:c.province,provinceName:c.provinceName,district:c.district,districtName:c.districtName,sector:c.sector,sectorName:c.sectorName,address:c.addr,employmentType:c.occ,monthlyIncomeRwf:c.income,guarantorName:c.kin.name,guarantorPhone:c.kin.phone};onUpdate(app.id,{c,application,tlEntry:{by:user.name,txt:'Customer info updated (superuser)'}});addToast('ok','Customer updated','');setShowEditCustomer(false);};
   const saveNotes=()=>{onUpdate(app.id,{notes:editNotes});addToast('ok','Notes updated','');};
   const addTlEntry=()=>{if(!newTlTxt.trim())return;onUpdate(app.id,{tlEntry:{by:user.name,txt:newTlTxt.trim()}});addToast('ok','Timeline entry added','');setNewTlTxt('');};
   useEffect(()=>{setEditNotes(app.notes||'');},[app.id,app.notes]);
@@ -2784,16 +2839,16 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
         <Card sx={{padding:'16px 18px'}}>
           <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:13}}>{t('customer_lbl')}</div>
           {(isUnderwriter&&reviewable?[
-            ['name',t('full_name'),c.name],['nid',(c.idType==='passport'?t('passport_number'):t('national_id')),c.nid],['phone',t('phone_number'),c.phone],['province',t('province'),c.provinceName||RW_LOCATIONS.provinces.find(p=>p.id===c.province)?.name||'—'],['district',t('district'),c.districtName||RW_LOCATIONS.districts.find(d=>d.id===c.district)?.name||'—'],['sector',t('sector'),c.sectorName||RW_LOCATIONS.sectors.find(s=>s.id===c.sector)?.name||'—'],['addr',t('address_loc'),c.addr],['occ',t('occupation'),c.occ],['income',t('monthly_income'),fmtRWF(c.income)]
-          ]:[[ t('full_name'),c.name],[(c.idType==='passport'?t('passport_number'):t('national_id')),c.nid],[t('phone_number'),c.phone],[t('province'),c.provinceName||RW_LOCATIONS.provinces.find(p=>p.id===c.province)?.name||'—'],[t('district'),c.districtName||RW_LOCATIONS.districts.find(d=>d.id===c.district)?.name||'—'],[t('sector'),c.sectorName||RW_LOCATIONS.sectors.find(s=>s.id===c.sector)?.name||'—'],[t('address_loc'),c.addr],[t('occupation'),c.occ],[t('monthly_income'),fmtRWF(c.income)]]).map((arr)=>{
+            ['name',t('full_name'),c.name],['nid',(c.idType==='passport'?t('passport_number'):t('national_id')),c.nid],['phone',t('phone_number'),formatPhoneForDisplay(c.phone)],['province',t('province'),c.provinceName||RW_LOCATIONS.provinces.find(p=>p.id===c.province)?.name||'—'],['district',t('district'),c.districtName||RW_LOCATIONS.districts.find(d=>d.id===c.district)?.name||'—'],['sector',t('sector'),c.sectorName||RW_LOCATIONS.sectors.find(s=>s.id===c.sector)?.name||'—'],['addr',t('address_loc'),c.addr],['occ',t('occupation'),c.occ],['income',t('monthly_income'),fmtRWF(c.income)]
+          ]:[[ t('full_name'),c.name],[(c.idType==='passport'?t('passport_number'):t('national_id')),c.nid],[t('phone_number'),formatPhoneForDisplay(c.phone)],[t('province'),c.provinceName||RW_LOCATIONS.provinces.find(p=>p.id===c.province)?.name||'—'],[t('district'),c.districtName||RW_LOCATIONS.districts.find(d=>d.id===c.district)?.name||'—'],[t('sector'),c.sectorName||RW_LOCATIONS.sectors.find(s=>s.id===c.sector)?.name||'—'],[t('address_loc'),c.addr],[t('occupation'),c.occ],[t('monthly_income'),fmtRWF(c.income)]]).map((arr)=>{
             if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
             return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
           })}
           <div style={{borderTop:'1.5px solid var(--border)',paddingTop:11,marginTop:4}}>
             <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>{t('next_of_kin')}</div>
             {(isUnderwriter&&reviewable?[
-              ['kin_name',t('kin_name'),c.kin.name],['kin_phone',t('kin_phone'),c.kin.phone],['kin_rel',t('relationship'),c.kin.rel]
-            ]:[[ t('kin_name'),c.kin.name],[t('kin_phone'),c.kin.phone],[t('relationship'),c.kin.rel]]).map((arr)=>{
+              ['kin_name',t('kin_name'),c.kin.name],['kin_phone',t('kin_phone'),formatPhoneForDisplay(c.kin.phone)],['kin_rel',t('relationship'),c.kin.rel]
+            ]:[[ t('kin_name'),c.kin.name],[t('kin_phone'),formatPhoneForDisplay(c.kin.phone)],[t('relationship'),c.kin.rel]]).map((arr)=>{
               if(arr.length===3) return <FldWithRequest key={arr[0]} fieldKey={arr[0]} label={arr[1]} val={arr[2]} requestedFields={requestedFields} onToggle={toggleRequest}/>;
               return <Fld key={arr[0]} label={arr[0]} val={arr[1]}/>;
             })}
@@ -2915,7 +2970,7 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
             <div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Set status</label><select value={app.status} onChange={ev=>{const v=ev.target.value;onUpdate(app.id,{status:v,tlEntry:{by:user.name,txt:`Status set to ${SM[v]?.label||v} (superuser)`}});addToast('ok','Status updated','');}} style={{padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid var(--border)',minWidth:180}}>{statusOptions.map(([val,label])=><option key={val} value={val}>{label}</option>)}</select></div>
             <div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Notes</label><textarea value={editNotes} onChange={ev=>setEditNotes(ev.target.value)} placeholder="Internal notes..." rows={2} style={{width:'100%',padding:10,borderRadius:'var(--r2)',border:'1.5px solid var(--border)'}}/><div style={{marginTop:6}}><Btn onClick={saveNotes} v="def" sz="sm">Save notes</Btn></div></div>
-            <div><Btn onClick={()=>{setShowEditCustomer(p=>{if(!p)setEditC({...app.c,kin:app.c.kin?{...app.c.kin}:{name:'',phone:'',rel:''}});return !p;});}} v="def" sz="sm">{showEditCustomer?'Cancel edit':'Edit customer info'}</Btn>{showEditCustomer&&(<div style={{marginTop:12,display:'flex',flexDirection:'column',gap:10}}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><FF label="Name"><input value={editC.name} onChange={ev=>setEditC(p=>({...p,name:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="ID type"><select value={editC.idType||'nid'} onChange={ev=>setEditC(p=>({...p,idType:ev.target.value}))}><option value="nid">National ID</option><option value="passport">Passport</option></select></FF></div><FF label={editC.idType==='passport'?'Passport number':'National ID'}><input value={editC.nid} onChange={ev=>setEditC(p=>({...p,nid:ev.target.value}))} style={{padding:'6px 10px',width:'100%',fontFamily:'DM Mono,monospace'}}/></FF><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><FF label="Phone"><input value={editC.phone} onChange={ev=>setEditC(p=>({...p,phone:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Occupation"><select value={editC.occ} onChange={ev=>setEditC(p=>({...p,occ:ev.target.value}))}><option value="">Select</option>{OCCS.map(o=><option key={o} value={o}>{o}</option>)}</select></FF></div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}><FF label="Province"><select value={editC.province||''} onChange={ev=>{const v=ev.target.value;setEditC(p=>({...p,province:v,district:'',sector:''}));}} style={{padding:'6px 10px',width:'100%'}}><option value="">Select</option>{RW_LOCATIONS.provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></FF><FF label="District"><select value={editC.district||''} onChange={ev=>{const v=ev.target.value;setEditC(p=>({...p,district:v,sector:''}));}} disabled={!editC.province} style={{padding:'6px 10px',width:'100%'}}><option value="">Select</option>{(editC.province?getDistrictsByProvince(editC.province):[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF><FF label="Sector"><select value={editC.sector||''} onChange={ev=>setEditC(p=>({...p,sector:ev.target.value}))} disabled={!editC.district} style={{padding:'6px 10px',width:'100%'}}><option value="">Select</option>{(editC.district?getSectorsByDistrict(editC.district):[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></FF></div><FF label="Address"><input value={editC.addr} onChange={ev=>setEditC(p=>({...p,addr:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Monthly income (RWF)"><input type="number" value={editC.income} onChange={ev=>setEditC(p=>({...p,income:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><div style={{fontSize:11,fontWeight:600,color:'var(--textLight)',marginTop:8}}>Next of kin</div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}><FF label="Name"><input value={editC.kin.name} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,name:ev.target.value}}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Phone"><input value={editC.kin.phone} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,phone:ev.target.value}}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Relationship"><select value={editC.kin.rel} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,rel:ev.target.value}}))}><option value="">Select</option>{RELS.map(r=><option key={r} value={r}>{r}</option>)}</select></FF></div><Btn onClick={saveCustomer} v="ok" sz="sm" style={{marginTop:10}}>Save customer</Btn></div>)}</div>
+            <div><Btn onClick={()=>{setShowEditCustomer(p=>{if(!p)setEditC({...app.c,kin:app.c.kin?{...app.c.kin}:{name:'',phone:'',rel:''}});return !p;});}} v="def" sz="sm">{showEditCustomer?'Cancel edit':'Edit customer info'}</Btn>{showEditCustomer&&(<div style={{marginTop:12,display:'flex',flexDirection:'column',gap:10}}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><FF label="Name"><input value={editC.name} onChange={ev=>setEditC(p=>({...p,name:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="ID type"><select value={editC.idType||'nid'} onChange={ev=>setEditC(p=>({...p,idType:ev.target.value}))}><option value="nid">National ID</option><option value="passport">Passport</option></select></FF></div><FF label={editC.idType==='passport'?'Passport number':'National ID'}><input value={editC.nid} onChange={ev=>setEditC(p=>({...p,nid:ev.target.value}))} style={{padding:'6px 10px',width:'100%',fontFamily:'DM Mono,monospace'}}/></FF><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><PhoneInput label="Phone" value={editC.phone} onChange={v=>setEditC(p=>({...p,phone:v}))} placeholder="7XXXXXXXX"/><FF label="Occupation"><select value={editC.occ} onChange={ev=>setEditC(p=>({...p,occ:ev.target.value}))}><option value="">Select</option>{OCCS.map(o=><option key={o} value={o}>{o}</option>)}</select></FF></div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}><FF label="Province"><select value={editC.province||''} onChange={ev=>{const v=ev.target.value;setEditC(p=>({...p,province:v,district:'',sector:''}));}} style={{padding:'6px 10px',width:'100%'}}><option value="">Select</option>{RW_LOCATIONS.provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></FF><FF label="District"><select value={editC.district||''} onChange={ev=>{const v=ev.target.value;setEditC(p=>({...p,district:v,sector:''}));}} disabled={!editC.province} style={{padding:'6px 10px',width:'100%'}}><option value="">Select</option>{(editC.province?getDistrictsByProvince(editC.province):[]).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF><FF label="Sector"><select value={editC.sector||''} onChange={ev=>setEditC(p=>({...p,sector:ev.target.value}))} disabled={!editC.district} style={{padding:'6px 10px',width:'100%'}}><option value="">Select</option>{(editC.district?getSectorsByDistrict(editC.district):[]).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></FF></div><FF label="Address"><input value={editC.addr} onChange={ev=>setEditC(p=>({...p,addr:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><FF label="Monthly income (RWF)"><input type="number" value={editC.income} onChange={ev=>setEditC(p=>({...p,income:ev.target.value}))} style={{padding:'6px 10px',width:'100%'}}/></FF><div style={{fontSize:11,fontWeight:600,color:'var(--textLight)',marginTop:8}}>Next of kin</div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}><FF label="Name"><input value={editC.kin.name} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,name:ev.target.value}}))} style={{padding:'6px 10px',width:'100%'}}/></FF><PhoneInput label="Phone" value={editC.kin.phone} onChange={v=>setEditC(p=>({...p,kin:{...p.kin,phone:v}}))} placeholder="7XXXXXXXX"/><FF label="Relationship"><select value={editC.kin.rel} onChange={ev=>setEditC(p=>({...p,kin:{...p.kin,rel:ev.target.value}}))}><option value="">Select</option>{RELS.map(r=><option key={r} value={r}>{r}</option>)}</select></FF></div><Btn onClick={saveCustomer} v="ok" sz="sm" style={{marginTop:10}}>Save customer</Btn></div>)}</div>
             {devices&&devices.length>0&&<div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Change device</label><select value={app.dev?.id} onChange={ev=>{const dev=(devices||[]).find(d=>d.id===ev.target.value);if(dev){onUpdate(app.id,{dev,tlEntry:{by:user.name,txt:`Device changed to ${dev.brand} ${dev.model} (superuser)`}});addToast('ok','Device updated','');}}} style={{padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid var(--border)',minWidth:200}}>{(devices||[]).map(d=> <option key={d.id} value={d.id}>{d.brand} {d.model} — {d.sku}</option>)}</select></div>}
             <div><label style={{fontSize:11,fontWeight:600,color:'var(--textMid)',display:'block',marginBottom:6}}>Add timeline entry</label><div style={{display:'flex',gap:8,alignItems:'center'}}><input value={newTlTxt} onChange={ev=>setNewTlTxt(ev.target.value)} placeholder="e.g. Data correction applied" style={{flex:1,padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid var(--border)'}}/><Btn onClick={addTlEntry} v="def" sz="sm" disabled={!newTlTxt.trim()}>Add</Btn></div></div>
           </div>
@@ -4639,7 +4694,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
               <FF label="Tagline / slogan"><input value={coDraft.tagline||''} onChange={e=>sco('tagline',e.target.value)} placeholder="e.g. Empowering access"/></FF>
               <div style={{marginTop:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <FF label="Address"><input value={coDraft.address||''} onChange={e=>sco('address',e.target.value)} placeholder="e.g. KG 15 Avenue, Kigali"/></FF>
-                <FF label="Phone"><input value={coDraft.phone||''} onChange={e=>sco('phone',e.target.value)} placeholder="+250 788 000 000"/></FF>
+                <PhoneInput label="Phone" value={coDraft.phone||''} onChange={v=>sco('phone',v)} placeholder="7XXXXXXXX"/>
                 <FF label="Email"><input type="email" value={coDraft.email||''} onChange={e=>sco('email',e.target.value)} placeholder="info@company.rw"/></FF>
                 <FF label="Website"><input value={coDraft.website||''} onChange={e=>sco('website',e.target.value)} placeholder="www.company.rw"/></FF>
               </div>
