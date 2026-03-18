@@ -488,6 +488,15 @@ const TR={
     err_device:'Please select a device',
     select_device_title:'Select a device',deposit:'Deposit',monthly_lbl:'Monthly',total_lbl:'Total',
     sign_contract:'Sign the contract',draw_signature:'Draw your signature below',clear:'Clear',
+    sign_contract_to_continue:'Sign contract to continue',
+    contract_signing_title:'Contract signing',
+    contract_signing_desc:'Review the contract, toggle language if needed, then capture the customer signature to proceed to IMEI verification.',
+    contract_lang_en:'English',
+    contract_lang_rw:'Kinyarwanda',
+    contract_signed_saved:'Contract signed',
+    contract_signed_saved_msg:'Signature saved. You can now proceed to IMEI verification. Both English and Kinyarwanda contract versions will be available for download with the same signature.',
+    sign_contract_first:'Sign contract first',
+    sign_contract_first_msg:'Please capture the customer signature before entering IMEI.',
     review_title:'Review & submit',review_info:'Customer information',review_device:'Device & pricing',
     active_apps:'Applications',closed_apps:'Closed applications',rejected_archived:'Rejected or archived applications.',
     no_active:'No active applications',no_active_sub:'Start a new application from Home',
@@ -621,6 +630,15 @@ const TR={
     err_device:'Hitamo telefoni',
     select_device_title:'Hitamo telefoni',deposit:'Inguzanyo ya mbere',monthly_lbl:'Buri kwezi',total_lbl:'Igiteranyo',
     sign_contract:'Shyira umukono ku masezerano',draw_signature:'Sura umukono wawe hano',clear:'Siba',
+    sign_contract_to_continue:'Shyira umukono kugirango ukomeze',
+    contract_signing_title:'Gushyira umukono ku masezerano',
+    contract_signing_desc:'Soma amasezerano, uhindure ururimi niba bikenewe, hanyuma ushore umukono w’umukiriya mbere yo gukomeza ku kwemeza IMEI.',
+    contract_lang_en:'Icyongereza',
+    contract_lang_rw:'Ikinyarwanda',
+    contract_signed_saved:'Amasezerano yasinywe',
+    contract_signed_saved_msg:'Umukono wabitswe. Ubu ushobora gukomeza ku kwemeza IMEI. Amasezerano mu Cyongereza no mu Kinyarwanda azaboneka kuri PDF afitemo uyu mukono.',
+    sign_contract_first:'Banza usinye amasezerano',
+    sign_contract_first_msg:'Shyira umukono w’umukiriya mbere yo kwinjiza IMEI.',
     review_title:'Suzuma & ohereza',review_info:'Amakuru y\'umukiriya',review_device:'Telefoni & ibiciro',
     active_apps:'Ubusabe',closed_apps:'Ubusabe bwakiriwe',rejected_archived:'Ubusabe bwanzwe cyangwa bwashyinguwe.',
     no_active:'Nta busabe bugufi',no_active_sub:'Tangira ubusabe bushya uhereye Ahabanza',
@@ -1229,8 +1247,95 @@ const buildContractData=(f,dev,term,pricing,user,companyInfo)=>{
 };
 
 // ── CONTRACT DOCUMENT (UI view) ────────────────────────────────
-const ContractDoc=({data})=>{
+const ContractDoc=({data,lang='en'})=>{
   const {co,f,dev,term,pricing,date,discLabel,repName}=data;
+  const L=lang==='rw'
+    ?{
+      title:'AMASEZERANO YA PAYGO YO KUGURA TELEFONI KU NGUZANYO',
+      date:'Itariki',
+      parties:'Abarebwa n’aya masezerano',
+      provider:'UTANGA SERIVISI',
+      customer:'UMUKIRIYA',
+      deviceFin:'Telefoni & Uburyo bwo kwishyura',
+      kin:'Uwo kwegera / Umwishingizi',
+      terms:'Amabwiriza n’amategeko',
+      ack:'Kwemeza',
+      ackText:'Umukiriya yemera ko yasomye kandi asobanukiwe neza ibisabwa n’aya masezerano, ko amakuru yatanze ari ukuri, kandi ko yemeye kubahiriza ibikubiye muri aya masezerano.',
+      custSig:'UMUKONO W’UMUKIRIYA',
+      onBehalf:(n)=>`KU BW’${String(n||'KOMPANI').toUpperCase()}`,
+      company:'Kompani',
+      address:'Aderesi',
+      phone:'Telefoni',
+      email:'Imeri',
+      reg:'Icyangombwa',
+      fullname:'Amazina',
+      id:(idType)=>idType==='passport'?'Pasiporo':'Indangamuntu',
+      occ:'Umwuga',
+      income:'Umushahara / Inyungu ku kwezi',
+      device:'Telefoni',
+      cash:'Igiciro cy’amafaranga (cash)',
+      total:'Igiciro cy’amasezerano yose',
+      dep:'Amafaranga y’imbere (deposit)',
+      monthly:'Kwishyura buri kwezi',
+      payoff:'Uburyo bwo kurangiza kwishyura',
+      saving:'Igabanyirizwa ryo kwishyura kare',
+      name:'Amazina',
+      rel:'Isano',
+      relationship:(v)=>v||'—',
+      termsArr:(co,pricing)=>[
+        ['1. Ikoranabuhanga rya PAYGO','Telefoni ifite ikoranabuhanga rya PAYGO rishobora kuyifunga kure. Telefoni ishobora gufungwa mu gihe ubwishyu bwa buri kwezi butishyuwe mu minsi 7 nyuma y’itariki yagenwe. Telefoni izafungurwa burundu nyuma yo kurangiza kwishyura byose. Umukiriya ntazagerageza kwangiza, gukuraho, cyangwa guca ku ruhande (bypass) PAYGO.'],
+        ['2. Ubw ownership','Telefoni izakomeza kuba umutungo wa '+co.name+' kugeza igihe ubwishyu bwose buzaba bwarishyuwe. Umukiriya ntiyemerewe kuyigurisha, kuyitanga ingwate, kuyimurira undi, cyangwa kuyishyira mu bundi buryo. Mu gihe habayeho kutubahiriza ubwishyu, '+co.name+' ifite uburenganzira bwo kuyifunga no kuyisubiza.'],
+        ['3. Inshingano zo kwishyura',`Umukiriya azishyura amafaranga y’imbere angana na ${fmtRWF(pricing.dep)} mbere yo guhabwa telefoni. Ubwishyu bwa buri kwezi bungana na ${fmtRWF(pricing.monthly)} bugomba kwishyurwa ku itariki imwe ya buri kwezi. Gutinda kwishyura bishobora gutuma hariho amande kandi telefoni igafungwa.`],
+        ['4. Kwishyura kare',pricing.disc>0?`Hashyizweho igabanyirizwa rya ${Math.round(pricing.disc*100)}% mu gihe umukiriya arangije kwishyura mbere. Umukiriya ashobora kurangiza kwishyura inguzanyo yose igihe icyo ari cyo cyose nta gihano cy’inyongera.`:'Umukiriya ashobora kurangiza kwishyura inguzanyo yose igihe icyo ari cyo cyose nta gihano. Igabanyirizwa ryo kwishyura kare rishobora kuboneka bitewe n’ibyemezo bya kompanyi.'],
+        ['5. Inshingano z’umukiriya','Umukiriya azabungabunga telefoni neza, amenyeshe kompanyi impinduka z’aho abarizwa cyangwa nimero ya telefoni, ntayimure hanze y’u Rwanda atabiherewe uburenganzira bwanditse, kandi yemere ko telefoni ishobora kugenzurwa igihe bibaye ngombwa.'],
+        ['6. Kutubahiriza & ibisubizo','Kutubahiriza bibaho iyo: (a) hari ubwishyu butishyuwe mu minsi 7 nyuma y’itariki; (b) hatanzwe amakuru atariyo; (c) telefoni ibonetse hanze y’u Rwanda nta ruhushya; cyangwa (d) PAYGO yakoreshejwe nabi / yangijwe. Mu gihe bibaye, kompanyi ishobora gufunga telefoni, kwihutisha ubwishyu bwose, kuyisubiza, cyangwa gukoresha inzira z’amategeko.'],
+        ['7. Amakuru bwite','Umukiriya yemera ko amakuru ye bwite ashobora gukoreshwa mu byo aya masezerano asaba, igenzura ry’imyitwarire y’inguzanyo, n’iyubahirizwa ry’amategeko. Amakuru ntazatangwa ku bandi uretse uko bisabwa n’amategeko cyangwa mu ishyirwa mu bikorwa ry’amasezerano.'],
+        ['8. Amategeko agenga amasezerano','Aya masezerano agengwa n’amategeko y’u Rwanda. Impaka zizabanza kugeragezwa gukemurwa mu bwumvikane; byananirana, biregerwa inkiko zifite ububasha mu Rwanda.'],
+      ]
+    }
+    :{
+      title:'PAYGO DEVICE FINANCING AGREEMENT',
+      date:'Date',
+      parties:'Parties to this Agreement',
+      provider:'SERVICE PROVIDER',
+      customer:'CUSTOMER',
+      deviceFin:'Device & Financing',
+      kin:'Next of Kin / Guarantor',
+      terms:'Terms and Conditions',
+      ack:'Acknowledgement',
+      ackText:'The Customer confirms they have read and fully understood all terms of this Agreement, that all information provided is true and accurate, and that they freely agree to be bound by all terms and conditions herein.',
+      custSig:'CUSTOMER SIGNATURE',
+      onBehalf:(n)=>`FOR AND ON BEHALF OF ${String(n||'COMPANY').toUpperCase()}`,
+      company:'Company',
+      address:'Address',
+      phone:'Phone',
+      email:'Email',
+      reg:'Registration',
+      fullname:'Full name',
+      id:(idType)=>idType==='passport'?'Passport':'National ID',
+      occ:'Occupation',
+      income:'Monthly income',
+      device:'Device',
+      cash:'Cash price',
+      total:'Total contract price',
+      dep:'Upfront deposit',
+      monthly:'Monthly installment',
+      payoff:'Payoff plan',
+      saving:'Early payoff saving',
+      name:'Name',
+      rel:'Relationship',
+      relationship:(v)=>v||'—',
+      termsArr:(co,pricing)=>[
+        ['1. PAYGO Technology','The device is fitted with PAYGO remote management technology. The device will be disabled automatically if monthly payments are not received within 7 calendar days of the due date. The device will be permanently unlocked upon full payment. The Customer must not attempt to bypass or tamper with the PAYGO system.'],
+        ['2. Ownership','The device remains the sole property of '+co.name+' until all payments have been received in full. The Customer may not sell, pledge, transfer, or encumber the device. In the event of default, '+co.name+' reserves the right to disable and repossess the device.'],
+        ['3. Payment Obligations',`The Customer shall pay an upfront deposit of ${fmtRWF(pricing.dep)} before device delivery. Monthly installments of ${fmtRWF(pricing.monthly)} are due on or before the same calendar date each month. Late payments attract a penalty fee in addition to device disabling.`],
+        ['4. Early Payoff',pricing.disc>0?`A ${Math.round(pricing.disc*100)}% early payoff discount has been applied to this agreement. The Customer may settle the full remaining balance at any time without additional penalty.`:'The Customer may pay off the full remaining balance at any time without penalty. Early payoff discounts may be available at the Company\'s discretion.'],
+        ['5. Customer Obligations','The Customer shall maintain the device in good condition, notify the Company of any change in contact details or address, not relocate outside Rwanda without prior written consent, and allow reasonable access for device inspection.'],
+        ['6. Default & Remedies','Default occurs if: (a) any payment is not received within 7 days of the due date; (b) materially false information was provided; (c) the device is found outside Rwanda without consent; or (d) the PAYGO system is tampered with. Upon default the Company may disable the device, accelerate all payments, repossess the device, and/or pursue legal remedies.'],
+        ['7. Data & Privacy','The Customer consents to collection and processing of personal data for the purposes of this agreement, credit assessment, and legal compliance. Data will not be shared with third parties except as required by law or for contract performance.'],
+        ['8. Governing Law','This Agreement is governed by the laws of the Republic of Rwanda. Disputes shall first be subject to good-faith negotiation; failing that, either party may refer the matter to the competent courts of Rwanda.'],
+      ]
+    };
   const S=(label,content)=>(
     <div key={label} style={{marginBottom:18}}>
       <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--brand)',marginBottom:6,borderBottom:'1.5px solid var(--border)',paddingBottom:5}}>{label}</div>
@@ -1247,49 +1352,40 @@ const ContractDoc=({data})=>{
         <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{co.tagline}</div>
         <div style={{fontSize:10,color:'var(--textLight)',marginTop:3}}>{[co.address,co.phone,co.email].filter(Boolean).join(' · ')}</div>
         {co.regNo&&<div style={{fontSize:9,color:'var(--textLight)',marginTop:1}}>Reg No: {co.regNo}</div>}
-        <div style={{marginTop:14,fontWeight:800,fontSize:14,color:'var(--text)',letterSpacing:'0.5px'}}>PAYGO DEVICE FINANCING AGREEMENT</div>
-        <div style={{fontSize:10,color:'var(--textMid)',marginTop:3}}>Date: {date}</div>
+        <div style={{marginTop:14,fontWeight:800,fontSize:14,color:'var(--text)',letterSpacing:'0.5px'}}>{L.title}</div>
+        <div style={{fontSize:10,color:'var(--textMid)',marginTop:3}}>{L.date}: {date}</div>
       </div>
-      {S('Parties to this Agreement',<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>SERVICE PROVIDER</div><Row k="Company" v={co.name}/><Row k="Address" v={co.address}/><Row k="Phone" v={co.phone}/><Row k="Email" v={co.email}/><Row k="Registration" v={co.regNo}/></div>
-        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>CUSTOMER</div><Row k="Full name" v={f.name}/><Row k={f.idType==='nid'?'National ID':'Passport'} v={f.nid}/><Row k="Phone" v={f.phone}/><Row k="Address" v={f.addr}/><Row k="Occupation" v={f.occ}/><Row k="Monthly income" v={fmtRWF(+f.income)}/></div>
+      {S(L.parties,<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>{L.provider}</div><Row k={L.company} v={co.name}/><Row k={L.address} v={co.address}/><Row k={L.phone} v={co.phone}/><Row k={L.email} v={co.email}/><Row k={L.reg} v={co.regNo}/></div>
+        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:6}}>{L.customer}</div><Row k={L.fullname} v={f.name}/><Row k={L.id(f.idType)} v={f.nid}/><Row k={L.phone} v={f.phone}/><Row k={L.address} v={f.addr}/><Row k={L.occ} v={f.occ}/><Row k={L.income} v={fmtRWF(+f.income)}/></div>
       </div>)}
-      {S('Device & Financing',<div>
-        <Row k="Device" v={`${dev.brand} ${dev.model} — ${dev.RAM||dev.ram||''} RAM / ${dev.ROM||dev.rom||''} Storage`}/>
-        <Row k="Cash price" v={fmtRWF(dev.retail||dev.cogs||dev.cash||0)}/>
-        <Row k="Total contract price" v={fmtRWF(pricing.total)}/>
-        <Row k="Upfront deposit" v={fmtRWF(pricing.dep)}/>
-        <Row k="Monthly installment" v={`${fmtRWF(pricing.monthly)} × 12 months`}/>
-        <Row k="Payoff plan" v={discLabel}/>
-        {pricing.disc>0&&<Row k="Early payoff saving" v={`${Math.round(pricing.disc*100)}% — you save ${fmtRWF(pricing.savings)}`}/>}
+      {S(L.deviceFin,<div>
+        <Row k={L.device} v={`${dev.brand} ${dev.model} — ${dev.RAM||dev.ram||''} RAM / ${dev.ROM||dev.rom||''} Storage`}/>
+        <Row k={L.cash} v={fmtRWF(dev.retail||dev.cogs||dev.cash||0)}/>
+        <Row k={L.total} v={fmtRWF(pricing.total)}/>
+        <Row k={L.dep} v={fmtRWF(pricing.dep)}/>
+        <Row k={L.monthly} v={`${fmtRWF(pricing.monthly)} × 12 months`}/>
+        <Row k={L.payoff} v={discLabel}/>
+        {pricing.disc>0&&<Row k={L.saving} v={`${Math.round(pricing.disc*100)}% — ${fmtRWF(pricing.savings)}`}/>}
       </div>)}
-      {S('Next of Kin / Guarantor',<div><Row k="Name" v={f.kn}/><Row k="Phone" v={f.kp}/><Row k="Relationship" v={f.kr}/></div>)}
-      {S('Terms and Conditions',[
-        ['1. PAYGO Technology','The device is fitted with PAYGO remote management technology. The device will be disabled automatically if monthly payments are not received within 7 calendar days of the due date. The device will be permanently unlocked upon full payment. The Customer must not attempt to bypass or tamper with the PAYGO system.'],
-        ['2. Ownership','The device remains the sole property of '+co.name+' until all payments have been received in full. The Customer may not sell, pledge, transfer, or encumber the device. In the event of default, '+co.name+' reserves the right to disable and repossess the device.'],
-        ['3. Payment Obligations',`The Customer shall pay an upfront deposit of ${fmtRWF(pricing.dep)} before device delivery. Monthly installments of ${fmtRWF(pricing.monthly)} are due on or before the same calendar date each month. Late payments attract a penalty fee in addition to device disabling.`],
-        ['4. Early Payoff',pricing.disc>0?`A ${Math.round(pricing.disc*100)}% early payoff discount has been applied to this agreement. The Customer may settle the full remaining balance at any time without additional penalty.`:'The Customer may pay off the full remaining balance at any time without penalty. Early payoff discounts may be available at the Company\'s discretion.'],
-        ['5. Customer Obligations','The Customer shall maintain the device in good condition, notify the Company of any change in contact details or address, not relocate outside Rwanda without prior written consent, and allow reasonable access for device inspection.'],
-        ['6. Default & Remedies','Default occurs if: (a) any payment is not received within 7 days of the due date; (b) materially false information was provided; (c) the device is found outside Rwanda without consent; or (d) the PAYGO system is tampered with. Upon default the Company may disable the device, accelerate all payments, repossess the device, and/or pursue legal remedies.'],
-        ['7. Data & Privacy','The Customer consents to collection and processing of personal data for the purposes of this agreement, credit assessment, and legal compliance. Data will not be shared with third parties except as required by law or for contract performance.'],
-        ['8. Governing Law','This Agreement is governed by the laws of the Republic of Rwanda. Disputes shall first be subject to good-faith negotiation; failing that, either party may refer the matter to the competent courts of Rwanda.'],
-      ].map(([heading,text])=>(
+      {S(L.kin,<div><Row k={L.name} v={f.kn}/><Row k={L.phone} v={f.kp}/><Row k={L.rel} v={L.relationship(f.kr)}/></div>)}
+      {S(L.terms,L.termsArr(co,pricing).map(([heading,text])=>(
         <div key={heading} style={{marginBottom:10}}>
           <div style={{fontSize:10,fontWeight:700,color:'var(--text)',marginBottom:3}}>{heading}</div>
           <Para>{text}</Para>
         </div>
       )))}
-      {S('Acknowledgement',<Para>The Customer confirms they have read and fully understood all terms of this Agreement, that all information provided is true and accurate, and that they freely agree to be bound by all terms and conditions herein.</Para>)}
+      {S(L.ack,<Para>{L.ackText}</Para>)}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24,marginTop:16}}>
-        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:8}}>CUSTOMER SIGNATURE</div><div style={{height:50,borderBottom:'1.5px solid var(--border)',marginBottom:6}}/><div style={{fontSize:11,color:'var(--textMid)'}}>{f.name}</div><div style={{fontSize:10,color:'var(--textLight)'}}>Date: {date}</div></div>
+        <div><div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:8}}>{L.custSig}</div><div style={{height:50,borderBottom:'1.5px solid var(--border)',marginBottom:6}}/><div style={{fontSize:11,color:'var(--textMid)'}}>{f.name}</div><div style={{fontSize:10,color:'var(--textLight)'}}>{L.date}: {date}</div></div>
         <div>
-          <div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:8}}>FOR AND ON BEHALF OF {co.name.toUpperCase()}</div>
+          <div style={{fontSize:10,fontWeight:700,color:'var(--brand)',marginBottom:8}}>{L.onBehalf(co.name)}</div>
           {co.signatorySig
             ?<img src={co.signatorySig} alt="company signature" style={{height:50,maxWidth:'100%',objectFit:'contain',display:'block',marginBottom:6}}/>
             :<div style={{height:50,borderBottom:'1.5px solid var(--border)',marginBottom:6}}/>}
           <div style={{fontSize:11,color:'var(--textMid)'}}>{co.signatoryName||co.name}</div>
           {co.signatoryTitle&&<div style={{fontSize:10,color:'var(--textLight)'}}>{co.signatoryTitle}</div>}
-          <div style={{fontSize:10,color:'var(--textLight)'}}>Date: {date}</div>
+          <div style={{fontSize:10,color:'var(--textLight)'}}>{L.date}: {date}</div>
         </div>
       </div>
     </div>
@@ -1309,7 +1405,7 @@ const resolveLogoWithFallback=async(co)=>{
 };
 
 // ── PDF GENERATOR ──────────────────────────────────────────────
-const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
+const generateContractPDF=async(contractData,companyInfo,customerSignature,lang='en')=>{
   if(!window.jspdf){alert('PDF library not available. Please refresh the page.');return;}
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
@@ -1336,6 +1432,57 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
     y+=5;
   };
   const {co,f,dev,term,pricing,date,discLabel,repName,app,deal}=contractData;
+  const L=lang==='rw'
+    ?{
+      title:'AMASEZERANO YA PAYGO YO KUGURA TELEFONI KU NGUZANYO',
+      parties:'ABAREBWA N’AYA MASEZERANO',
+      provider:'UTANGA SERIVISI',
+      customer:'UMUKIRIYA',
+      deviceFin:'TELEFONI & UBURYO BWO KWISHYURA',
+      kin:'UWO KWEGERA / UMWISHINGIZI',
+      terms:'AMABWIRIZA N’AMATEGEKO',
+      ack:'KWEMEZA NO GUSINYIRA',
+      ackText:'Umukiriya yemera ko yasomye kandi asobanukiwe neza ibisabwa n’aya masezerano, ko amakuru yatanze ari ukuri, kandi ko yemeye kubahiriza ibikubiye muri aya masezerano.',
+      custSig:'UMUKONO W’UMUKIRIYA',
+      onBehalf:(n)=>`KU BW’${String(n||'KOMPANI').toUpperCase()}`,
+      date:'Itariki',
+      idLabel:(idType)=>idType==='passport'?'Pasiporo':'Indangamuntu',
+      termsArr:(co,deal,pricing,discLabel)=>[
+        ['1. Ikoranabuhanga rya PAYGO','Telefoni ifite ikoranabuhanga rya PAYGO rishobora kuyifunga kure. Telefoni ishobora gufungwa mu gihe ubwishyu bwa buri kwezi butishyuwe mu minsi 7 nyuma y’itariki yagenwe. Telefoni izafungurwa burundu nyuma yo kurangiza kwishyura byose. Umukiriya ntazagerageza kwangiza, gukuraho, cyangwa guca ku ruhande (bypass) PAYGO.'],
+        ['2. Ubw ownership','Telefoni izakomeza kuba umutungo wa '+co.name+' kugeza igihe ubwishyu bwose buzaba bwarishyuwe. Umukiriya ntiyemerewe kuyigurisha, kuyitanga ingwate, kuyimurira undi, cyangwa kuyishyira mu bundi buryo. Mu gihe habayeho kutubahiriza ubwishyu, kompanyi ishobora kuyifunga no kuyisubiza.'],
+        ['3. Inshingano zo kwishyura',`Amafaranga y’imbere (deposit) angana na RWF ${Number(deal.upfrontPayment||0).toLocaleString()} agomba kwishyurwa mbere yo guhabwa telefoni. Ubwishyu bwa buri kwezi bungana na RWF ${Number(deal.recurrentPayment||0).toLocaleString()} bugomba kwishyurwa ku itariki imwe ya buri kwezi. Gutinda kwishyura bishobora gutuma hariho amande kandi telefoni igafungwa.`],
+        ['4. Kwishyura kare',deal.discountPct>0?`Hashyizweho igabanyirizwa rya ${Math.round(deal.discountPct*100)}% mu gihe umukiriya arangije kwishyura mbere. Umukiriya ashobora kurangiza kwishyura inguzanyo yose igihe icyo ari cyo cyose nta gihano cy’inyongera.`:'Umukiriya ashobora kurangiza kwishyura inguzanyo yose igihe icyo ari cyo cyose nta gihano.'],
+        ['5. Inshingano z’umukiriya','Umukiriya azabungabunga telefoni neza, amenyeshe kompanyi impinduka z’aho abarizwa cyangwa nimero ya telefoni, ntayimure hanze y’u Rwanda atabiherewe uburenganzira bwanditse, kandi yemere ko telefoni ishobora kugenzurwa igihe bibaye ngombwa.'],
+        ['6. Kutubahiriza & ibisubizo','Kutubahiriza bibaho iyo: (a) hari ubwishyu butishyuwe mu minsi 7 nyuma y’itariki; (b) hatanzwe amakuru atariyo; (c) telefoni ibonetse hanze y’u Rwanda nta ruhushya; cyangwa (d) PAYGO yakoreshejwe nabi / yangijwe. Mu gihe bibaye, kompanyi ishobora gufunga telefoni, kwihutisha ubwishyu bwose, kuyisubiza, cyangwa gukoresha inzira z’amategeko.'],
+        ['7. Amakuru bwite','Umukiriya yemera ko amakuru ye bwite ashobora gukoreshwa mu byo aya masezerano asaba, igenzura ry’imyitwarire y’inguzanyo, n’iyubahirizwa ry’amategeko. Amakuru ntazatangwa ku bandi uretse uko bisabwa n’amategeko cyangwa mu ishyirwa mu bikorwa ry’amasezerano.'],
+        ['8. Amategeko agenga amasezerano','Aya masezerano agengwa n’amategeko y’u Rwanda. Impaka zizabanza kugeragezwa gukemurwa mu bwumvikane; byananirana, biregerwa inkiko zifite ububasha mu Rwanda.'],
+      ]
+    }
+    :{
+      title:'PAYGO DEVICE FINANCING AGREEMENT',
+      parties:'PARTIES TO THIS AGREEMENT',
+      provider:'SERVICE PROVIDER',
+      customer:'CUSTOMER',
+      deviceFin:'DEVICE & FINANCING DETAILS',
+      kin:'NEXT OF KIN / GUARANTOR',
+      terms:'TERMS AND CONDITIONS',
+      ack:'ACKNOWLEDGEMENT AND SIGNATURE',
+      ackText:'The Customer confirms they have read and fully understood all terms of this Agreement, that all information provided is true and accurate, and that they agree to be bound by all terms and conditions herein.',
+      custSig:'CUSTOMER SIGNATURE',
+      onBehalf:(n)=>`FOR AND ON BEHALF OF ${String(n||'COMPANY').toUpperCase()}`,
+      date:'Date',
+      idLabel:(idType)=>idType==='passport'?'Passport':'National ID',
+      termsArr:(co,deal,pricing,discLabel)=>[
+        ['1. PAYGO Technology','The device is fitted with PAYGO remote management technology. It will be disabled automatically if monthly payments are not received within 7 calendar days of the due date, and permanently unlocked upon full payment. The Customer must not bypass, tamper with, or disable the PAYGO system.'],
+        ['2. Ownership','The device remains the sole property of '+co.name+' until all payments are received in full. The Customer may not sell, pledge, transfer, or otherwise encumber the device. In the event of default the Company may remotely disable and/or repossess the device.'],
+        ['3. Payment Obligations',`Upfront deposit of RWF ${Number(deal.upfrontPayment||0).toLocaleString()} is due before device delivery. Monthly installments of RWF ${Number(deal.recurrentPayment||0).toLocaleString()} are due on the same calendar date each month. Late payments attract a penalty fee in addition to device disabling.`],
+        ['4. Early Payoff',deal.discountPct>0?`A ${Math.round(deal.discountPct*100)}% early payoff discount has been applied. The Customer may settle the full remaining balance at any time without additional penalty.`:'The Customer may pay off the remaining balance at any time without penalty. Early payoff discounts may be available at the Company\'s discretion.'],
+        ['5. Customer Obligations','The Customer shall maintain the device in good condition, promptly notify the Company of changes in contact information, not relocate outside Rwanda without prior written consent, and allow reasonable access for device inspection.'],
+        ['6. Default & Remedies','Default occurs if: (a) any payment is not received within 7 days of the due date; (b) materially false information was provided; (c) the device is found outside Rwanda without prior consent; or (d) the PAYGO system is tampered with. Upon default the Company may disable the device, accelerate all payments, repossess the device, and/or pursue legal remedies.'],
+        ['7. Data & Privacy','The Customer consents to the Company collecting and processing personal data for the purposes of this agreement, credit assessment, and compliance with applicable law. Data will not be shared with third parties except as required by law or for contract performance.'],
+        ['8. Governing Law','This Agreement is governed by the laws of the Republic of Rwanda. Disputes shall first be subject to good-faith negotiation; failing that, either party may refer to the competent courts of Rwanda.'],
+      ]
+    };
   const logoData=await resolveLogoWithFallback(co);
 
   // ── Header (matches ContractDoc preview: centered logo + company info) ──
@@ -1349,23 +1496,23 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
   if(contact){doc.setFontSize(8).setTextColor(...light).text(contact,PW/2,y,{align:'center'});y+=5;}
   if(co.regNo){doc.text('Reg No: '+co.regNo,PW/2,y,{align:'center'});y+=4;}
   y+=2;
-  doc.setFont('helvetica','bold').setFontSize(12).setTextColor(...dark).text('PAYGO DEVICE FINANCING AGREEMENT',PW/2,y,{align:'center'});y+=6;
+  doc.setFont('helvetica','bold').setFontSize(12).setTextColor(...dark).text(L.title,PW/2,y,{align:'center'});y+=6;
   doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...light);
-  doc.text('Date: '+date,PW/2,y,{align:'center'});y+=6;
+  doc.text(L.date+': '+date,PW/2,y,{align:'center'});y+=6;
   hline(brand,0.6);
 
   // ── Parties ─────────────────────────────────────────────────
-  doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text('PARTIES TO THIS AGREEMENT',M,y);y+=6;
+  doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text(L.parties,M,y);y+=6;
   const colMid=M+CW/2+4;
   const startY=y;
   // Service provider col
-  doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text('SERVICE PROVIDER',M,y);
+  doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text(L.provider,M,y);
   let ly=y+5;
   [[co.name||''],[co.address||''],[co.phone||''],[co.email||''],[co.regNo?'Reg: '+co.regNo:'']].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark).text(v,M,ly);ly+=4.5;});
   // Customer col — text only
-  doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text('CUSTOMER',colMid,startY);
+  doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text(L.customer,colMid,startY);
   let ry=startY+5;
-  [[app.fullName||''],[`${app.idType==='passport'?'Passport':'National ID'}: ${app.nationalIdNumber||''}`],[`Phone: ${app.phoneNumber||''}`],[`Address: ${app.address||''}`],[`Occupation: ${app.employmentType||''}`],[`Income: RWF ${Number(app.monthlyIncomeRwf||0).toLocaleString()}`]].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);const lines=doc.splitTextToSize(v,CW/2-6);lines.forEach(l=>{doc.text(l,colMid,ry);ry+=4.5;});});
+  [[app.fullName||''],[`${L.idLabel(app.idType)}: ${app.nationalIdNumber||''}`],[`Phone: ${app.phoneNumber||''}`],[`Address: ${app.address||''}`],[`Occupation: ${app.employmentType||''}`],[`Income: RWF ${Number(app.monthlyIncomeRwf||0).toLocaleString()}`]].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);const lines=doc.splitTextToSize(v,CW/2-6);lines.forEach(l=>{doc.text(l,colMid,ry);ry+=4.5;});});
   y=Math.max(ly,ry)+5;
   // ── Customer photo (portrait) + ID photo (landscape) side by side ──
   if(app.customerPhoto||app.idPhoto){
@@ -1398,7 +1545,7 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
   hline();
 
   // ── Device & Financing ──────────────────────────────────────
-  doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text('DEVICE & FINANCING DETAILS',M,y);y+=6;
+  doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text(L.deviceFin,M,y);y+=6;
   kv('Device',`${deal.manufacturer||''} ${deal.deviceModel||''} — ${deal.RAM||''} RAM / ${deal.ROM||''} Storage`);
   kv('Cash price',`RWF ${Number(deal.cogs||0).toLocaleString()}`);
   kv('Total contract price',`RWF ${Number(deal.totalCost||0).toLocaleString()} (${Math.round((deal.markupRate||0)*100)}% financing rate)`);
@@ -1409,21 +1556,12 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
   y+=2;hline();
 
   // ── Next of Kin ─────────────────────────────────────────────
-  doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text('NEXT OF KIN / GUARANTOR',M,y);y+=6;
+  doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text(L.kin,M,y);y+=6;
   kv('Name',app.guarantorName||'');kv('Phone',app.guarantorPhone||'');y+=2;hline();
 
   // ── Terms ───────────────────────────────────────────────────
-  doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text('TERMS AND CONDITIONS',M,y);y+=6;
-  const TERMS=[
-    ['1. PAYGO Technology','The device is fitted with PAYGO remote management technology. It will be disabled automatically if monthly payments are not received within 7 calendar days of the due date, and permanently unlocked upon full payment. The Customer must not bypass, tamper with, or disable the PAYGO system.'],
-    ['2. Ownership','The device remains the sole property of '+co.name+' until all payments are received in full. The Customer may not sell, pledge, transfer, or otherwise encumber the device. In the event of default the Company may remotely disable and/or repossess the device.'],
-    ['3. Payment Obligations',`Upfront deposit of RWF ${Number(deal.upfrontPayment||0).toLocaleString()} is due before device delivery. Monthly installments of RWF ${Number(deal.recurrentPayment||0).toLocaleString()} are due on the same calendar date each month. Late payments attract a penalty fee in addition to device disabling.`],
-    ['4. Early Payoff',deal.discountPct>0?`A ${Math.round(deal.discountPct*100)}% early payoff discount has been applied. The Customer may settle the full remaining balance at any time without additional penalty.`:'The Customer may pay off the remaining balance at any time without penalty. Early payoff discounts may be available at the Company\'s discretion.'],
-    ['5. Customer Obligations','The Customer shall maintain the device in good condition, promptly notify the Company of changes in contact information, not relocate outside Rwanda without prior written consent, and allow reasonable access for device inspection.'],
-    ['6. Default & Remedies','Default occurs if: (a) any payment is not received within 7 days of the due date; (b) materially false information was provided; (c) the device is found outside Rwanda without prior consent; or (d) the PAYGO system is tampered with. Upon default the Company may disable the device, accelerate all payments, repossess the device, and/or pursue legal remedies.'],
-    ['7. Data & Privacy','The Customer consents to the Company collecting and processing personal data for the purposes of this agreement, credit assessment, and compliance with applicable law. Data will not be shared with third parties except as required by law or for contract performance.'],
-    ['8. Governing Law','This Agreement is governed by the laws of the Republic of Rwanda. Disputes shall first be subject to good-faith negotiation; failing that, either party may refer to the competent courts of Rwanda.'],
-  ];
+  doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text(L.terms,M,y);y+=6;
+  const TERMS=L.termsArr(co,deal,pricing,discLabel);
   TERMS.forEach(([heading,body])=>{
     chk(22);
     doc.setFont('helvetica','bold').setFontSize(8.5).setTextColor(...brand).text(heading,M,y);y+=4.5;
@@ -1434,31 +1572,32 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature)=>{
 
   // ── Acknowledgement & Signature ─────────────────────────────
   chk(35);hline(brand,0.5);
-  doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text('ACKNOWLEDGEMENT AND SIGNATURE',M,y);y+=5;
+  doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text(L.ack,M,y);y+=5;
   doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);
-  doc.splitTextToSize('The Customer confirms they have read and fully understood all terms of this Agreement, that all information provided is true and accurate, and that they agree to be bound by all terms and conditions herein.',CW).forEach(l=>{doc.text(l,M,y);y+=4;});
+  doc.splitTextToSize(L.ackText,CW).forEach(l=>{doc.text(l,M,y);y+=4;});
   y+=5;chk(55);
   const sigStartY=y;
   // Customer sig
-  doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text('CUSTOMER SIGNATURE',M,sigStartY);
+  doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text(L.custSig,M,sigStartY);
   if(customerSignature){try{doc.addImage(customerSignature,'PNG',M,sigStartY+3,CW/2-8,28);}catch(e){}}
   doc.setDrawColor(...light);doc.setLineWidth(0.3);doc.line(M,sigStartY+33,M+CW/2-8,sigStartY+33);
   doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);
   doc.text(app.fullName||'',M,sigStartY+38);
-  doc.text('Date: '+date,M,sigStartY+43);
+  doc.text(L.date+': '+date,M,sigStartY+43);
   // Company signatory sig (pre-loaded from company settings)
-  doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text('FOR AND ON BEHALF OF '+co.name.toUpperCase(),colMid,sigStartY);
+  doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text(L.onBehalf(co.name),colMid,sigStartY);
   if(co.signatorySig){try{doc.addImage(co.signatorySig,'PNG',colMid,sigStartY+3,CW/2-8,28);}catch(e){}}
   doc.setDrawColor(...light);doc.setLineWidth(0.3);doc.line(colMid,sigStartY+33,colMid+CW/2-8,sigStartY+33);
   doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark);
   doc.text(co.signatoryName||co.name,colMid,sigStartY+38);
   if(co.signatoryTitle)doc.text(co.signatoryTitle,colMid,sigStartY+43);
-  doc.text('Date: '+date,colMid,co.signatoryTitle?sigStartY+48:sigStartY+43);
+  doc.text(L.date+': '+date,colMid,co.signatoryTitle?sigStartY+48:sigStartY+43);
   y=sigStartY+55;
 
   // (photos are embedded inline in the parties section — no separate attachment page)
 
-  doc.save(`PAYGO_Contract_${(contractData.id||'draft').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+  const suffix=lang==='rw'?'RW':'EN';
+  doc.save(`PAYGO_Contract_${suffix}_${(contractData.id||'draft').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
 };
 
 // ── NEW APPLICATION ───────────────────────────────────────────
@@ -1466,7 +1605,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
   const {user,companyInfo}=useContext(Ctx);
   const t=useT();
   const [step,setStep]=useState(1);
-  const [f,setF]=useState(()=>initialData?{name:initialData.name||'',idType:initialData.idType||'nid',nid:initialData.nid||'',phone:initialData.phone||'',addr:initialData.addr||'',occ:initialData.occ||'',income:initialData.income?String(initialData.income):'',kn:initialData.kn||'',kp:initialData.kp||'',kr:initialData.kr||'',did:initialData.did||preSelDevId||'',term:initialData.term||preSelTerm,sig:initialData.sig||null,customerPhoto:initialData.customerPhoto||null,idPhoto:initialData.idPhoto||null,incomeProof:initialData.incomeProof||null}:{name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:preSelDevId||'',term:preSelTerm,sig:null,customerPhoto:null,idPhoto:null,incomeProof:null});
+  const [f,setF]=useState(()=>initialData?{name:initialData.name||'',idType:initialData.idType||'nid',nid:initialData.nid||'',phone:initialData.phone||'',addr:initialData.addr||'',occ:initialData.occ||'',income:initialData.income?String(initialData.income):'',kn:initialData.kn||'',kp:initialData.kp||'',kr:initialData.kr||'',did:initialData.did||preSelDevId||'',term:initialData.term||preSelTerm,customerPhoto:initialData.customerPhoto||null,idPhoto:initialData.idPhoto||null,incomeProof:initialData.incomeProof||null}:{name:'',idType:'nid',nid:'',phone:'',addr:'',occ:'',income:'',kn:'',kp:'',kr:'',did:preSelDevId||'',term:preSelTerm,customerPhoto:null,idPhoto:null,incomeProof:null});
   const [e,setE]=useState({});
   const [cam,setCam]=useState(null);
   const [selBrand2,setSelBrand2]=useState(()=>{
@@ -1496,18 +1635,17 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
     setE(er);return!Object.keys(er).length;
   };
   const v2=()=>{const er={};if(!f.did)er.did=t('err_device');setE(er);return!Object.keys(er).length;};
-  const v3=()=>{const er={};if(!f.sig)er.sig='Please sign the contract to continue';setE(er);return!Object.keys(er).length;};
-  const next=()=>{if(step===1&&v1())setStep(2);else if(step===2&&v2())setStep(3);else if(step===3&&v3())setStep(4);};
+  const next=()=>{if(step===1&&v1())setStep(2);else if(step===2&&v2())setStep(3);};
   const dev=(devices||[]).find(d=>d.id===f.did);
-  const STEPS=[t('step_customer'),t('step_device'),t('step_contract'),t('step_review')];
-  const goStep=(s)=>{if(s<step)setStep(s);else if(s===step){}else if(s===2&&v1())setStep(2);else if(s===3&&v1()&&v2())setStep(3);else if(s===4&&v1()&&v2()&&v3())setStep(4);};
+  const STEPS=[t('step_customer'),t('step_device'),t('step_review')];
+  const goStep=(s)=>{if(s<step)setStep(s);else if(s===step){}else if(s===2&&v1())setStep(2);else if(s===3&&v1()&&v2())setStep(3);};
   return(
     <div className="fadeUp new-app-form" style={{display:'flex',flexDirection:'column',flex:1,minHeight:0,width:'100%',padding:'0 24px'}}>
       {cam&&<CameraModal facing={cam.facing} mode={cam.mode} allowFlip={cam.allowFlip} onCapture={onCamCapture} onClose={closeCam}/>}
       <header style={{flexShrink:0,padding:'20px 0 16px',borderBottom:'1.5px solid var(--border)'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
           <Btn onClick={onBack} v="ghost" icon="←" sz="sm">{t('cancel')}</Btn>
-          <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>{t('new_application')}</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{t('step_of',step,4)} — {STEPS[step-1]}</p></div>
+          <div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>{t('new_application')}</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{t('step_of',step,3)} — {STEPS[step-1]}</p></div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:0}}>
           {STEPS.map((l,i)=>(
@@ -1630,30 +1768,6 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
         })()}
         {step===3&&dev&&(()=>{
           const tp=calcTermPricing(dev,f.term);
-          const discLabel=f.term===3?'Pay off in 3 months (30% early discount)':f.term===6?'Pay off in 6 months (20% early discount)':'Standard 12 months';
-          const contractPreviewData=buildContractData(f,dev,f.term,tp,user,companyInfo);
-          return(
-            <div>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:700}}>Review the contract carefully</div>
-                  <div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>Read all terms, then draw your signature below to proceed</div>
-                </div>
-              </div>
-              <div style={{maxHeight:380,overflow:'auto',border:'1.5px solid var(--border)',borderRadius:'var(--r)',marginBottom:18,padding:4,WebkitOverflowScrolling:'touch'}}>
-                <ContractDoc data={contractPreviewData}/>
-              </div>
-              <div style={{borderTop:'1.5px solid var(--border)',paddingTop:16}}>
-                <div style={{fontSize:12,fontWeight:700,marginBottom:4}}>Customer signature</div>
-                <div style={{fontSize:11,color:'var(--textMid)',marginBottom:10}}>The customer must sign below to confirm they have read and agree to all terms.</div>
-                {e.sig&&<div style={{padding:'9px 13px',background:'var(--errBg)',border:'1px solid var(--errBorder)',borderRadius:'var(--r2)',fontSize:12,color:'var(--err)',marginBottom:10}}>{e.sig}</div>}
-                <SignaturePad onChange={sig=>s('sig',sig)}/>
-              </div>
-            </div>
-          );
-        })()}
-        {step===4&&dev&&(()=>{
-          const tp=calcTermPricing(dev,f.term);
           const termLabel=f.term===12?'Standard 12 months':f.term===3?'Pay off in 3 months':'Pay off in 6 months';
           const discLabel=f.term===3?'Pay off in 3 months (30% early discount)':f.term===6?'Pay off in 6 months (20% early discount)':'Standard 12 months';
           const contractForPdf=buildContractData(f,dev,f.term,tp,user,companyInfo);
@@ -1669,11 +1783,6 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
                 <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{dev.specs||[dev.ram,dev.rom].filter(Boolean).join(' / ')}</div>
                 {tp.disc>0&&<div style={{padding:'7px 11px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)',fontSize:11,fontWeight:700,color:'var(--ok)',marginBottom:10}}>Early payoff: {Math.round(tp.disc*100)}% discount applied · saving {fmtRWF(tp.savings)}</div>}
                 {[['Payoff plan',termLabel],['Deposit',fmtRWF(tp.dep)],['Monthly × 12',fmtRWF(tp.monthly)],['Total price',fmtRWF(tp.total)]].map(([k,v])=><Fld key={k} label={k} val={v}/>)}
-                {f.sig&&<div style={{marginTop:12,padding:'8px 10px',background:'var(--okBg)',border:'1px solid var(--okBorder)',borderRadius:'var(--r2)',display:'flex',alignItems:'center',gap:8}}>
-                  <span style={{fontSize:11,color:'var(--ok)',fontWeight:600}}>✓ Signed</span>
-                  <img src={f.sig} alt="signature" style={{height:32,maxWidth:120,objectFit:'contain'}}/>
-                </div>}
-                <Btn v="def" full icon="⬇" sz="sm" style={{marginTop:12}} onClick={()=>generateContractPDF(contractForPdf,companyInfo,f.sig)}>Download contract PDF</Btn>
                 <div style={{marginTop:10,padding:'10px 13px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6}}>Confirm all details are correct before submitting.</div>
               </div>
             </div>
@@ -1685,7 +1794,7 @@ const NewApp=({onSubmit,onBack,onSaveDraft,onAutoSave,devices,preSelDevId=null,p
         {step>1?<Btn onClick={()=>setStep(p=>p-1)} v="def" icon="←">{t('back')}</Btn>:<div/>}
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           {onSaveDraft&&step>=1&&f.name.trim()&&<Btn onClick={()=>onSaveDraft(f,dev)} v="ghost" sz="sm" icon="💾">{t('save_draft')}</Btn>}
-          {step<4?<Btn onClick={next} v="primary" icon="→">{t('continue_btn')}</Btn>:<Btn onClick={()=>onSubmit(f,dev)} v="primary" icon="✓">{t('submit_app')}</Btn>}
+          {step<3?<Btn onClick={next} v="primary" icon="→">{t('continue_btn')}</Btn>:<Btn onClick={()=>onSubmit(f,dev)} v="primary" icon="✓">{t('submit_app')}</Btn>}
         </div>
       </footer>
     </div>
@@ -2345,6 +2454,8 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const [rejReason,setRejReason]=useState('');
   const [requestedFields,setRequestedFields]=useState(()=>app.requestedChangeFields||[]);
   const [showImei,setShowImei]=useState(false);
+  const [contractLang,setContractLang]=useState('en');
+  const [sigDraft,setSigDraft]=useState(()=>app.application?.customerSignature||null);
   const [opsNote,setOpsNote]=useState('');
   const [showOpsRej,setShowOpsRej]=useState(false);
   const [opsRejReason,setOpsRejReason]=useState('');
@@ -2359,12 +2470,13 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
   const saveNotes=()=>{onUpdate(app.id,{notes:editNotes});addToast('ok','Notes updated','');};
   const addTlEntry=()=>{if(!newTlTxt.trim())return;onUpdate(app.id,{tlEntry:{by:user.name,txt:newTlTxt.trim()}});addToast('ok','Timeline entry added','');setNewTlTxt('');};
   useEffect(()=>{setEditNotes(app.notes||'');},[app.id,app.notes]);
+  useEffect(()=>{setSigDraft(app.application?.customerSignature||null);},[app.id]); // reset when switching records
 
   const _adRepEmail=()=>{const r=(users||[]).find(u=>u.id===app.repId);return r?.email||'';};
   const _adRepName=()=>app.repName||(users||[]).find(u=>u.id===app.repId)?.name||'Sales Rep';
   const approve=async()=>{
     setLd('ap');await sleep(1200);
-    onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:'Approved — sales rep to enter IMEI and verify device'}});
+    onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:'Approved — sales rep to sign contract, then proceed to IMEI verification'}});
     sendEmail('approved',{to_email:_adRepEmail(),to_name:_adRepName(),customer_name:app.application?.fullName||app.id,app_id:app.id,reviewer_name:user.name});
     addToast('ok','Application approved','Sales rep notified to proceed with IMEI verification');setLd(null);onBack();
   };
@@ -2462,7 +2574,8 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
             const term=deal.termOption||12;
             const discLabel=term===3?'Pay off in 3 months (30% early discount)':term===6?'Pay off in 6 months (20% early discount)':'Standard 12 months';
             const contractData={id:app.id,createdAt:app.createdAt,repName:app.rep||'',co:{...defaultCompanyInfo,...(companyInfo||{})},f:{name:ap.fullName||'',nid:ap.nationalIdNumber||'',idType:ap.idType||'nid',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kn:ap.guarantorName||'',kp:ap.guarantorPhone||'',kr:'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},dev:{brand:deal.manufacturer||'',model:deal.deviceModel||'',ram:deal.RAM||'',rom:deal.ROM||'',retail:deal.cogs||0,markupRate:deal.markupRate||0},term,pricing:tp,date:new Date(app.createdAt||Date.now()).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),discLabel,app:{fullName:ap.fullName||'',nationalIdNumber:ap.nationalIdNumber||'',idType:ap.idType||'nid',phoneNumber:ap.phoneNumber||'',address:ap.address||'',employmentType:ap.employmentType||'',monthlyIncomeRwf:ap.monthlyIncomeRwf||0,guarantorName:ap.guarantorName||'',guarantorPhone:ap.guarantorPhone||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},deal};
-            generateContractPDF(contractData,companyInfo||defaultCompanyInfo,ap.customerSignature||null);
+            // Default to EN download button; signed customers can also download RW from the signing panel
+            generateContractPDF(contractData,companyInfo||defaultCompanyInfo,ap.customerSignature||null,'en');
           }}>{t('dl_contract_pdf')}</Btn>
         </div>
       </div>
@@ -2640,7 +2753,45 @@ const AppDetail=({app,onUpdate,addToast,onBack,devices})=>{
         </Card>
       )}
       {/* Approved — IMEI entry / retry action for rep */}
-      {isRep&&app.status===ST.APPROVED&&(
+      {isRep&&app.status===ST.APPROVED&&!app.application?.customerSignature&&(
+        <Card sx={{padding:'18px',marginBottom:14,background:'var(--infoBg)',border:'2px solid var(--infoBorder)'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--info)',marginBottom:6}}>{t('contract_signing_title')}</div>
+          <div style={{fontSize:12,color:'var(--textMid)',marginBottom:14}}>{t('contract_signing_desc')}</div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
+            <button type="button" onClick={()=>setContractLang('en')} style={{padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid '+(contractLang==='en'?'var(--infoBorder)':'var(--border)'),background:contractLang==='en'?'var(--infoBg)':'white',color:contractLang==='en'?'var(--info)':'var(--textMid)',fontWeight:700,fontSize:12,cursor:'pointer'}}>{t('contract_lang_en')}</button>
+            <button type="button" onClick={()=>setContractLang('rw')} style={{padding:'8px 12px',borderRadius:'var(--r2)',border:'1.5px solid '+(contractLang==='rw'?'var(--infoBorder)':'var(--border)'),background:contractLang==='rw'?'var(--infoBg)':'white',color:contractLang==='rw'?'var(--info)':'var(--textMid)',fontWeight:700,fontSize:12,cursor:'pointer'}}>{t('contract_lang_rw')}</button>
+          </div>
+          {(()=>{
+            const ap=app.application||{};const deal=app.deal||{};
+            const tp={total:deal.totalCost||0,dep:deal.upfrontPayment||0,monthly:deal.recurrentPayment||0,disc:deal.discountPct||0,savings:deal.discountPct>0?Math.round(deal.totalCost/(1-deal.discountPct))-deal.totalCost:0,term:deal.termOption||12};
+            const term=deal.termOption||12;
+            const discLabel=term===3?'Pay off in 3 months (30% early discount)':term===6?'Pay off in 6 months (20% early discount)':'Standard 12 months';
+            const contractData={id:app.id,createdAt:app.createdAt,repName:app.rep||'',co:{...defaultCompanyInfo,...(companyInfo||{})},f:{name:ap.fullName||'',nid:ap.nationalIdNumber||'',idType:ap.idType||'nid',phone:ap.phoneNumber||'',addr:ap.address||'',occ:ap.employmentType||'',income:ap.monthlyIncomeRwf||0,kn:ap.guarantorName||'',kp:ap.guarantorPhone||'',kr:ap.guarantorRel||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},dev:{brand:deal.manufacturer||'',model:deal.deviceModel||'',ram:deal.RAM||'',rom:deal.ROM||'',retail:deal.cogs||0,markupRate:deal.markupRate||0},term,pricing:tp,date:new Date(app.createdAt||Date.now()).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),discLabel,app:{fullName:ap.fullName||'',nationalIdNumber:ap.nationalIdNumber||'',idType:ap.idType||'nid',phoneNumber:ap.phoneNumber||'',address:ap.address||'',employmentType:ap.employmentType||'',monthlyIncomeRwf:ap.monthlyIncomeRwf||0,guarantorName:ap.guarantorName||'',guarantorPhone:ap.guarantorPhone||'',guarantorRel:ap.guarantorRel||'',customerPhoto:ap.customerPhoto,idPhoto:ap.idPhoto},deal};
+            return(
+              <>
+                <div style={{maxHeight:320,overflow:'auto',border:'1.5px solid var(--border)',borderRadius:'var(--r)',marginBottom:14,padding:4,background:'white'}}>
+                  <ContractDoc data={contractData} lang={contractLang}/>
+                </div>
+                <div style={{borderTop:'1.5px solid var(--border)',paddingTop:12}}>
+                  <div style={{fontSize:12,fontWeight:700,marginBottom:6}}>{t('draw_signature')}</div>
+                  <SignaturePad onChange={sig=>setSigDraft(sig)}/>
+                  <div style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'}}>
+                    <Btn v="primary" icon="✓" disabled={!sigDraft} onClick={()=>{
+                      if(!sigDraft){addToast('warn',t('sign_contract_first'),t('sign_contract_first_msg'));return;}
+                      const nextAp={...(app.application||{}),customerSignature:sigDraft,digitalSignatureConfirmed:true,contractSignedAt:new Date().toISOString(),contractSignedLangs:['en','rw']};
+                      onUpdate(app.id,{application:nextAp,tlEntry:{by:user.name,txt:'Contract signed (EN & RW) — sales rep can proceed to IMEI verification'}});
+                      addToast('ok',t('contract_signed_saved'),t('contract_signed_saved_msg'));
+                    }}>{t('sign_contract_to_continue')}</Btn>
+                    <Btn v="def" icon="⬇" sz="sm" onClick={()=>generateContractPDF(contractData,companyInfo||defaultCompanyInfo,sigDraft||null,'en')}>{t('dl_contract_pdf')} (EN)</Btn>
+                    <Btn v="def" icon="⬇" sz="sm" onClick={()=>generateContractPDF(contractData,companyInfo||defaultCompanyInfo,sigDraft||null,'rw')}>{t('dl_contract_pdf')} (RW)</Btn>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </Card>
+      )}
+      {isRep&&app.status===ST.APPROVED&&!!app.application?.customerSignature&&(
         <Card sx={{padding:'18px',marginBottom:14,background:'var(--okBg)',border:'2px solid var(--okBorder)'}}>
           <div style={{fontSize:13,fontWeight:700,color:'var(--ok)',marginBottom:6}}>{t('approved_banner_title')}</div>
           {app.imei
@@ -2719,14 +2870,14 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const buildAppData=(f,dev,term)=>{
     const tp=dev?calcTermPricing(dev,term):{dep:0,monthly:0,total:0,disc:0};
     const deal=dev?{dealId:dev.id||dev.dealId,manufacturer:dev.brand||dev.manufacturer,deviceModel:dev.model||dev.deviceModel,RAM:dev.RAM||dev.ram,ROM:dev.ROM||dev.rom,upfrontPayment:tp.dep,recurrentPayment:tp.monthly,termOption:term,totalCost:tp.total,cogs:dev.retail||dev.cogs||dev.cash,markupRate:cfg.markupRate,depositPct:cfg.depositPct||0.20,discountPct:tp.disc}:null;
-    const application={fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,guarantorRel:f.kr||'',neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:Math.max(0,+f.income||0),pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:!!f.sig,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:f.sig||null,idType:f.idType};
+    const application={fullName:f.name,dateOfBirth:'',nationalIdNumber:f.nid,phoneNumber:f.phone,address:f.addr,kycStatus:'pending',guarantorName:f.kn,guarantorPhone:f.kp,guarantorRel:f.kr||'',neighbourName:'',neighbourPhone:'',employerName:'',employmentType:f.occ,monthlyIncomeRwf:+f.income||0,monthlyExpensesRwf:0,freeCashflowRwf:Math.max(0,+f.income||0),pledgeVideoUploaded:false,pledgeReviewNotes:'',digitalSignatureConfirmed:false,fieldCorrectionRequests:[],customerPhoto:f.customerPhoto,idPhoto:f.idPhoto,incomeProof:f.incomeProof,customerSignature:null,idType:f.idType,contractSignedAt:null,contractSignedLangs:null};
     return{application,deal:deal||{}};
   };
   const draftToInitialData=(app)=>({
     name:app.c?.name||'',idType:app.c?.idType||'nid',nid:app.c?.nid||'',phone:app.c?.phone||'',addr:app.c?.addr||'',occ:app.c?.occ||'',income:app.c?.income?String(app.c.income):'',
     kn:app.c?.kin?.name||'',kp:app.c?.kin?.phone||'',kr:app.application?.guarantorRel||app.c?.kin?.rel||'',
     did:app.dev?.id||'',term:app.dev?.wks||12,
-    sig:app.application?.customerSignature||null,customerPhoto:app.customerPhoto||null,idPhoto:app.idPhoto||null,incomeProof:app.incomeProof||null,
+    customerPhoto:app.customerPhoto||null,idPhoto:app.idPhoto||null,incomeProof:app.incomeProof||null,
   });
   const startNewApp=(presel=null)=>{
     const id=nextContractId();
@@ -2738,7 +2889,8 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   };
   const grps={
     drafts:mine.filter(a=>a.status===ST.DRAFT),
-    imei:mine.filter(a=>a.status===ST.APPROVED||a.status===ST.LOCK_PENDING),
+    sign:mine.filter(a=>a.status===ST.APPROVED&&!a.application?.customerSignature),
+    imei:mine.filter(a=>(a.status===ST.APPROVED&&!!a.application?.customerSignature)||a.status===ST.LOCK_PENDING),
     changes:mine.filter(a=>a.status===ST.UNDER_REVIEW&&(a.application?.fieldCorrectionRequests||[]).some(r=>!r.resolvedAt)),
     review:mine.filter(a=>a.status===ST.PENDING_APPROVAL),
     awaiting:mine.filter(a=>a.status===ST.AWAITING_PAYMENT),
@@ -2785,6 +2937,12 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>{t('welcome',user.name.split(' ')[0])}</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>{t('what_to_do')}</p></div>
+            {grps.sign.length>0&&(
+              <div style={{marginBottom:12,padding:'14px 18px',background:'var(--infoBg)',border:'2px solid var(--infoBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
+                <div style={{fontWeight:700,fontSize:14,color:'var(--info)',marginBottom:3}}>✍ {grps.sign.length} application{grps.sign.length!==1?'s':''} approved — contract signing needed</div>
+                <div style={{fontSize:12,color:'var(--textMid)'}}>Tap to open and sign the contract before IMEI verification.</div>
+              </div>
+            )}
             {grps.imei.length>0&&(
               <div style={{marginBottom:12,padding:'14px 18px',background:'var(--okBg)',border:'2px solid var(--okBorder)',borderRadius:'var(--r)',cursor:'pointer'}} onClick={()=>setPg('active')}>
                 <div style={{fontWeight:700,fontSize:14,color:'var(--ok)',marginBottom:3}}>{t('imei_needed',grps.imei.length)}</div>
@@ -2814,6 +2972,19 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
         {pg==='active'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">{t('back')}</Btn><h1 style={{fontSize:20,fontWeight:800}}>{t('active_apps')}</h1></div>
+            {grps.sign.length>0&&(
+              <div style={{marginBottom:22}}>
+                <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--info)',marginBottom:10}}>✍ Contract signing needed <span style={{background:'var(--infoBg)',color:'var(--info)',padding:'1px 7px',borderRadius:99}}>{grps.sign.length}</span></div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {grps.sign.map(a=>(
+                    <div key={a.id} onClick={()=>setSel(a.id)} style={{background:'white',border:'2px solid var(--infoBorder)',borderRadius:'var(--r)',padding:'13px 16px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div><div style={{fontWeight:600,fontSize:14}}>{a.c.name}</div><div style={{fontSize:11,color:'var(--textMid)',marginTop:2}}>{a.dev.brand} {a.dev.model} · Contract signature required</div></div>
+                      <Btn v="def" sz="sm">Sign →</Btn>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {grps.imei.length>0&&(
               <div style={{marginBottom:22}}>
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--ok)',marginBottom:10}}>{t('approved_imei_section')} <span style={{background:'var(--okBg)',color:'var(--ok)',padding:'1px 7px',borderRadius:99}}>{grps.imei.length}</span></div>
