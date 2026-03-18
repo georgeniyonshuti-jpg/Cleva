@@ -413,17 +413,27 @@ const getSectorsByDistrict=(districtId)=>RW_LOCATIONS.sectors.filter(s=>s.distri
 
 // ── PHONE INPUT (Country code + number, Rwanda default) ───────────
 const COUNTRY_CODES=[{code:'+250',country:'Rwanda',flag:'🇷🇼'},{code:'+256',country:'Uganda',flag:'🇺🇬'},{code:'+254',country:'Kenya',flag:'🇰🇪'},{code:'+255',country:'Tanzania',flag:'🇹🇿'},{code:'+257',country:'Burundi',flag:'🇧🇮'},{code:'+243',country:'DRC',flag:'🇨🇩'}];
+const KNOWN_CODES=COUNTRY_CODES.map(c=>c.code).sort((a,b)=>b.length-a.length);
+const normalizePhoneNum=(code,num)=>{
+  let n=String(num||'').replace(/\D/g,'');
+  if(code==='+250'){n=n.replace(/^0+/,'');if(n.startsWith('250'))n=n.slice(3);n=n.slice(0,9);}
+  else{n=n.replace(/^0+/,'');n=n.slice(0,12);}
+  return n;
+};
 const parsePhoneValue=(v)=>{
   if(!v||typeof v!=='string')return{code:'+250',num:''};
   const s=v.trim().replace(/\s/g,'');
-  if(s.startsWith('+')){const m=s.match(/^(\+\d{1,4})([\d]*)$/);if(m)return{code:m[1],num:(m[2]||'').replace(/\D/g,'').slice(0,12)};}
+  if(s.startsWith('+')){
+    for(const kc of KNOWN_CODES){if(s.startsWith(kc)){let rest=(s.slice(kc.length)||'').replace(/\D/g,'');rest=normalizePhoneNum(kc,rest);return{code:kc,num:rest};}}
+    const m=s.match(/^(\+\d{1,4})([\d]*)$/);if(m)return{code:m[1],num:normalizePhoneNum(m[1],m[2]||'')};
+  }
   const digits=s.replace(/\D/g,'');
-  if(digits.startsWith('0')&&digits.length>=9)return{code:'+250',num:digits.slice(1).slice(0,9)};
-  if(digits.length>=9)return{code:'+250',num:digits.slice(0,9)};
+  if(digits.startsWith('0')&&digits.length>=9)return{code:'+250',num:normalizePhoneNum('+250',digits.slice(1))};
+  if(digits.length>=9)return{code:'+250',num:normalizePhoneNum('+250',digits)};
   return{code:'+250',num:digits.slice(0,9)};
 };
-const formatPhoneForStorage=(code,num)=>code+(num||'');
-const formatPhoneForDisplay=(v)=>{if(!v)return'—';const p=parsePhoneValue(v);if(!p.num)return v;return p.num.length>=9?`${p.code} ${p.num.replace(/(\d{2})(\d{3})(\d{4})/,'$1 $2 $3')}`:v;}
+const formatPhoneForStorage=(code,num)=>code+normalizePhoneNum(code,num);
+const formatPhoneForDisplay=(v)=>{if(!v)return'—';const p=parsePhoneValue(v);if(!p.num)return v;const norm=normalizePhoneNum(p.code,p.num);return norm.length>=9?`${p.code} ${norm.replace(/(\d{2})(\d{3})(\d{4})/,'$1 $2 $3')}`:v;}
 const isValidRwandaPhone=(num)=>/^7\d{8}$/.test(String(num||'').replace(/\D/g,''));
 const isValidPhoneByCode=(code,num)=>{
   const n=String(num||'').replace(/\D/g,'');
@@ -1589,7 +1599,7 @@ const ContractDoc=({data,lang='en'})=>{
         {(co.logo||LOGO_URL)&&<img src={co.logo||LOGO_URL} alt="logo" style={{height:56,marginBottom:10,display:'block',margin:'0 auto 10px'}}/>}
         <div style={{fontWeight:800,fontSize:20,color:'var(--brand)',letterSpacing:'-0.3px'}}>{co.name}</div>
         <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{co.tagline}</div>
-        <div style={{fontSize:10,color:'var(--textLight)',marginTop:3}}>{[co.address,co.phone,co.email].filter(Boolean).join(' · ')}</div>
+        <div style={{fontSize:10,color:'var(--textLight)',marginTop:3}}>{[co.address,formatPhoneForDisplay(co.phone),co.email].filter(v=>v&&v!=='—').join(' · ')}</div>
         {co.regNo&&<div style={{fontSize:9,color:'var(--textLight)',marginTop:1}}>Reg No: {co.regNo}</div>}
         <div style={{marginTop:14,fontWeight:800,fontSize:14,color:'var(--text)',letterSpacing:'0.5px'}}>{L.title}</div>
         <div style={{fontSize:10,color:'var(--textMid)',marginTop:3}}>{L.date}: {date}</div>
@@ -1731,7 +1741,7 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature,lang=
   doc.setFont('helvetica','bold').setFontSize(18).setTextColor(...brand).text(co.name,PW/2,y,{align:'center'});y+=7;
   doc.setFont('helvetica','normal').setFontSize(9).setTextColor(...mid);
   if(co.tagline){doc.text(co.tagline,PW/2,y,{align:'center'});y+=5;}
-  const contact=[co.address,co.phone,co.email].filter(Boolean).join(' · ');
+  const contact=[co.address,formatPhoneForDisplay(co.phone),co.email].filter(v=>v&&v!=='—').join(' · ');
   if(contact){doc.setFontSize(8).setTextColor(...light).text(contact,PW/2,y,{align:'center'});y+=5;}
   if(co.regNo){doc.text('Reg No: '+co.regNo,PW/2,y,{align:'center'});y+=4;}
   y+=2;
@@ -1747,7 +1757,7 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature,lang=
   // Service provider col
   doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text(L.provider,M,y);
   let ly=y+5;
-  [[co.name||''],[co.address||''],[co.phone||''],[co.email||''],[co.regNo?'Reg: '+co.regNo:'']].filter(([v])=>v).forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark).text(v,M,ly);ly+=4.5;});
+  [[co.name||''],[co.address||''],[formatPhoneForDisplay(co.phone)||''],[co.email||''],[co.regNo?'Reg: '+co.regNo:'']].filter(([v])=>v&&v!=='—').forEach(([v])=>{doc.setFont('helvetica','normal').setFontSize(8).setTextColor(...dark).text(v,M,ly);ly+=4.5;});
   // Customer col — text only
   doc.setFont('helvetica','bold').setFontSize(8).setTextColor(...brand).text(L.customer,colMid,startY);
   let ry=startY+5;
@@ -1796,7 +1806,7 @@ const generateContractPDF=async(contractData,companyInfo,customerSignature,lang=
 
   // ── Next of Kin ─────────────────────────────────────────────
   doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text(L.kin,M,y);y+=6;
-  kv('Name',app.guarantorName||'');kv('Phone',app.guarantorPhone||'');y+=2;hline();
+  kv('Name',app.guarantorName||'');kv('Phone',formatPhoneForDisplay(app.guarantorPhone||''));y+=2;hline();
 
   // ── Terms ───────────────────────────────────────────────────
   doc.setFont('helvetica','bold').setFontSize(9).setTextColor(...brand).text(L.terms,M,y);y+=6;
@@ -3931,7 +3941,7 @@ const MerchantView=({apps,addToast,users,setUsers,shops})=>{
               </div>
               <Btn v="def" sz="sm" icon="⬇" onClick={()=>{
                 const rows=[['ID','Date','Status','Customer','Phone','Rep','Shop','Device','Total (RWF)','Deposit (RWF)','Monthly (RWF)']];
-                completedApps.forEach(a=>rows.push([a.id,a.createdAt?new Date(a.createdAt).toLocaleDateString('en-GB'):'',SM[a.status]?.label||a.status,a.c.name||'',a.c.phone||'',a.rep||'',myShops.find(s=>s.id===a.shopId)?.name||a.shopId||'',a.dev?.brand?`${a.dev.brand} ${a.dev.model}`:'',a.dev?.totalCost||'',a.dev?.dep||'',a.dev?.weekly||'']));
+                completedApps.forEach(a=>rows.push([a.id,a.createdAt?new Date(a.createdAt).toLocaleDateString('en-GB'):'',SM[a.status]?.label||a.status,a.c.name||'',formatPhoneForDisplay(a.c.phone)||'',a.rep||'',myShops.find(s=>s.id===a.shopId)?.name||a.shopId||'',a.dev?.brand?`${a.dev.brand} ${a.dev.model}`:'',a.dev?.totalCost||'',a.dev?.dep||'',a.dev?.weekly||'']));
                 const csv=rows.map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
                 const el=document.createElement('a');el.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);el.download=`sales_${new Date().toISOString().slice(0,10)}.csv`;el.click();
               }}>Export CSV</Btn>
@@ -4800,7 +4810,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                 {coDraft.logo&&<img src={coDraft.logo} alt="logo" style={{height:36,marginBottom:8,display:'block'}}/>}
                 <div style={{fontWeight:800,fontSize:16,color:'var(--brand)'}}>{coDraft.name||'Company name'}</div>
                 <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{coDraft.tagline}</div>
-                <div style={{fontSize:10,color:'var(--textLight)',marginTop:2}}>{[coDraft.address,coDraft.phone,coDraft.email].filter(Boolean).join(' · ')}</div>
+                <div style={{fontSize:10,color:'var(--textLight)',marginTop:2}}>{[coDraft.address,formatPhoneForDisplay(coDraft.phone),coDraft.email].filter(v=>v&&v!=='—').join(' · ')}</div>
                 {coDraft.regNo&&<div style={{fontSize:9,color:'var(--textLight)',marginTop:1}}>Reg: {coDraft.regNo}</div>}
               </div>
             </Card>
@@ -4847,7 +4857,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
               <Btn v="def" sz="sm" icon="⬇" onClick={()=>{
                 const rows=[['ID','Date','Status','Customer','Phone','ID No','Rep','Shop','Device','Total (RWF)','Deposit (RWF)','Monthly (RWF)','IMEI']];
                 filtered.forEach(a=>{
-                  rows.push([a.id,a.createdAt?new Date(a.createdAt).toLocaleDateString('en-GB'):'',SM[a.status]?.label||a.status,a.c.name||'',a.c.phone||'',a.c.nid||'',a.rep||'',shopName(a.shopId),(a.dev?.brand?`${a.dev.brand} ${a.dev.model}`:''),a.dev?.totalCost||'',a.dev?.dep||'',a.dev?.weekly||'',a.imei||'']);
+                  rows.push([a.id,a.createdAt?new Date(a.createdAt).toLocaleDateString('en-GB'):'',SM[a.status]?.label||a.status,a.c.name||'',formatPhoneForDisplay(a.c.phone)||'',a.c.nid||'',a.rep||'',shopName(a.shopId),(a.dev?.brand?`${a.dev.brand} ${a.dev.model}`:''),a.dev?.totalCost||'',a.dev?.dep||'',a.dev?.weekly||'',a.imei||'']);
                 });
                 const csv=rows.map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
                 const el=document.createElement('a');el.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);el.download=`applications_${new Date().toISOString().slice(0,10)}.csv`;el.click();
