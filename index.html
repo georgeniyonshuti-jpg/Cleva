@@ -974,9 +974,11 @@ const TopBar=({onMenu,homeBtn,title})=>{
   const langLabel=lang==='en'?' Kinyarwanda':' English';
   return(
     <div className="top-bar">
-      <button type="button" className="hamburger" onClick={onMenu} aria-label="Open menu">
-        <span className="menu-bars" aria-hidden="true"><span/><span/><span/></span>
-      </button>
+      {onMenu&&(
+        <button type="button" className="hamburger" onClick={onMenu} aria-label="Open menu">
+          <span className="menu-bars" aria-hidden="true"><span/><span/><span/></span>
+        </button>
+      )}
       {homeBtn}
       <span style={{flex:1,fontWeight:600,fontSize:15,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'var(--text)'}}>{title}</span>
       {user?.role==='rep'&&<button type="button" className="lang-toggle-btn" onClick={toggleLang} style={{padding:'5px 11px',fontSize:11,fontWeight:600,color:'var(--brand2)',background:'var(--brandPale)',border:'1px solid var(--brandPale2)',borderRadius:99,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}} title={t('lang_toggle')} aria-label={t('lang_toggle')}><span>{langFlag}</span><span className="lang-toggle-text">{langLabel}</span></button>}
@@ -2977,7 +2979,6 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
   const t=useT();
   const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
-  const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
   const [preselDev,setPreselDev]=useState(null);
   const [activeDraftId,setActiveDraftId]=useState(null);
   const cfg=pricingConfig||defaultPricingConfig;
@@ -3013,8 +3014,6 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
     active:mine.filter(a=>a.status===ST.ACTIVE),
     closed:mine.filter(a=>(a.mboDecision==='REJECTED'||a.status===ST.ARCHIVED)&&a.status!==ST.DRAFT),
   };
-  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
-
   const goHome=()=>{setPg('dash');setSel(null);};
   const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:4,border:'none',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}} aria-label={t('home')}><LogoBrand iconSize={30} textSize={13}/></button>;
   if(sel){
@@ -3025,9 +3024,8 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
       const initData=draftToInitialData(app);
       return(
         <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
-          <Sidebar {...sidebarProps}/>
           <div className="app-main main-scroll" style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column',minHeight:0}}>
-            <TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={t('new_application')}/>
+            <TopBar homeBtn={<HomeBtn/>} title={t('new_application')}/>
             <div className="page-content new-app-fullpage" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,overflow:'hidden',padding:0}}>
               <NewApp devices={devicesWithPricing} initialData={initData}
                 onBack={()=>setSel(null)}
@@ -3041,15 +3039,14 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
       );
     }
     if(app&&app.status===ST.UNDER_REVIEW&&(app.application?.fieldCorrectionRequests||[]).some(r=>!r.resolvedAt)&&app.repId===user.id)
-      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title="Edit & resubmit"/><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><EditAndResubmit app={app} devices={devicesWithPricing} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
-    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={APP_NAME}/><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)} devices={devices}/></div></div></div>;
+      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><TopBar homeBtn={<HomeBtn/>} title="Edit & resubmit"/><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><EditAndResubmit app={app} devices={devicesWithPricing} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+    if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><TopBar homeBtn={<HomeBtn/>} title={APP_NAME}/><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)} devices={devices}/></div></div></div>;
   }
 
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
-      <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:pg==='new'?'hidden':'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={pg==='dash'?t('home'):pg==='new'?t('new_application'):pg==='active'?t('active_apps'):pg==='completed'?t('closed_apps'):pg==='prices'?t('price_list'):APP_NAME}/>
+        <TopBar homeBtn={<HomeBtn/>} title={pg==='dash'?t('home'):pg==='new'?t('new_application'):pg==='active'?t('active_apps'):pg==='completed'?t('closed_apps'):pg==='prices'?t('price_list'):APP_NAME}/>
         {pg==='dash'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
             <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>{t('welcome',user.name.split(' ')[0])}</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>{t('what_to_do')}</p></div>
@@ -3174,13 +3171,12 @@ const SalesRepView=({apps,onUpdate,addToast,devices,pricingConfig})=>{
 // ── UNDERWRITER VIEW ──────────────────────────────────────────
 const UnderwriterView=({apps,onUpdate,addToast})=>{
   const {user}=useContext(Ctx);
-  const [pg,setPg]=useState('queue');
+  const [pg,setPg]=useState('dash');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [completedFilter,setCompletedFilter]=useState('all'); // all | today | week | month
-  const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
-  const sidebarProps={page:pg,setPage:p=>{setPg(p);setSel(null)},apps,open:mobileMenuOpen,onClose:()=>setMobileMenuOpen(false),onOpen:()=>setMobileMenuOpen(true)};
-  const HomeBtn=()=><button type="button" onClick={()=>{setPg('queue');setSel(null);}} style={{padding:4,border:'none',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}} aria-label="Home"><LogoBrand iconSize={30} textSize={13}/></button>;
+  const goHome=()=>{setPg('dash');setSel(null);};
+  const HomeBtn=()=><button type="button" onClick={goHome} style={{padding:4,border:'none',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}} aria-label="Home"><LogoBrand iconSize={30} textSize={13}/></button>;
 
   if(sel){
     const app=apps.find(a=>a.id===sel);
@@ -3189,15 +3185,14 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
       if(reviewable){
         return(
           <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
-            <Sidebar {...sidebarProps}/>
             <div className="app-main" style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column',minHeight:0}}>
-              <TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title="Review application"/>
+              <TopBar homeBtn={<HomeBtn/>} title="Review application"/>
               <UWReviewFlow app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/>
             </div>
           </div>
         );
       }
-      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={APP_NAME}/><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
+      return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><TopBar homeBtn={<HomeBtn/>} title={APP_NAME}/><div className="page-content main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0,padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
     }
   }
 
@@ -3227,16 +3222,25 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
       return true;
     });
   const pendingCount=queue.length+escalated.length;
-  const pageTitle=pg==='queue'?'Review queue':pg==='uw_under_review'?'Applications under review':'Completed applications';
+  const pageTitle=pg==='dash'?'Home':pg==='queue'?'Review queue':pg==='uw_under_review'?'Applications under review':'Completed applications';
 
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
-      <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <TopBar onMenu={()=>setMobileMenuOpen(true)} homeBtn={<HomeBtn/>} title={pageTitle}/>
+        <TopBar homeBtn={<HomeBtn/>} title={pageTitle}/>
+        {pg==='dash'&&(
+          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{marginBottom:24,textAlign:'center'}}><h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px'}}>Welcome, {user.name.split(' ')[0]}</h1><p style={{fontSize:13,color:'var(--textMid)',marginTop:4}}>What would you like to do?</p></div>
+            <div className="home-actions">
+              <button type="button" className="home-action-btn" style={{background:'var(--brand)',color:'white',borderColor:'var(--brand2)'}} onClick={()=>setPg('queue')}>📋 Review queue {pendingCount>0&&<span style={{background:'rgba(255,255,255,0.25)',fontSize:13,padding:'2px 10px',borderRadius:99,marginLeft:8}}>{pendingCount}</span>}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('uw_under_review')}>🔒 Applications under review {underReviewMine.length>0&&<span style={{background:'var(--infoBg)',color:'var(--info)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{underReviewMine.length}</span>}</button>
+              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>setPg('uw_completed')}>✓ Completed applications {completedActiveMine.length>0&&<span style={{background:'var(--bg)',color:'var(--textMid)',fontSize:12,padding:'2px 8px',borderRadius:99,marginLeft:6}}>{completedActiveMine.length}</span>}</button>
+            </div>
+          </div>
+        )}
         {pg==='queue'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{pendingCount} application{pendingCount!==1?'s':''} awaiting attention</p></div></div>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><div><h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Review queue</h1><p style={{fontSize:12,color:'var(--textMid)',marginTop:2}}>{pendingCount} application{pendingCount!==1?'s':''} awaiting attention</p></div></div>
             {queue.length>0&&(
               <div style={{marginBottom:24}}>
                 <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:10}}>Pending decision <span style={{background:'var(--warnBg)',color:'var(--warn)',padding:'1px 7px',borderRadius:99}}>{queue.length}</span></div>
@@ -3281,6 +3285,7 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
         )}
         {pg==='uw_under_review'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn></div>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:12,flexWrap:'wrap',marginBottom:14}}>
               <div>
                 <h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Applications under review</h1>
@@ -3305,6 +3310,7 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
         )}
         {pg==='uw_completed'&&(
           <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn></div>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:12,flexWrap:'wrap',marginBottom:14}}>
               <div>
                 <h1 style={{fontSize:20,fontWeight:800,letterSpacing:'-0.3px'}}>Completed applications</h1>
