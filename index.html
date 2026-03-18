@@ -2216,6 +2216,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
   const [ld,setLd]=useState(null);
   const [showRej,setShowRej]=useState(false);
   const [rejReason,setRejReason]=useState('');
+  const [reviewed,setReviewed]=useState(()=>({1:false,2:false,3:false,4:false}));
   const isSuperuser=!!user.superuser;
   const toggleRequest=(key)=>setRequestedFields(p=>p.includes(key)?p.filter(x=>x!==key):[...p,key]);
   const hasFlags=requestedFields.length>0;
@@ -2225,6 +2226,10 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
   const ratio=c.income>0?(d.weekly/c.income*100):0;
   const affordOk=c.income>0&&ratio<30;
   const lockedByOther=app.reviewLock&&app.reviewLock.by!==user.id&&!isSuperuser;
+  const reqReviewed=(n)=>!!reviewed[n];
+  const reviewedAllCore=!!reviewed[1]&&!!reviewed[2]&&!!reviewed[3];
+  const canContinue=step<4?reqReviewed(step):false;
+  const canDecide=reviewedAllCore&&!!reviewed[4]&&!lockedByOther;
   React.useEffect(()=>{
     if(lockedByOther)return;
     const lock=app.reviewLock;
@@ -2233,11 +2238,22 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
   },[app.id]);// eslint-disable-line
   const _repEmail=()=>{const r=(users||[]).find(u=>u.id===app.repId);return r?.email||'';};
   const _repName=()=>app.repName||(users||[]).find(u=>u.id===app.repId)?.name||'Sales Rep';
-  const approve=async()=>{setLd('ap');await sleep(1200);onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:'Approved — sales rep to enter IMEI and verify device'}});sendEmail('approved',{to_email:_repEmail(),to_name:_repName(),customer_name:app.application?.fullName||app.id,app_id:app.id,reviewer_name:user.name});addToast('ok','Application approved','Sales rep notified to proceed with IMEI verification');setLd(null);onBack();};
+  const approve=async()=>{setLd('ap');await sleep(1200);onUpdate(app.id,{status:ST.APPROVED,mboDecision:'APPROVED',notes:note,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:'Approved — sales rep to sign contract, then proceed to IMEI verification'}});sendEmail('approved',{to_email:_repEmail(),to_name:_repName(),customer_name:app.application?.fullName||app.id,app_id:app.id,reviewer_name:user.name});addToast('ok','Application approved','Sales rep notified to proceed with contract signing');setLd(null);onBack();};
   const reject=async()=>{if(!rejReason.trim()){addToast('err','Reason required','Provide a rejection reason');return;}setLd('rej');await sleep(700);onUpdate(app.id,{status:ST.ARCHIVED,mboDecision:'REJECTED',mboRejectionReason:rejReason,mboReviewedBy:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Rejected: ${rejReason}`}});sendEmail('rejected',{to_email:_repEmail(),to_name:_repName(),customer_name:app.application?.fullName||app.id,app_id:app.id,rejection_reason:rejReason});addToast('info','Application rejected','Application is now closed');setLd(null);onBack();};
   const requestChanges=async()=>{if(requestedFields.length===0){addToast('err','Select fields','Flag at least one field using the Flag buttons');return;}if(!note.trim()){addToast('err','Note required','Explain what the rep needs to fix');return;}setLd('ch');await sleep(700);const ap=app.application||{};const reqs=ap.fieldCorrectionRequests||[];const added=requestedFields.filter(f=>!reqs.some(r=>r.fieldName===f&&!r.resolvedAt));const newReqs=[...reqs,...added.map(fieldName=>({fieldName,reason:note,resolvedAt:null}))];onUpdate(app.id,{status:ST.UNDER_REVIEW,notes:note,application:{...ap,fieldCorrectionRequests:newReqs},reviewLock:null,tlEntry:{by:user.name,txt:`Changes requested (${requestedFields.join(', ')}) — returned to sales rep`}});sendEmail('changes',{to_email:_repEmail(),to_name:_repName(),customer_name:ap.fullName||app.id,app_id:app.id,fields:requestedFields.join(', '),note});addToast('warn','Changes requested','Application returned to rep for correction');setLd(null);onBack();};
   const escalate=async()=>{if(!note.trim()){addToast('err','Note required','Explain why you are escalating.');return;}setLd('esc');await sleep(700);onUpdate(app.id,{status:ST.ESCALATED,notes:note,reviewer:user.name,reviewLock:null,tlEntry:{by:user.name,txt:`Escalated to ops: ${note}`}});const opsEmails=(users||[]).filter(u=>u.role==='ops').map(u=>u.email).join(',');sendEmail('escalated',{to_email:opsEmails||'',to_name:'Operations Team',customer_name:app.application?.fullName||app.id,app_id:app.id,escalated_by:user.name,note});addToast('warn','Escalated to ops','Awaiting action from operations team');setLd(null);onBack();};
   const STEPS=['Customer','Documents','Device & Deal','Decision'];
+  const Declaration=({n,title,desc})=>(
+    <div style={{marginTop:20,padding:'14px 16px',border:'1.5px solid var(--border)',borderRadius:'var(--r)',background:'white'}}>
+      <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
+        <input type="checkbox" checked={!!reviewed[n]} onChange={e=>setReviewed(p=>({...p,[n]:e.target.checked}))} style={{marginTop:3}}/>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:800,fontSize:13,marginBottom:3}}>{title}</div>
+          <div style={{fontSize:11,color:'var(--textMid)',lineHeight:1.55}}>{desc}</div>
+        </div>
+      </div>
+    </div>
+  );
   const StepRow=()=>(
     <div style={{display:'flex',alignItems:'center',gap:0}}>
       {STEPS.map((s,i)=>{
@@ -2277,7 +2293,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
           <div style={{maxWidth:720}}>
             <h2 style={{fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:'-0.2px'}}>Customer information</h2>
             <p style={{fontSize:12,color:'var(--textMid)',marginBottom:22}}>Review customer details. Use the <strong>Flag</strong> button on any field to request a correction.</p>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <FldWithRequest fieldKey="name" label="Full name" val={c.name} requestedFields={requestedFields} onToggle={toggleRequest}/>
               <FldWithRequest fieldKey="nid" label={c.idType==='passport'?'Passport number':'National ID'} val={c.nid} requestedFields={requestedFields} onToggle={toggleRequest} mono/>
               <FldWithRequest fieldKey="phone" label="Phone" val={c.phone} requestedFields={requestedFields} onToggle={toggleRequest}/>
@@ -2287,12 +2303,13 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
             </div>
             <div style={{marginTop:18,paddingTop:14,borderTop:'1.5px solid var(--border)'}}>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Next of kin / Guarantor</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:0}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
                 <FldWithRequest fieldKey="kin_name" label="Name" val={c.kin.name} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="kin_phone" label="Phone" val={c.kin.phone} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="kin_rel" label="Relationship" val={c.kin.rel} requestedFields={requestedFields} onToggle={toggleRequest}/>
               </div>
             </div>
+            <Declaration n={1} title="Declaration — Customer reviewed" desc="I confirm I reviewed the customer details and next-of-kin information."/>
           </div>
         )}
         {/* Step 2: Documents */}
@@ -2340,6 +2357,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
               </div>
             )}
             {!app.customerPhoto&&!app.idPhoto&&!app.incomeProof&&<div style={{padding:'40px 24px',textAlign:'center',color:'var(--textMid)',fontSize:13}}>No documents uploaded with this application.</div>}
+            <Declaration n={2} title="Declaration — Documents reviewed" desc="I confirm I reviewed the uploaded documents/photos and they are acceptable for underwriting."/>
           </div>
         )}
         {/* Step 3: Device & Deal */}
@@ -2349,14 +2367,14 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
             <p style={{fontSize:12,color:'var(--textMid)',marginBottom:22}}>Review the device and payment terms. Check the affordability ratio.</p>
             <div style={{marginBottom:24}}>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Device</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <FldWithRequest fieldKey="device_id" label="Device" val={`${d.brand} ${d.model}`} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <Fld label="Storage / RAM" val={d.specs}/>
               </div>
             </div>
             <div style={{marginBottom:24}}>
               <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.7px',color:'var(--textLight)',marginBottom:12}}>Payment terms</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <FldWithRequest fieldKey="dep" label="Upfront deposit" val={fmtRWF(d.dep)} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="weekly" label={`Monthly × ${termMonths}`} val={fmtRWF(d.weekly)} requestedFields={requestedFields} onToggle={toggleRequest}/>
                 <FldWithRequest fieldKey="tot" label="Total price" val={fmtRWF(tot)} requestedFields={requestedFields} onToggle={toggleRequest}/>
@@ -2380,6 +2398,7 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
                 </div>
               </div>
             </div>
+            <Declaration n={3} title="Declaration — Deal reviewed" desc="I confirm I reviewed the device, pricing, and affordability checks for this deal."/>
           </div>
         )}
         {/* Step 4: Decision */}
@@ -2405,6 +2424,12 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
                 <textarea value={note} onChange={ev=>setNote(ev.target.value)} placeholder="Explain your decision or what the rep needs to fix..." rows={5} style={{resize:'vertical'}}/>
               </FF>
             )}
+            <Declaration n={4} title="Declaration — Decision confirmed" desc="I confirm I completed the review of Customer, Documents, and Deal and I am ready to record the final decision."/>
+            {!reviewedAllCore&&(
+              <div style={{marginTop:14,padding:'10px 12px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:'var(--r2)',fontSize:11,color:'var(--warn)',lineHeight:1.6}}>
+                You must complete the declarations in steps 1–3 before making a decision.
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -2415,12 +2440,12 @@ const UWReviewFlow=({app,onUpdate,addToast,onBack})=>{
           {hasFlags&&<div style={{fontSize:11,fontWeight:600,color:'var(--warn)',padding:'3px 10px',background:'var(--warnBg)',border:'1px solid var(--warnBorder)',borderRadius:99}}>⚑ {requestedFields.length} flag{requestedFields.length!==1?'s':''}</div>}
         </div>
         <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end'}}>
-          {step<4&&<Btn onClick={()=>setStep(s=>s+1)} v="primary" icon="→">Continue</Btn>}
+          {step<4&&<Btn onClick={()=>setStep(s=>s+1)} v="primary" icon="→" disabled={!canContinue} title={!canContinue?'Complete the declaration to continue':''}>Continue</Btn>}
           {step===4&&!lockedByOther&&(<>
-            {!hasFlags&&<Btn onClick={approve} v="ok" loading={ld==='ap'} icon="✓">Approve</Btn>}
-            <Btn onClick={requestChanges} v="warn" loading={ld==='ch'} icon="↩" disabled={requestedFields.length===0}>Request changes</Btn>
-            <Btn onClick={escalate} v="pur" loading={ld==='esc'} icon="↑" disabled={!note.trim()}>Escalate to ops</Btn>
-            <Btn onClick={()=>setShowRej(p=>!p)} v="err" icon="✕">Reject</Btn>
+            {!hasFlags&&<Btn onClick={approve} v="ok" loading={ld==='ap'} icon="✓" disabled={!canDecide} title={!canDecide?'Complete all declarations to decide':''}>Approve</Btn>}
+            <Btn onClick={requestChanges} v="warn" loading={ld==='ch'} icon="↩" disabled={requestedFields.length===0||!canDecide} title={!canDecide?'Complete all declarations to decide':''}>Request changes</Btn>
+            <Btn onClick={escalate} v="pur" loading={ld==='esc'} icon="↑" disabled={!note.trim()||!canDecide} title={!canDecide?'Complete all declarations to decide':''}>Escalate to ops</Btn>
+            <Btn onClick={()=>setShowRej(p=>!p)} v="err" icon="✕" disabled={!canDecide} title={!canDecide?'Complete all declarations to decide':''}>Reject</Btn>
           </>)}
         </div>
       </div>
