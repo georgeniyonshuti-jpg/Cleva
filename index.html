@@ -1026,7 +1026,7 @@ const Sidebar=({page,setPage,apps,open=false,onClose,onOpen})=>{
       {k:'uw_under_review',l:'Applications under review',badge:myUnderReviewCount},
       {k:'uw_completed',l:'Completed applications',badge:myCompletedActiveCount},
     ],
-    support:[{k:'dash',l:'Home'},{k:'all',l:'All Applications'}],
+    support:[{k:'all',l:'Applications'}],
     ops:user.superuser?[{k:'overview',l:'Overview'},{k:'all',l:'All Applications'},{k:'admin',l:'Admin'}]:[{k:'all',l:'All Applications'}],
     merchant:[{k:'sales',l:'Completed Sales'},{k:'team',l:'My Team'}],
     groupadmin:[{k:'groups',l:'Retail Groups'},{k:'shops',l:'Shops'},{k:'managers',l:'Managers'}],
@@ -3377,7 +3377,7 @@ const UnderwriterView=({apps,onUpdate,addToast})=>{
 
 // ── SUPPORT VIEW ───────────────────────────────────────────────
 const SupportView=({apps,onUpdate,addToast})=>{
-  const [pg,setPg]=useState('dash');
+  const [pg,setPg]=useState('all');
   const [sel,setSel]=useState(null);
   const [q,setQ]=useState('');
   const [mobileMenuOpen,setMobileMenuOpen]=useState(()=>window.innerWidth>=769);
@@ -3387,29 +3387,39 @@ const SupportView=({apps,onUpdate,addToast})=>{
     const app=apps.find(a=>a.id===sel);
     if(app) return <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}><Sidebar {...sidebarProps}/><div className="app-main" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}><div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{APP_NAME}</span></div><div className="page-content main-scroll" style={{flex:1,overflow:'auto',padding:'28px 32px'}}><AppDetail app={app} onUpdate={onUpdate} addToast={addToast} onBack={()=>setSel(null)}/></div></div></div>;
   }
-  const all=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return (a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s);});
+  const filtered=apps.filter(a=>{if(!q.trim())return true;const s=q.toLowerCase();return (a.c&&a.c.name||'').toLowerCase().includes(s)||(a.id||'').toLowerCase().includes(s)||(a.rep||'').toLowerCase().includes(s);});
   return(
     <div className="app-layout" style={{display:'flex',flex:1,minHeight:0}}>
       <Sidebar {...sidebarProps}/>
       <div className="app-main main-scroll" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>{pg==='dash'?'Home':'All applications'}</span></div>
-        {pg==='dash'&&(
-          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',marginBottom:8}}>Support — QC & override</h1>
-            <p style={{fontSize:13,color:'var(--textMid)',marginBottom:24}}>View any application across merchants. Override stuck states when needed.</p>
-            <div style={{display:'flex',flexDirection:'column',gap:12,maxWidth:400}}>
-              <button type="button" className="home-action-btn" style={{background:'var(--surface)',color:'var(--text)',borderColor:'var(--border)',boxShadow:'var(--sh)'}} onClick={()=>{setPg('all');}}>📄 All applications ({apps.length})</button>
+        <div className="mobile-header"><button type="button" className="hamburger" onClick={()=>setMobileMenuOpen(true)} aria-label="Open menu">☰</button><LogoBrand iconSize={30} textSize={14} style={{marginRight:4}}/><span style={{fontWeight:700,fontSize:16}}>Applications</span></div>
+        <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,flexWrap:'wrap',gap:10}}>
+            <h1 style={{fontSize:22,fontWeight:800,letterSpacing:'-0.3px',margin:0}}>Applications</h1>
+            <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name, ID, or rep…" style={{maxWidth:320,width:'100%'}}/>
+          </div>
+          <div style={{fontSize:11,color:'var(--textLight)',marginBottom:10}}>{filtered.length} result{filtered.length!==1?'s':''}</div>
+          {filtered.length>0?(
+            <div className="admin-table-wrap" style={{maxHeight:'calc(100vh - 280px)',overflow:'auto'}}>
+              <table className="admin-table">
+                <thead><tr><th>Application</th><th>Customer</th><th>Status</th><th className="hide-mobile">Rep</th><th>Created</th><th className="hide-mobile">Updated</th><th style={{width:60}}></th></tr></thead>
+                <tbody>
+                  {filtered.map(a=>(
+                    <tr key={a.id} onClick={()=>setSel(a.id)} style={{cursor:'pointer'}}>
+                      <td><div className="col-name">{a.c?.name||'—'}</div><div className="col-mono" style={{fontSize:11,color:'var(--textLight)'}}>{a.id}</div></td>
+                      <td style={{fontSize:12}}>{a.c?.name||'—'}</td>
+                      <td><Badge st={a.status}/></td>
+                      <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{a.rep||a.repName||'—'}</td>
+                      <td style={{fontSize:12,color:'var(--textMid)'}}>{fmtD(a.createdAt)}</td>
+                      <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{fmtD(a.updatedAt)}</td>
+                      <td><span style={{color:'var(--textLight)',fontSize:16}}>›</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
-        )}
-        {pg==='all'&&(
-          <div className="fadeUp page-content" style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}><Btn onClick={()=>setPg('dash')} v="ghost" icon="←" sz="sm">Back</Btn><h1 style={{fontSize:20,fontWeight:800}}>All applications</h1></div>
-            <input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search by name or ID…" style={{maxWidth:320,marginBottom:16,width:'100%'}}/>
-            <div style={{display:'flex',flexDirection:'column',gap:8}}>{all.map(a=><ACard key={a.id} app={a} onClick={()=>setSel(a.id)}/>)}</div>
-            {all.length===0&&<Empty ico="🔍" title="No results"/>}
-          </div>
-        )}
+          ):<Empty ico="🔍" title="No results"/>}
+        </div>
       </div>
     </div>
   );
@@ -4071,6 +4081,7 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
     const [showAddUser,setShowAddUser]=useState(false);
     const [editingUserId,setEditingUserId]=useState(null);
     const [showAddShop,setShowAddShop]=useState(false);
+    const [editingShopId,setEditingShopId]=useState(null);
     const [newDev,setNewDev]=useState({brand:'',model:'',ram:'',rom:'',cash:''});
     const [newUser,setNewUser]=useState({name:'',email:'',password:'',role:'rep',shopId:'',merchantGroupId:'',superuser:false});
     const [newShop,setNewShop]=useState({name:'',location:'',merchantGroupId:''});
@@ -4489,28 +4500,37 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                 <div style={{fontWeight:800}}>Shops <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({(shops||[]).length})</span></div>
                 <Btn v="primary" sz="sm" onClick={()=>setShowAddShop(true)} icon="＋">Add shop</Btn>
               </div>
-              <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                {(shops||[]).map(s=>{
-                  const repCount=(users||[]).filter(u=>u.shopId===s.id).length;
-                  const appCount=(apps||[]).filter(a=>a.shopId===s.id).length;
-                  return(
-                    <Card key={s.id} sx={{padding:14,boxShadow:'none'}}>
-                      <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',marginBottom:10}}>
-                        <div style={{minWidth:0}}>
-                          <div style={{fontWeight:800}}>{s.name} <span style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--textLight)'}}>({s.id})</span></div>
-                          <div style={{fontSize:11,color:'var(--textLight)',marginTop:2}}>{s.location||'—'}</div>
-                          <div style={{display:'flex',gap:10,marginTop:6,fontSize:11,color:'var(--textMid)'}}>
-                            <span>👤 {repCount} rep{repCount!==1?'s':''}</span>
-                            <span>📋 {appCount} application{appCount!==1?'s':''}</span>
-                          </div>
-                        </div>
-                        <Btn v="err" sz="sm" onClick={()=>{
-                          if(repCount>0){addToast('err','Cannot remove shop','Remove or reassign all reps first');return;}
-                          setShops((shops||[]).filter(sh=>sh.id!==s.id));
-                          addToast('ok','Shop removed','');
-                        }}>Remove</Btn>
-                      </div>
-                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              {(shops||[]).length>0?(
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead><tr><th>Shop name</th><th>Location</th><th className="hide-mobile">Retail group</th><th className="col-center">Status</th><th style={{width:120}}>Actions</th></tr></thead>
+                    <tbody>
+                      {(shops||[]).map(s=>{
+                        const repCount=(users||[]).filter(u=>u.shopId===s.id).length;
+                        const appCount=(apps||[]).filter(a=>a.shopId===s.id).length;
+                        const groupName=(merchantGroups||[]).find(g=>g.id===s.merchantGroupId)?.name||'—';
+                        return(
+                          <tr key={s.id}>
+                            <td><div className="col-name">{s.name}</div><div className="col-mono" style={{fontSize:11,color:'var(--textLight)'}}>{s.id}</div></td>
+                            <td style={{fontSize:12,color:'var(--textMid)'}}>{s.location||'—'}</td>
+                            <td className="hide-mobile" style={{fontSize:12,color:'var(--textMid)'}}>{groupName}</td>
+                            <td className="col-center"><span style={{fontSize:11,color:'var(--ok)',background:'var(--okBg)',padding:'2px 8px',borderRadius:99}}>Active</span><div style={{fontSize:10,color:'var(--textLight)',marginTop:2}}>{repCount} rep{repCount!==1?'s':''} · {appCount} app{appCount!==1?'s':''}</div></td>
+                            <td><div className="row-actions"><Btn v="def" sz="sm" onClick={()=>setEditingShopId(s.id)}>Edit</Btn><Btn v="err" sz="sm" onClick={()=>{if(repCount>0){addToast('err','Cannot remove shop','Remove or reassign all reps first');return;}setShops((shops||[]).filter(sh=>sh.id!==s.id));addToast('ok','Shop removed','');}}>Remove</Btn></div></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ):<Empty ico="🏪" title="No shops yet"/>}
+              {editingShopId&&(()=>{
+                const s=(shops||[]).find(x=>x.id===editingShopId);
+                if(!s)return null;
+                return ReactDOM.createPortal(
+                  <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'flex-start',justifyContent:'center',zIndex:1100,padding:'max(20px,env(safe-area-inset-top)) 16px 24px',overflow:'auto'}} onClick={()=>setEditingShopId(null)}>
+                    <Card sx={{padding:20,maxWidth:480,width:'100%',margin:'0 auto'}} onClick={e=>e.stopPropagation()}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}><div style={{fontWeight:800}}>Edit shop — {s.name}</div><Btn v="ghost" sz="sm" onClick={()=>setEditingShopId(null)}>✕</Btn></div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
                         <FF label="Shop name"><input value={s.name} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,name:e.target.value}:sh))}/></FF>
                         <FF label="Location"><input value={s.location||''} onChange={e=>setShops((shops||[]).map(sh=>sh.id===s.id?{...sh,location:e.target.value}:sh))} placeholder="e.g. KG 15 Ave, Kigali"/></FF>
                         <FF label="Retail group">
@@ -4520,11 +4540,11 @@ const OpsView=({apps,onUpdate,addToast,devices,setDevices,users,setUsers,shops,s
                           </select>
                         </FF>
                       </div>
+                      <Btn v="primary" sz="sm" onClick={()=>setEditingShopId(null)}>Done</Btn>
                     </Card>
-                  );
-                })}
-                {(shops||[]).length===0&&<Empty ico="🏪" title="No shops yet"/>}
-              </div>
+                  </div>,document.body
+                );
+              })()}
             </Card>
           </div>
         )}
